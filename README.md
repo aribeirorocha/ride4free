@@ -1,3 +1,57 @@
-Car app
+[your product name] Development Report
 
-- [ ] App que visa em amelhorar boleias. Visa usar o ODS 11 e o ODS 13. Vai ter authenticaçao academica. Vai haver publicaçao da boleia, segundo uma origem, destino e lugar disponivel. Isso vai ir apra um feed em que o usario usa, filtrando por ponto de partida e chegada, e escolhe. O condutor, apos a request, pode aceitar ou nao. Vai tbm haver um chat interno, um painel de impacto ambiental, um sistema de ponto que motiva a utilizaçao da app, segundo um pequeno algoritmo, uma api de maps dinamica, notificaçoes, um sistema de prefil de avaliaçao do usario e condutor. Mode online Competitivo. Passageiros ganham pontos, segunto um sistema de quizz e os condutores por um sistema de km. 
+Welcome to the documentation of [your product name]!
+
+This Software Development Report, tailored for LEIC-ES-2025-26, provides comprehensive details about [your product name], starting from an high-level vision and going into low-level implementation decisions.
+
+It is organised by the following activities:
+
+    Business modeling
+        Product Vision
+        Features and Assumptions
+    Requirements
+        User stories
+        Domain model
+        User interfaces
+    Architecture and Design
+        Logical architecture
+        Physical architecture
+        Functional prototype
+    Project management
+        Sprint 0
+        Sprint 1
+        Sprint 2
+        Sprint 3
+        Final Release
+
+Contributions are expected to be made exclusively by the initial team, but we may open them to the community, after the course, in all areas and topics: requirements, technologies, development, experimentation, testing, etc.
+
+Please contact us!
+
+Thank you!
+
+    team member Thomas Tuerlinckx and up202403993@up.pt
+    team member name and email
+    team member name and email
+    team member name and email
+    team member name and email
+
+Business Modelling
+
+Business modeling in software development involves defining the product's vision, understanding market needs, aligning features with user expectations, and setting the groundwork for strategic planning and execution.
+Product Vision
+Features and Assumptions
+Requirements
+User Stories
+Domain model
+Architecture and Design
+Logical architecture
+Physical architecture
+Functional prototype
+Project management
+Sprint 0
+Sprint 1
+Sprint 2
+Sprint 3
+Sprint 4
+Final Release
