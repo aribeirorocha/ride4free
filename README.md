@@ -37,7 +37,7 @@ Thank you!
 * Thomas Tuerlinckx and up202403993@up.pt
 * Filipe Silva and up202409216@up.pt
 *  Pedro Dinis and up202205947@up.pt
-* team member name and email
+* André Rocha and up202407636@up.pt
 * team member name and email
 
 ---
