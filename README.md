@@ -28,7 +28,7 @@ Contributions are expected to be made exclusively by the initial team, but we ma
 
 Please contact us!
 
-Thank you!
+Thank you!!
 
     team member Thomas Tuerlinckx and up202403993@up.pt
     team member name and email
