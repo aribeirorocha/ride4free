@@ -17,6 +17,8 @@ Facilitates student commuting without financial costs, promoting mutual aid and 
   * **Given** the passenger tries to book a 10-credit trip but only has 0 or 5 credits.
   * **When** they attempt to confirm the booking.
   * **Then** the system prevents the action and displays an "Insufficient Credit Balance" message.
+* **Mockup**
+  * <img width="200" height="300" alt="image" src="https://github.com/user-attachments/assets/3bfcc946-94af-4135-927d-10b8fa6001ca" />
 
 **Priority:** Must-have  
 **Effort:** 5 points
