@@ -1,8 +1,8 @@
 ### Statement
-[cite_start]As a Student Passenger, I want to book a ride and be rated positively so that I can earn bonus credits and continue using the system even without a car.
+As a Student Passenger, I want to book a ride and be rated positively so that I can earn bonus credits and continue using the system even without a car.
 
 ### Business Value
-[cite_start]Facilitates student commuting without financial costs, promoting mutual aid and sustainability.
+Facilitates student commuting without financial costs, promoting mutual aid and sustainability.
 
 ### Acceptance Tests
 * **Scenario: Successful Booking**
