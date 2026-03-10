@@ -267,7 +267,7 @@ Please contact us!
 Thank you!!
 
     team member Thomas Tuerlinckx and up202403993@up.pt
-    team member name and email
+    team member André Rocha and up202407636@up.pt
     team member name and email
     team member name and email
     team member name and email
