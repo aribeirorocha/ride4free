@@ -9,6 +9,9 @@ Facilitates student commuting without financial costs, promoting mutual aid and 
   * **Given** the passenger finds a trip and has a sufficient credit balance.
   * **When** they click "Book Seat Now".
   * **Then** the system deducts 10 credits from their balance and confirms the booking instantly.
+* **Mockup**
+  * <img width="200" height="300" alt="image" src="https://github.com/user-attachments/assets/7ffe6c6e-a6f3-4918-8e1c-8c6b58dd9c9e" />
+ 
 
 * **Scenario: Insufficient Balance**
   * **Given** the passenger tries to book a 10-credit trip but only has 0 or 5 credits.
