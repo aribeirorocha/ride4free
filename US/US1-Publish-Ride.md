@@ -11,7 +11,8 @@ Ensures a steady supply of drivers by providing an incentive system through cred
   * **When** they click "Publish Trip".
   * **Then** the system validates the data and shows an estimated reward of +30 credits.
 * **Mockup**
-  * <img width="200" height="300" alt="image" src="https://github.com/user-attachments/assets/523caef5-701d-4e50-825f-7aa6947f82a2" />
+  * <img width="200" height="300" alt="image" src="https://github.com/user-attachments/assets/a325f576-0aa7-4cd6-9a63-1a52a242e84b" />
+
   
 
 
