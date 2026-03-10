@@ -6,15 +6,15 @@
 
 ### Acceptance Tests
 * **Scenario: Successful Publication**
-  * [cite_start]**Given** the driver has entered the starting point, destination, and time.
-  * [cite_start]**And** specified how many available seats.
-  * [cite_start]**When** they click "Publish Trip".
-  * [cite_start]**Then** the system validates the data and shows an estimated reward of +30 credits.
+  * **Given** the driver has entered the starting point, destination, and time.
+  * **And** specified how many available seats.
+  * **When** they click "Publish Trip".
+  * **Then** the system validates the data and shows an estimated reward of +30 credits.
 
 * **Scenario: Invalid Capacity**
-  * [cite_start]**Given** the driver enters the route but keeps seats at 0.
-  * [cite_start]**When** they attempt to publish the trip].
-  * [cite_start]**Then** the system prevents publication and displays an "Invalid Capacity" warning.
+  * **Given** the driver enters the route but keeps seats at 0.
+  * **When** they attempt to publish the trip].
+  * **Then** the system prevents publication and displays an "Invalid Capacity" warning.
 
 **Priority:** Must-have  
 **Effort:** 5 points
