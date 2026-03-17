@@ -38,7 +38,7 @@ Thank you!
 * Filipe Silva and up202409216@up.pt
 *  Pedro Dinis and up202205947@up.pt
 * André Rocha and up202407636@up.pt
-* team member name and email
+* Tomás Gonçalves and up202208997@up.pt
 
 ---
 ## Business Modelling
