@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 <!-- Template file for README.md for LEIC-ES-2025-26 -->
 
 > [!NOTE] In this file, you will find the structure you should follow to document your mobile app in the README.md file for LEIC-ES-2025-26. It is a single file with guidelines. You can add more sections, but for assessment reasons and automation, please make sure to include all sections of this template. Your professors will clarify about specificities of your app.
@@ -291,3 +292,5 @@ Sprint 2
 Sprint 3
 Sprint 4
 Final Release
+=======
+>>>>>>> Stashed changes
