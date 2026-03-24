@@ -115,34 +115,27 @@ Optionally, indicate an initial/tentative list of assumptions that you are doing
 ## Requirements
 
 ### User Stories
-<!-- 
-In this section you should describe all kinds of requirements for your module: functional and non-functional requirements.
+Our requirements are documented as **User Stories** in our [GitHub Project T4-Scrumboard](LINK_DO_TEU_PROJETO). We followed the **INVEST** guidelines to ensure each story is Independent, Negotiable, Valuable, Estimable, Small, and Testable.
 
-For LEIC-ES-2025-26, the requirements will be gathered and documented as user stories. 
+| ID | Title | Priority (MoSCoW) | Effort (Fibonacci) | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| #30 | [US1: Publish Solidarity Ride](https://github.com/LEIC-ES-2025-26-2LEIC05/issues/30) | **Must-have** | 8 | Ready |
+| #31 | [US2: Book Ride Seat](https://github.com/LEIC-ES-2025-26-2LEIC05/issues/32) | **Must-have** | 5 | Ready |
+| #33 | [US3: Search with Walking Tolerance](https://github.com/LEIC-ES-2025-26-2LEIC05/issues/33) | **Should-have** | 3 | Ready |
+| #32 | [US4: Rate Passenger Conduct](https://github.com/LEIC-ES-2025-26-2LEIC05/issues/34) | **Could-have** | 3 | Ready |
 
-Please add in this section a concise summary of all the user stories (not each user story!).
+---
 
-**User stories as GitHub Project Items**
-The user stories themselves should be created and described as items in your GitHub Project with the label "user story". 
+### Requirements Quality (DoR)
 
-A user story is a description of a desired functionality told from the perspective of the user or customer. A starting template for the description of a user story is *As a < user role >, I want < goal > so that < reason >.*
+Each User Story in our backlog includes:
+* **Gherkin Scenarios:** Clear "Given/When/Then" acceptance tests to confirm requirements are met.
+* **User Interface Mockups:** High-fidelity drafts attached to each issue to guide frontend development.
+* **Estimation:** Value (Business Priority) and Effort (Story Points) defined by the whole team.
+* **Refinement:** Larger stories were broken down into technical **Tasks** to be "immediately actionable" as per the [LEIC-ES Dashboard criteria]().
 
-Name the item with either the full user story or a shorter name (recommended). In the “comments” field, add relevant notes, mockup images, and acceptance test scenarios, linking to the acceptance tests when available, and finally estimate value and effort.
-
-**INVEST in good user stories**. 
-You may add more details after, but the shorter and complete, the better. In order to decide if the user story is good, please follow the [INVEST guidelines](https://xp123.com/articles/invest-in-good-stories-and-smart-tasks/).
-
-**User interface mockups**.
-After the user story text, you should add a draft of the corresponding user interfaces, a simple mockup or draft, if applicable.
-
-**Acceptance tests**.
-For each user story you should write also the acceptance tests (textually in [Gherkin](https://cucumber.io/docs/gherkin/reference/)), i.e., a description of scenarios (situations) that will help to confirm that the system satisfies the requirements addressed by the user story.
-
-**Value and effort**.
-At the end, it is good to add a rough indication of the value of the user story to the customers (e.g. [MoSCoW](https://en.wikipedia.org/wiki/MoSCoW_method) method) and the team should add an estimation of the effort to implement it using points in a kind-of-a Fibonnacci scale (1,2,3,5,8,13,20,40, no idea).
-
--->
-
+> **Note:** All AI-assisted drafting (Gherkin/Tasks) is transparently labeled with `MisterAI`.
+> 
 ### Domain model
 
 <!-- 
