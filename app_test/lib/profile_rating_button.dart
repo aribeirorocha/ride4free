@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'profile_model.dart';
+import 'main.dart'; // or wherever kRed, kCard, kDivider, kBlack are
+
+
 
 class ProfileRatingButton extends StatefulWidget {
   const ProfileRatingButton({super.key});
@@ -10,9 +13,9 @@ class ProfileRatingButton extends StatefulWidget {
 
 class _ProfileRatingButtonState extends State<ProfileRatingButton> {
   final List<Profile> _profiles = [
-    Profile(id: 1, name: 'Alex Rivera', role: 'UI/UX Designer'),
-    Profile(id: 2, name: 'Sam Chen',    role: 'Engineer'),
-    Profile(id: 3, name: 'Maya Patel',  role: 'Product Manager'),
+    Profile(id: 1, name: 'Alex Rivera', role: 'cool Driver'),
+    Profile(id: 2, name: 'Sam Chen',    role: 'Cooler Driver'),
+    Profile(id: 3, name: 'Maya Patel',  role: 'Way cooler driver'),
   ];
   int _nextId = 4;
 
@@ -72,14 +75,14 @@ class _ProfileRatingButtonState extends State<ProfileRatingButton> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Colors.grey.shade300, width: 0.5),
+              color: kCard,
+              border: Border.all(color: kDivider, width: 0.5),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: const [
-                Icon(Icons.person_outline_rounded, size: 16),
+                Icon(Icons.person_outline_rounded, size: 16, color: kRed),
                 SizedBox(width: 8),
                 Text('Rate profiles', style: TextStyle(fontSize: 14)),
               ],
@@ -93,8 +96,8 @@ class _ProfileRatingButtonState extends State<ProfileRatingButton> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Colors.grey.shade200),
+              color: kCard,
+              border: Border.all(color: kDivider),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -200,7 +203,7 @@ class _RatingSheetState extends State<_RatingSheet> {
       minChildSize: 0.4,
       builder: (_, scrollController) => Container(
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: kCard,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
@@ -219,7 +222,7 @@ class _RatingSheetState extends State<_RatingSheet> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Choose a profile to rate',
+                  const Text('Give Recent drivers an avaliation',
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
@@ -292,7 +295,7 @@ class _RatingSheetState extends State<_RatingSheet> {
                     onTap: () => _select(p),
                     child: Container(
                       color: isSelected
-                          ? Colors.grey.shade50
+                          ? kLight
                           : Colors.transparent,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 12),
@@ -323,7 +326,7 @@ class _RatingSheetState extends State<_RatingSheet> {
                                 Text(p.role,
                                     style: const TextStyle(
                                         fontSize: 12,
-                                        color: Colors.grey)),
+                                        color: kCard)),
                                 const SizedBox(height: 4),
                                 // Tappable stars — only active when selected
                                 _StarPicker(
@@ -358,7 +361,7 @@ class _RatingSheetState extends State<_RatingSheet> {
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        side: BorderSide(color: Colors.grey.shade300),
+                        side: BorderSide(color: kDivider),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10)),
                       ),
@@ -409,7 +412,7 @@ class _StarPicker extends StatelessWidget {
             child: Icon(
               filled ? Icons.star_rounded : Icons.star_outline_rounded,
               size: 18,
-              color: filled ? const Color(0xFFF5A623) : Colors.grey.shade400,
+              color: filled ? kRed : kLight,
             ),
           ),
         );
@@ -433,7 +436,7 @@ class _StarDisplay extends StatelessWidget {
       children: List.generate(5, (i) => Icon(
         i < stars ? Icons.star_rounded : Icons.star_outline_rounded,
         size: size,
-        color: i < stars ? const Color(0xFFF5A623) : Colors.grey.shade300,
+        color: i < stars ? kRed : kLight,
       )),
     );
   }
