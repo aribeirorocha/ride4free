@@ -84,7 +84,7 @@ Future<void> tapSheetButton(WidgetTester tester, String label) async {
 }
 
 void main() {
-  group('Profile management', () {
+  group('US3 - Rate Profiles Acceptance Tests (Profile Management)', () {
     testWidgets('PM-1 — Default profiles are displayed on sheet open',
             (tester) async {
           await launchApp(tester);
@@ -135,7 +135,7 @@ void main() {
   });
 
 
-  group('Star rating', () {
+  group('US3 - Rate Profiles Acceptance Tests (Star rating)', () {
     testWidgets('SR-1 — Selecting a profile and tapping 4th star fills 4 stars',
             (tester) async {
           await launchApp(tester);
@@ -204,7 +204,7 @@ void main() {
   });
 
 
-  group('Save and cancel', () {
+  group('US3 - Rate Profiles Acceptance Tests (Save and cancel)', () {
     testWidgets('SC-1 — Save persists the rating and closes the sheet',
             (tester) async {
           await launchApp(tester);
@@ -253,7 +253,7 @@ void main() {
     });
   });
 
-  group('Summary card', () {
+  group('US3 - Rate Profiles Acceptance Tests (Summary card)', () {
     testWidgets('SU-1 — Summary card is hidden when no ratings saved',
             (tester) async {
           await launchApp(tester);
