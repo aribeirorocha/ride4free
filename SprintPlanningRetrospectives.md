@@ -3,8 +3,11 @@
 **Date:** April 6, 2026
 **Plans:** Visual evidence of our Agile workflow. Below are the snapshots of our Scrumboard.
     * ![Sprint 0 - Initial Backlog Creation]
+    * <img width="2150" height="764" alt="image" src="https://github.com/user-attachments/assets/3cea9f9d-869c-4449-864b-a17ec01e564d" />
+
     
     * ![Sprint 0 - End of Sprint / Ready for Sprint 1]
+    * 
 
 Following the Agile Scrum framework, our team held a Sprint Retrospective meeting to inspect our workflow and adapt our processes for the upcoming sprint. Below are our meeting notes:
 
