@@ -215,8 +215,19 @@ You can find below information and references related with the project managemen
     * list of a few improvements to implement next Sprint;
 
 -->
+To ensure a smooth, transparent, and iterative development process for **Ride4Free**, our team adopted Agile methodologies, specifically focusing on the **Scrum** framework. We utilize a set of practices and tools to plan, implement, monitor, and control our software project effectively.
+
+Our project management workflow is structured around the following key areas:
+
+* **Backlog Management:** We manage both our Product Backlog and Sprint Backlogs using our [GitHub Projects board](https://github.com/orgs/LEIC-ES-2025-26-2LEIC05/projects/16). This board acts as our single source of truth for tracking User Stories, Tasks, effort estimations (Fibonacci sequence), and priorities (MoSCoW method).
+* **Release Management:** We align our releases with the end of our Sprints. Code increments are systematically tagged (e.g., `v0` for Sprint 0, `v1` for Sprint 1) in our GitHub repository to mark stable milestones and evaluate progress.
+* **Sprint Planning & Retrospectives:** * **Plans:** At the beginning of each Sprint, we hold a planning meeting to select User Stories from the Product Backlog, break them down into actionable tasks, and move them to the Sprint Backlog. Visual evidence of our Agile workflow is documented through screenshots of the board at the beginning and end of each Sprint.
+  * **Retrospectives:** At the end of every Sprint, the team conducts a retrospective meeting to inspect our workflow and adapt our processes. The detailed meeting notes (addressing what we did well, what to do differently, open puzzles, and future improvements) are documented in our repository.
+
+---
 
 ### Sprint 0
+The detailed notes from our Sprint 0 Planning and Retrospective (including what we did well, what to do differently, and puzzles) can be found in our dedicated [SprintPlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/SprintPlanningRetrospectives.md).
 
 ### Sprint 1
 
