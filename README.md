@@ -264,26 +264,4 @@ Thank you!!
     team member André Rocha and up202407636@up.pt
     team member name and email
     team member name and email
-    team member Tomás Gonçalves and up202208997@up.pt
-
-Business Modelling
-
-Business modeling in software development involves defining the product's vision, understanding market needs, aligning features with user expectations, and setting the groundwork for strategic planning and execution.
-Product Vision
-Features and Assumptions
-Requirements
-User Stories
-Domain model
-Architecture and Design
-Logical architecture
-Physical architecture
-Functional prototype
-Project management
-Sprint 0
-Sprint 1
-Sprint 2
-Sprint 3
-Sprint 4
-Final Release
-=======
->>>>>>> Stashed changes
+    team member Tomás Gonçalves and up202208997@up.pT
