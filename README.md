@@ -115,14 +115,14 @@ Optionally, indicate an initial/tentative list of assumptions that you are doing
 ## Requirements
 
 ### User Stories
-Our requirements are documented as **User Stories** in our [GitHub Project T4-Scrumboard](LINK_DO_TEU_PROJETO). We followed the **INVEST** guidelines to ensure each story is Independent, Negotiable, Valuable, Estimable, Small, and Testable.
+Our requirements are documented as **User Stories** in our [GitHub Project T4-Scrumboard](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/projects?query=is%3Aopen). We followed the **INVEST** guidelines to ensure each story is Independent, Negotiable, Valuable, Estimable, Small, and Testable.
 
 | ID | Title | Priority (MoSCoW) | Effort (Fibonacci) | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| #30 | [US1: Publish Solidarity Ride](https://github.com/LEIC-ES-2025-26-2LEIC05/issues/30) | **Must-have** | 8 | Ready |
-| #31 | [US2: Book Ride Seat](https://github.com/LEIC-ES-2025-26-2LEIC05/issues/32) | **Must-have** | 5 | Ready |
-| #33 | [US3: Search with Walking Tolerance](https://github.com/LEIC-ES-2025-26-2LEIC05/issues/33) | **Should-have** | 3 | Ready |
-| #32 | [US4: Rate Passenger Conduct](https://github.com/LEIC-ES-2025-26-2LEIC05/issues/34) | **Could-have** | 3 | Ready |
+| #30 | [US1: Publish Solidarity Ride](https://github.com/LEIC-ES-2025-26-2LEIC05/issues/30) | **Must-have** | 8 | In-Progress |
+| #31 | [US2: Book Ride Seat](https://github.com/LEIC-ES-2025-26-2LEIC05/issues/32) | **Must-have** | 5 | In-Progress |
+| #33 | [US3: Search with Walking Tolerance](https://github.com/LEIC-ES-2025-26-2LEIC05/issues/33) | **Should-have** | 3 | In-Progress |
+| #32 | [US4: Rate Passenger Conduct](https://github.com/LEIC-ES-2025-26-2LEIC05/issues/34) | **Could-have** | 3 | In-Progress |
 
 ---
 
@@ -132,7 +132,7 @@ Each User Story in our backlog includes:
 * **Gherkin Scenarios:** Clear "Given/When/Then" acceptance tests to confirm requirements are met.
 * **User Interface Mockups:** High-fidelity drafts attached to each issue to guide frontend development.
 * **Estimation:** Value (Business Priority) and Effort (Story Points) defined by the whole team.
-* **Refinement:** Larger stories were broken down into technical **Tasks** to be "immediately actionable" as per the [LEIC-ES Dashboard criteria]().
+* **Refinement:** Larger stories were broken down into technical **Tasks** to be "immediately actionable" as per the LEIC-ES Dashboard criteria.
 
 > **Note:** All AI-assisted drafting (Gherkin/Tasks) is transparently labeled with `MisterAI`.
 > 
