@@ -115,14 +115,14 @@ Optionally, indicate an initial/tentative list of assumptions that you are doing
 ## Requirements
 
 ### User Stories
-Our requirements are documented as **User Stories** in our [GitHub Project T4-Scrumboard](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/projects?query=is%3Aopen). We followed the **INVEST** guidelines to ensure each story is Independent, Negotiable, Valuable, Estimable, Small, and Testable.
+Our requirements are documented as **User Stories** in our [GitHub Project T4-Scrumboard](https://github.com/orgs/LEIC-ES-2025-26-2LEIC05/projects/16). We followed the **INVEST** guidelines to ensure each story is Independent, Negotiable, Valuable, Estimable, Small, and Testable.
 
 | ID | Title | Priority (MoSCoW) | Effort (Fibonacci) | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| #30 | [US1: Publish Solidarity Ride](https://github.com/LEIC-ES-2025-26-2LEIC05/issues/30) | **Must-have** | 8 | In-Progress |
-| #31 | [US2: Book Ride Seat](https://github.com/LEIC-ES-2025-26-2LEIC05/issues/32) | **Must-have** | 5 | In-Progress |
-| #33 | [US3: Search with Walking Tolerance](https://github.com/LEIC-ES-2025-26-2LEIC05/issues/33) | **Should-have** | 3 | In-Progress |
-| #32 | [US4: Rate Passenger Conduct](https://github.com/LEIC-ES-2025-26-2LEIC05/issues/34) | **Could-have** | 3 | In-Progress |
+| #30 | [US1: Publish Solidarity Ride](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/30) | **Must-have** | 8 | In-Progress |
+| #31 | [US2: Book Ride Seat](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/32) | **Must-have** | 5 | In-Progress |
+| #33 | [US3: Search with Walking Tolerance](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/33) | **Should-have** | 3 | In-Progress |
+| #32 | [US4: Rate Passenger Conduct](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/34) | **Could-have** | 3 | In-Progress |
 
 ---
 
@@ -135,7 +135,7 @@ Each User Story in our backlog includes:
 * **Refinement:** Larger stories were broken down into technical **Tasks** to be "immediately actionable" as per the LEIC-ES Dashboard criteria.
 
 > **Note:** All AI-assisted drafting (Gherkin/Tasks) is transparently labeled with `MisterAI`.
-> 
+
 ### Domain model
 
 <!-- 
@@ -228,11 +228,11 @@ You can find below information and references related with the project managemen
 
 ### Final Release
 
-[your product name] Development Report
+Ride4Free Development Report
 
-Welcome to the documentation of [your product name]!
+Welcome to the documentation of Ride4Free!
 
-This Software Development Report, tailored for LEIC-ES-2025-26, provides comprehensive details about [your product name], starting from an high-level vision and going into low-level implementation decisions.
+This Software Development Report, tailored for LEIC-ES-2025-26, provides comprehensive details about Ride4Free, starting from an high-level vision and going into low-level implementation decisions.
 
 It is organised by the following activities:
 
