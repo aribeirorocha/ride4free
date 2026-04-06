@@ -138,51 +138,35 @@ Each User Story in our backlog includes:
 
 ### Domain model
 
-<!-- 
-To better understand the context of the software system, it is useful to have a simple UML class diagram with all and only the key concepts (names, attributes) and relationships involved of the problem domain addressed by your app. 
-Also provide a short textual description of each concept (domain class). 
+Our app allows *Users* to create personal accounts, enabling them to create *Trajects* or *Reservations*. It includes different types of users, such as *Drivers* and *Passengers*, and supports interactions between them.
 
-Example:
- <p align="center" justify="center">
-  <img src="https://github.com/FEUP-LEIC-ES-2022-23/templates/blob/main/images/DomainModel.png"/>
-</p>
--->
+User - store information about user with his statistics (id, name, email, password, points).
+Driver - represents a user that can create trajects.
+Passenger - represents a user that can make reservations.
+Traject - store information about a traject, including origin, destination, timeDeparture, availableSeats and km.
+Reservation - store information about a reservation, including its state (accepted, rejected, ...), and is associated with a traject.
+Avaliation - stores the pontuation (score) related to users.
+LeaderBoard - ranks each user by the amount of pontuation.
+
+<img width="704" height="702" alt="image" src="https://github.com/user-attachments/assets/ca1222c3-9a21-4c64-ae14-2709ac074d9a" />
+
 
 
 ## Architecture and Design
-<!--
-The architecture of a software system encompasses the set of key decisions about its organization. 
 
-A well written architecture document is brief and reduces the amount of time it takes new programmers to a project to understand the code to feel able to make modifications and enhancements.
-
-To document the architecture requires describing the decomposition of the system in their parts (high-level components) and the key behaviors and collaborations between them. 
-
-In this section you should start by briefly describing the components of the project and their interrelations. You should describe how you solved typical problems you may have encountered, pointing to well-known architectural and design patterns, if applicable.
--->
 
 
 ### Logical architecture
-<!--
-The purpose of this subsection is to document the high-level logical structure of the code (Logical View), using a UML diagram with logical packages, without the worry of allocating to components, processes or machines.
+User interacts through the *User Interface* for visual elements and interactions, with the *Business Logic* layer handling core functionalities, and theexternal services, specifically OpenStreetMap, which is used for map-related features. Data storage and retrieval are handled by the DataBase, through the Ride4Free database schema.
 
-It can be beneficial to present the system in a horizontal decomposition, defining layers and implementation concepts, such as the user interface, business logic and concepts.
-
-Example of _UML package diagram_ showing a _logical view_ of the Eletronic Ticketing System (to be accompanied by a short description of each package):
-
-![LogicalView](https://user-images.githubusercontent.com/9655877/160585416-b1278ad7-18d7-463c-b8c6-afa4f7ac7639.png)
--->
+<img width="1003" height="683" alt="image" src="https://github.com/user-attachments/assets/24708942-9c61-4d71-96d1-dd4e0f26b263" />
 
 
 ### Physical architecture
-<!--
-The goal of this subsection is to document the high-level physical structure of the software system (machines, connections, software components installed, and their dependencies) using UML deployment diagrams (Deployment View) or component diagrams (Implementation View), separate or integrated, showing the physical structure of the system.
 
-It should describe also the technologies considered and justify the selections made. Examples of technologies relevant for ESOF are, for example, frameworks for mobile applications (such as Flutter).
+Each user interacts with the application via their mobile device. The application accesses external machines to retrieve necessary data, such as the OpenStreetMap and the DataBase.
 
-Example of _UML deployment diagram_ showing a _deployment view_ of the Eletronic Ticketing System (please notice that, instead of software components, one should represent their physical/executable manifestations for deployment, called artifacts in UML; the diagram should be accompanied by a short description of each node and artifact):
-
-![DeploymentView](https://user-images.githubusercontent.com/9655877/160592491-20e85af9-0758-4e1e-a704-0db1be3ee65d.png)
--->
+<img width="683" height="443" alt="image" src="https://github.com/user-attachments/assets/3d6a97bf-2373-4171-a795-3d28957a6d7c" />
 
 
 ### Functional prototype
