@@ -7,7 +7,9 @@
 
     
     * ![Sprint 0 - End of Sprint / Ready for Sprint 1]
-    * 
+    * <img width="2150" height="764" alt="image" src="https://github.com/user-attachments/assets/9be943d0-88ad-4c9f-a159-52cda5863346" />
+
+      
 
 Following the Agile Scrum framework, our team held a Sprint Retrospective meeting to inspect our workflow and adapt our processes for the upcoming sprint. Below are our meeting notes:
 
