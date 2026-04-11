@@ -1,0 +1,4 @@
+.venv/
+ride4free.db
+__pycache__/
+*.pyc
