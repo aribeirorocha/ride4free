@@ -15,16 +15,20 @@ class Ride4FreeAuth {
 
 class Ride4FreeConfig {
   Ride4FreeConfig._();
+  static const String _overrideBaseUrl = String.fromEnvironment('RIDE4FREE_API_BASE_URL');
 
   /// Android emulator: use 10.0.2.2 to reach host machine. iOS simulator / desktop / web: localhost.
   static String get baseUrl {
+    if (_overrideBaseUrl.isNotEmpty) {
+      return _overrideBaseUrl;
+    }
     if (kIsWeb) {
-      return 'http://localhost:8000';
+      return 'https://semiconcealed-kiera-rumbly.ngrok-free.dev';
     }
     if (!kIsWeb && Platform.isAndroid) {
-      return 'http://10.0.2.2:8000';
+      return 'https://semiconcealed-kiera-rumbly.ngrok-free.dev';
     }
-    return 'http://127.0.0.1:8000';
+    return 'https://semiconcealed-kiera-rumbly.ngrok-free.dev';
   }
 }
 
@@ -161,5 +165,48 @@ class Ride4FreeApi {
     );
     final m = await _jsonOrThrow(r);
     return m;
+  }
+
+  Future<List<Map<String, dynamic>>> listAvailableDrivers({String? destination}) async {
+    final q = (destination != null && destination.trim().isNotEmpty)
+        ? {'destination': destination.trim()}
+        : null;
+    final r = await http.get(_u('/community/drivers', q), headers: _headers);
+    final m = await _jsonOrThrow(r);
+    final list = m['drivers'] as List<dynamic>? ?? [];
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> listAvailablePassengers({String? destination}) async {
+    final q = (destination != null && destination.trim().isNotEmpty)
+        ? {'destination': destination.trim()}
+        : null;
+    final r = await http.get(_u('/community/passengers', q), headers: _headers);
+    final m = await _jsonOrThrow(r);
+    final list = m['passengers'] as List<dynamic>? ?? [];
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  Future<Map<String, dynamic>> getDatabaseSchema() async {
+    final r = await http.get(_u('/database/schema'), headers: _headers);
+    return _jsonOrThrow(r);
+  }
+
+  Future<void> bookDriverOffer(int offerId) async {
+    final r = await http.post(
+      _u('/bookings/driver-offer'),
+      headers: _headers,
+      body: jsonEncode({'offer_id': offerId}),
+    );
+    await _jsonOrThrow(r);
+  }
+
+  Future<void> bookPassengerRequest(int requestId) async {
+    final r = await http.post(
+      _u('/bookings/passenger-request'),
+      headers: _headers,
+      body: jsonEncode({'request_id': requestId}),
+    );
+    await _jsonOrThrow(r);
   }
 }
