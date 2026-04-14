@@ -87,6 +87,14 @@ class DriverOfferBody(BaseModel):
     available_seats: int = Field(ge=0, le=20)
 
 
+class BookDriverOfferBody(BaseModel):
+    offer_id: int = Field(ge=1)
+
+
+class BookPassengerRequestBody(BaseModel):
+    request_id: int = Field(ge=1)
+
+
 # --- Routes ---
 
 
@@ -163,9 +171,76 @@ def list_passengers_for_driver(destination: str, user_id: int = Depends(require_
         raise HTTPException(status_code=400, detail="destination is required")
     rows = db.list_open_passenger_requests_for_destination(destination)
     total_passengers = sum(r["passenger_count"] for r in rows)
-    return {
+    return {uvicor
         "destination": destination.strip(),
         "request_count": len(rows),
         "total_passenger_slots": total_passengers,
         "requests": rows,
     }
+
+
+@app.get("/community/drivers")
+def list_available_drivers(destination: str | None = None, user_id: int = Depends(require_user)):
+    rows = db.list_community_drivers(destination)
+    return {
+        "destination_filter": destination.strip() if destination else None,
+        "drivers": [
+            {
+                **r,
+                "booked": bool(r.get("booking_id")),
+                "profile_description": (
+                    f"{r['driver_name']} is heading to {r['destination_display']} "
+                    f"with {r['available_seats']} seat(s) available."
+                    if not r.get("booking_id")
+                    else f"{r['driver_name']}'s ride to {r['destination_display']} "
+                    f"was booked by {r.get('booked_by_name', 'another user')}."
+                ),
+            }
+            for r in rows
+        ],
+    }
+
+
+@app.get("/community/passengers")
+def list_available_passengers(destination: str | None = None, user_id: int = Depends(require_user)):
+    rows = db.list_community_passengers(destination)
+    return {
+        "destination_filter": destination.strip() if destination else None,
+        "passengers": [
+            {
+                **r,
+                "booked": bool(r.get("booking_id")),
+                "profile_description": (
+                    f"{r['passenger_name']} needs {r['passenger_count']} seat(s) "
+                    f"to {r['destination_display']}."
+                    if not r.get("booking_id")
+                    else f"{r['passenger_name']}'s request to {r['destination_display']} "
+                    f"was booked by {r.get('booked_by_name', 'another user')}."
+                ),
+            }
+            for r in rows
+        ],
+    }
+
+
+@app.get("/database/schema")
+def get_database_schema(user_id: int = Depends(require_user)):
+    return db.get_database_schema()
+
+
+@app.post("/bookings/driver-offer")
+def book_driver_offer(body: BookDriverOfferBody, user_id: int = Depends(require_user)):
+    try:
+        result = db.book_driver_offer(body.offer_id, user_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"message": "Driver offer booked", **result}
+
+
+@app.post("/bookings/passenger-request")
+def book_passenger_request(body: BookPassengerRequestBody, user_id: int = Depends(require_user)):
+    try:
+        result = db.book_passenger_request(body.request_id, user_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"message": "Passenger request booked", **result}

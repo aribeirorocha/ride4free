@@ -105,6 +105,15 @@ CREATE TABLE IF NOT EXISTS driver_offers (
 );
 
 CREATE INDEX IF NOT EXISTS idx_driver_dest ON driver_offers(destination_norm, status);
+
+CREATE TABLE IF NOT EXISTS ride_bookings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    driver_offer_id INTEGER UNIQUE REFERENCES driver_offers(id) ON DELETE CASCADE,
+    passenger_request_id INTEGER UNIQUE REFERENCES passenger_requests(id) ON DELETE CASCADE,
+    booked_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL,
+    CHECK ((driver_offer_id IS NOT NULL) != (passenger_request_id IS NOT NULL))
+);
 """
 
 
@@ -200,35 +209,211 @@ def insert_driver_offer(user_id: int, destination: str, available_seats: int) ->
 
 def list_open_drivers_for_destination(destination: str) -> list[dict]:
     """Passenger: drivers heading to the same normalized destination."""
-    norm = normalize_destination(destination)
-    with get_connection() as conn:
-        rows = conn.execute(
-            """
-            SELECT o.id, o.destination_display, o.available_seats, o.created_at,
-                   u.id AS driver_user_id, u.name AS driver_name, u.email AS driver_email
-            FROM driver_offers o
-            JOIN users u ON u.id = o.user_id
-            WHERE o.destination_norm = ? AND o.status = 'open' AND o.available_seats > 0
-            ORDER BY o.created_at DESC
-            """,
-            (norm,),
-        ).fetchall()
-    return [dict(r) for r in rows]
+    return list_open_drivers(destination)
 
 
 def list_open_passenger_requests_for_destination(destination: str) -> list[dict]:
     """Driver: passengers wanting a ride to the same destination."""
-    norm = normalize_destination(destination)
+    return list_open_passenger_requests(destination)
+
+
+def list_open_drivers(destination: str | None = None) -> list[dict]:
+    """Community board: list currently open driver offers."""
+    args: tuple[str, ...] = ()
+    where = "WHERE o.status = 'open' AND o.available_seats > 0"
+    if destination and destination.strip():
+        where += " AND o.destination_norm = ?"
+        args = (normalize_destination(destination),)
+
     with get_connection() as conn:
         rows = conn.execute(
-            """
+            f"""
+            SELECT o.id, o.destination_display, o.available_seats, o.created_at,
+                   u.id AS driver_user_id, u.name AS driver_name, u.email AS driver_email
+            FROM driver_offers o
+            JOIN users u ON u.id = o.user_id
+            {where}
+            ORDER BY o.created_at DESC
+            """,
+            args,
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def list_open_passenger_requests(destination: str | None = None) -> list[dict]:
+    """Community board: list currently open passenger requests."""
+    args: tuple[str, ...] = ()
+    where = "WHERE r.status = 'open'"
+    if destination and destination.strip():
+        where += " AND r.destination_norm = ?"
+        args = (normalize_destination(destination),)
+
+    with get_connection() as conn:
+        rows = conn.execute(
+            f"""
             SELECT r.id, r.destination_display, r.passenger_count, r.created_at,
                    u.id AS passenger_user_id, u.name AS passenger_name, u.email AS passenger_email
             FROM passenger_requests r
             JOIN users u ON u.id = r.user_id
-            WHERE r.destination_norm = ? AND r.status = 'open'
+            {where}
             ORDER BY r.created_at DESC
             """,
-            (norm,),
+            args,
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+def book_driver_offer(offer_id: int, passenger_user_id: int) -> dict:
+    now = utc_now_iso()
+    with get_connection() as conn:
+        offer = conn.execute(
+            """
+            SELECT o.id, o.user_id AS driver_user_id, o.status, o.destination_display, o.available_seats
+            FROM driver_offers o
+            WHERE o.id = ?
+            """,
+            (offer_id,),
+        ).fetchone()
+        if not offer:
+            raise ValueError("Driver offer not found")
+        if offer["driver_user_id"] == passenger_user_id:
+            raise ValueError("You cannot book your own ride")
+        if offer["status"] != "open" or int(offer["available_seats"]) <= 0:
+            raise ValueError("Driver offer is not open")
+
+        existing = conn.execute(
+            "SELECT id FROM ride_bookings WHERE driver_offer_id = ?",
+            (offer_id,),
+        ).fetchone()
+        if existing:
+            raise ValueError("Driver offer already booked")
+
+        cur = conn.execute(
+            """
+            INSERT INTO ride_bookings (driver_offer_id, passenger_request_id, booked_by_user_id, created_at)
+            VALUES (?, NULL, ?, ?)
+            """,
+            (offer_id, passenger_user_id, now),
+        )
+        conn.execute(
+            "UPDATE driver_offers SET status = 'full', available_seats = 0 WHERE id = ?",
+            (offer_id,),
+        )
+        return {"booking_id": int(cur.lastrowid), "offer_id": offer_id}
+
+
+def book_passenger_request(request_id: int, driver_user_id: int) -> dict:
+    now = utc_now_iso()
+    with get_connection() as conn:
+        req = conn.execute(
+            """
+            SELECT r.id, r.user_id AS passenger_user_id, r.status
+            FROM passenger_requests r
+            WHERE r.id = ?
+            """,
+            (request_id,),
+        ).fetchone()
+        if not req:
+            raise ValueError("Passenger request not found")
+        if req["passenger_user_id"] == driver_user_id:
+            raise ValueError("You cannot book your own passenger request")
+        if req["status"] != "open":
+            raise ValueError("Passenger request is not open")
+
+        existing = conn.execute(
+            "SELECT id FROM ride_bookings WHERE passenger_request_id = ?",
+            (request_id,),
+        ).fetchone()
+        if existing:
+            raise ValueError("Passenger request already booked")
+
+        cur = conn.execute(
+            """
+            INSERT INTO ride_bookings (driver_offer_id, passenger_request_id, booked_by_user_id, created_at)
+            VALUES (NULL, ?, ?, ?)
+            """,
+            (request_id, driver_user_id, now),
+        )
+        conn.execute(
+            "UPDATE passenger_requests SET status = 'fulfilled' WHERE id = ?",
+            (request_id,),
+        )
+        return {"booking_id": int(cur.lastrowid), "request_id": request_id}
+
+
+def list_community_drivers(destination: str | None = None) -> list[dict]:
+    args: tuple[str, ...] = ()
+    where = "WHERE o.status IN ('open', 'full')"
+    if destination and destination.strip():
+        where += " AND o.destination_norm = ?"
+        args = (normalize_destination(destination),)
+    with get_connection() as conn:
+        rows = conn.execute(
+            f"""
+            SELECT o.id, o.destination_display, o.available_seats, o.status, o.created_at,
+                   u.id AS driver_user_id, u.name AS driver_name, u.email AS driver_email,
+                   b.id AS booking_id, b.created_at AS booked_at, b.booked_by_user_id,
+                   bu.name AS booked_by_name, bu.email AS booked_by_email
+            FROM driver_offers o
+            JOIN users u ON u.id = o.user_id
+            LEFT JOIN ride_bookings b ON b.driver_offer_id = o.id
+            LEFT JOIN users bu ON bu.id = b.booked_by_user_id
+            {where}
+            ORDER BY o.created_at DESC
+            """,
+            args,
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def list_community_passengers(destination: str | None = None) -> list[dict]:
+    args: tuple[str, ...] = ()
+    where = "WHERE r.status IN ('open', 'fulfilled')"
+    if destination and destination.strip():
+        where += " AND r.destination_norm = ?"
+        args = (normalize_destination(destination),)
+    with get_connection() as conn:
+        rows = conn.execute(
+            f"""
+            SELECT r.id, r.destination_display, r.passenger_count, r.status, r.created_at,
+                   u.id AS passenger_user_id, u.name AS passenger_name, u.email AS passenger_email,
+                   b.id AS booking_id, b.created_at AS booked_at, b.booked_by_user_id,
+                   bu.name AS booked_by_name, bu.email AS booked_by_email
+            FROM passenger_requests r
+            JOIN users u ON u.id = r.user_id
+            LEFT JOIN ride_bookings b ON b.passenger_request_id = r.id
+            LEFT JOIN users bu ON bu.id = b.booked_by_user_id
+            {where}
+            ORDER BY r.created_at DESC
+            """,
+            args,
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_database_schema() -> dict:
+    """Expose table/column metadata for in-app diagnostics."""
+    with get_connection() as conn:
+        tables = conn.execute(
+            """
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+            ORDER BY name
+            """
+        ).fetchall()
+        schema: dict[str, list[dict]] = {}
+        for table in tables:
+            table_name = table["name"]
+            columns = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+            schema[table_name] = [
+                {
+                    "name": c["name"],
+                    "type": c["type"],
+                    "not_null": bool(c["notnull"]),
+                    "primary_key": bool(c["pk"]),
+                    "default": c["dflt_value"],
+                }
+                for c in columns
+            ]
+    return {"tables": schema}

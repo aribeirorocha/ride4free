@@ -45,7 +45,7 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
-  int _index = 1;
+  int _index = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +54,7 @@ class _HomeShellState extends State<HomeShell> {
         child: IndexedStack(
           index: _index,
           children: const [
+            CommunityBoardPage(),
             SearchRidePage(),
             OfferRidePage(),
             ProfilePage(),
@@ -65,11 +66,213 @@ class _HomeShellState extends State<HomeShell> {
         selectedIndex: _index,
         onDestinationSelected: (value) => setState(() => _index = value),
         destinations: const [
+          NavigationDestination(icon: Icon(Icons.groups), label: ''),
           NavigationDestination(icon: Icon(Icons.search), label: ''),
           NavigationDestination(icon: Icon(Icons.directions_car), label: ''),
           NavigationDestination(icon: Icon(Icons.person), label: ''),
         ],
       ),
+    );
+  }
+}
+
+class CommunityBoardPage extends StatefulWidget {
+  const CommunityBoardPage({super.key});
+
+  @override
+  State<CommunityBoardPage> createState() => _CommunityBoardPageState();
+}
+
+class _CommunityBoardPageState extends State<CommunityBoardPage> {
+  final _api = Ride4FreeApi();
+  int _section = 0; // 0 = drivers, 1 = passengers, 2 = database
+  bool _loading = false;
+  List<Map<String, dynamic>> _drivers = [];
+  List<Map<String, dynamic>> _passengers = [];
+  Map<String, dynamic>? _schema;
+
+  Future<void> _bookDriver(int offerId) async {
+    if (Ride4FreeAuth.token == null) {
+      _showMessage(context, 'Inicie sessão no perfil.');
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      await _api.bookDriverOffer(offerId);
+      if (mounted) _showMessage(context, 'Boleia reservada com sucesso.');
+      await _loadSection();
+    } catch (e) {
+      if (mounted) _showMessage(context, 'Erro ao reservar boleia: $e');
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _bookPassenger(int requestId) async {
+    if (Ride4FreeAuth.token == null) {
+      _showMessage(context, 'Inicie sessão no perfil.');
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      await _api.bookPassengerRequest(requestId);
+      if (mounted) _showMessage(context, 'Passageiro associado a esta viagem.');
+      await _loadSection();
+    } catch (e) {
+      if (mounted) _showMessage(context, 'Erro ao reservar passageiro: $e');
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _loadSection() async {
+    if (Ride4FreeAuth.token == null) {
+      _showMessage(context, 'Inicie sessão no perfil.');
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      if (_section == 0) {
+        final rows = await _api.listAvailableDrivers();
+        if (mounted) setState(() => _drivers = rows);
+      } else if (_section == 1) {
+        final rows = await _api.listAvailablePassengers();
+        if (mounted) setState(() => _passengers = rows);
+      } else {
+        final rows = await _api.getDatabaseSchema();
+        if (mounted) setState(() => _schema = rows);
+      }
+    } catch (e) {
+      if (mounted) _showMessage(context, 'Erro: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const _TopTitleBar(title: 'Comunidade Ride4Free'),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
+          child: Column(
+            children: [
+              SegmentedButton<int>(
+                segments: const [
+                  ButtonSegment(value: 0, icon: Icon(Icons.drive_eta), label: Text('Condutores')),
+                  ButtonSegment(value: 1, icon: Icon(Icons.people), label: Text('Passageiros')),
+                  ButtonSegment(value: 2, icon: Icon(Icons.storage), label: Text('BD')),
+                ],
+                selected: {_section},
+                onSelectionChanged: (selection) {
+                  setState(() => _section = selection.first);
+                  _loadSection();
+                },
+              ),
+              const SizedBox(height: 10),
+              FilledButton(
+                onPressed: _loading ? null : _loadSection,
+                style: FilledButton.styleFrom(backgroundColor: kRed),
+                child: Text(_loading ? 'A carregar…' : 'Atualizar secao'),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(child: _buildSectionBody()),
+      ],
+    );
+  }
+
+  Widget _buildSectionBody() {
+    if (_section == 0) {
+      if (_drivers.isEmpty) {
+        return const Center(
+          child: Text('Sem condutores disponiveis. Carregue em "Atualizar secao".', style: TextStyle(color: kMuted)),
+        );
+      }
+      return ListView.separated(
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
+        itemCount: _drivers.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (context, i) {
+          final d = _drivers[i];
+          return _ProfileCard(
+            title: d['driver_name'] as String? ?? 'Condutor',
+            subtitle: d['driver_email'] as String? ?? '',
+            description: d['profile_description'] as String? ?? 'Sem descricao.',
+            statusLabel: (d['booked'] as bool? ?? false)
+                ? 'Reservado por ${d['booked_by_name'] ?? 'utilizador'}'
+                : 'Disponivel',
+            actionText: (d['booked'] as bool? ?? false) ? null : 'Reservar boleia',
+            onAction: (d['booked'] as bool? ?? false)
+                ? null
+                : () => _bookDriver((d['id'] as num).toInt()),
+          );
+        },
+      );
+    }
+
+    if (_section == 1) {
+      if (_passengers.isEmpty) {
+        return const Center(
+          child: Text('Sem passageiros disponiveis. Carregue em "Atualizar secao".', style: TextStyle(color: kMuted)),
+        );
+      }
+      return ListView.separated(
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
+        itemCount: _passengers.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (context, i) {
+          final p = _passengers[i];
+          return _ProfileCard(
+            title: p['passenger_name'] as String? ?? 'Passageiro',
+            subtitle: p['passenger_email'] as String? ?? '',
+            description: p['profile_description'] as String? ?? 'Sem descricao.',
+            statusLabel: (p['booked'] as bool? ?? false)
+                ? 'Reservado por ${p['booked_by_name'] ?? 'utilizador'}'
+                : 'Disponivel',
+            actionText: (p['booked'] as bool? ?? false) ? null : 'Reservar passageiro',
+            onAction: (p['booked'] as bool? ?? false)
+                ? null
+                : () => _bookPassenger((p['id'] as num).toInt()),
+          );
+        },
+      );
+    }
+
+    final tables = (_schema?['tables'] as Map<String, dynamic>?) ?? {};
+    if (tables.isEmpty) {
+      return const Center(
+        child: Text('Schema indisponivel. Carregue em "Atualizar secao".', style: TextStyle(color: kMuted)),
+      );
+    }
+    final tableNames = tables.keys.toList()..sort();
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
+      itemCount: tableNames.length,
+      itemBuilder: (context, i) {
+        final tableName = tableNames[i];
+        final cols = (tables[tableName] as List<dynamic>).cast<Map<String, dynamic>>();
+        return Card(
+          margin: const EdgeInsets.only(bottom: 10),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(tableName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 8),
+                ...cols.map(
+                  (c) => Text(
+                    '- ${c['name']} (${c['type']})${(c['primary_key'] as bool? ?? false) ? ' [PK]' : ''}',
+                    style: const TextStyle(color: kMuted, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -776,6 +979,64 @@ class _TickRow extends StatelessWidget {
         children: [
           Expanded(child: Text(text, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w500))),
           const Icon(Icons.check_box, color: kLight),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String description;
+  final String? statusLabel;
+  final String? actionText;
+  final VoidCallback? onAction;
+
+  const _ProfileCard({
+    required this.title,
+    required this.subtitle,
+    required this.description,
+    this.statusLabel,
+    this.actionText,
+    this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFCFFFB),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: kDivider, width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 2),
+          Text(subtitle, style: const TextStyle(color: kMuted, fontWeight: FontWeight.w600)),
+          if (statusLabel != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              statusLabel!,
+              style: TextStyle(
+                color: statusLabel!.startsWith('Disponivel') ? kSuccess : kRed,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Text(description, style: const TextStyle(fontWeight: FontWeight.w600)),
+          if (actionText != null && onAction != null) ...[
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton(onPressed: onAction, child: Text(actionText!)),
+            ),
+          ],
         ],
       ),
     );
