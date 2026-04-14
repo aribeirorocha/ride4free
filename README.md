@@ -115,14 +115,14 @@ Optionally, indicate an initial/tentative list of assumptions that you are doing
 ## Requirements
 
 ### User Stories
-Our requirements are documented as **User Stories** in our [GitHub Project T4-Scrumboard](LINK_DO_TEU_PROJETO). We followed the **INVEST** guidelines to ensure each story is Independent, Negotiable, Valuable, Estimable, Small, and Testable.
+Our requirements are documented as **User Stories** in our [GitHub Project T4-Scrumboard](https://github.com/orgs/LEIC-ES-2025-26-2LEIC05/projects/16). We followed the **INVEST** guidelines to ensure each story is Independent, Negotiable, Valuable, Estimable, Small, and Testable.
 
 | ID | Title | Priority (MoSCoW) | Effort (Fibonacci) | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| #30 | [US1: Publish Solidarity Ride](https://github.com/LEIC-ES-2025-26-2LEIC05/issues/30) | **Must-have** | 8 | Ready |
-| #31 | [US2: Book Ride Seat](https://github.com/LEIC-ES-2025-26-2LEIC05/issues/32) | **Must-have** | 5 | Ready |
-| #33 | [US3: Search with Walking Tolerance](https://github.com/LEIC-ES-2025-26-2LEIC05/issues/33) | **Should-have** | 3 | Ready |
-| #32 | [US4: Rate Passenger Conduct](https://github.com/LEIC-ES-2025-26-2LEIC05/issues/34) | **Could-have** | 3 | Ready |
+| #30 | [US1: Publish Solidarity Ride](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/30) | **Must-have** | 8 | In-Progress |
+| #31 | [US2: Book Ride Seat](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/32) | **Must-have** | 5 | In-Progress |
+| #33 | [US3: Search with Walking Tolerance](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/33) | **Should-have** | 3 | In-Progress |
+| #32 | [US4: Rate Passenger Conduct](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/34) | **Could-have** | 3 | In-Progress |
 
 ---
 
@@ -132,57 +132,41 @@ Each User Story in our backlog includes:
 * **Gherkin Scenarios:** Clear "Given/When/Then" acceptance tests to confirm requirements are met.
 * **User Interface Mockups:** High-fidelity drafts attached to each issue to guide frontend development.
 * **Estimation:** Value (Business Priority) and Effort (Story Points) defined by the whole team.
-* **Refinement:** Larger stories were broken down into technical **Tasks** to be "immediately actionable" as per the [LEIC-ES Dashboard criteria]().
+* **Refinement:** Larger stories were broken down into technical **Tasks** to be "immediately actionable" as per the LEIC-ES Dashboard criteria.
 
 > **Note:** All AI-assisted drafting (Gherkin/Tasks) is transparently labeled with `MisterAI`.
-> 
+
 ### Domain model
 
-<!-- 
-To better understand the context of the software system, it is useful to have a simple UML class diagram with all and only the key concepts (names, attributes) and relationships involved of the problem domain addressed by your app. 
-Also provide a short textual description of each concept (domain class). 
+Our app allows *Users* to create personal accounts, enabling them to create *Trajects* or *Reservations*. It includes different types of users, such as *Drivers* and *Passengers*, and supports interactions between them.
 
-Example:
- <p align="center" justify="center">
-  <img src="https://github.com/FEUP-LEIC-ES-2022-23/templates/blob/main/images/DomainModel.png"/>
-</p>
--->
+User - store information about user with his statistics (id, name, email, password, points).
+Driver - represents a user that can create trajects.
+Passenger - represents a user that can make reservations.
+Traject - store information about a traject, including origin, destination, timeDeparture, availableSeats and km.
+Reservation - store information about a reservation, including its state (accepted, rejected, ...), and is associated with a traject.
+Avaliation - stores the pontuation (score) related to users.
+LeaderBoard - ranks each user by the amount of pontuation.
+
+<img width="704" height="702" alt="image" src="https://github.com/user-attachments/assets/ca1222c3-9a21-4c64-ae14-2709ac074d9a" />
+
 
 
 ## Architecture and Design
-<!--
-The architecture of a software system encompasses the set of key decisions about its organization. 
 
-A well written architecture document is brief and reduces the amount of time it takes new programmers to a project to understand the code to feel able to make modifications and enhancements.
-
-To document the architecture requires describing the decomposition of the system in their parts (high-level components) and the key behaviors and collaborations between them. 
-
-In this section you should start by briefly describing the components of the project and their interrelations. You should describe how you solved typical problems you may have encountered, pointing to well-known architectural and design patterns, if applicable.
--->
 
 
 ### Logical architecture
-<!--
-The purpose of this subsection is to document the high-level logical structure of the code (Logical View), using a UML diagram with logical packages, without the worry of allocating to components, processes or machines.
+User interacts through the *User Interface* for visual elements and interactions, with the *Business Logic* layer handling core functionalities, and theexternal services, specifically OpenStreetMap, which is used for map-related features. Data storage and retrieval are handled by the DataBase, through the Ride4Free database schema.
 
-It can be beneficial to present the system in a horizontal decomposition, defining layers and implementation concepts, such as the user interface, business logic and concepts.
-
-Example of _UML package diagram_ showing a _logical view_ of the Eletronic Ticketing System (to be accompanied by a short description of each package):
-
-![LogicalView](https://user-images.githubusercontent.com/9655877/160585416-b1278ad7-18d7-463c-b8c6-afa4f7ac7639.png)
--->
+<img width="1003" height="683" alt="image" src="https://github.com/user-attachments/assets/24708942-9c61-4d71-96d1-dd4e0f26b263" />
 
 
 ### Physical architecture
-<!--
-The goal of this subsection is to document the high-level physical structure of the software system (machines, connections, software components installed, and their dependencies) using UML deployment diagrams (Deployment View) or component diagrams (Implementation View), separate or integrated, showing the physical structure of the system.
 
-It should describe also the technologies considered and justify the selections made. Examples of technologies relevant for ESOF are, for example, frameworks for mobile applications (such as Flutter).
+Each user interacts with the application via their mobile device. The application accesses external machines to retrieve necessary data, such as the OpenStreetMap and the DataBase.
 
-Example of _UML deployment diagram_ showing a _deployment view_ of the Eletronic Ticketing System (please notice that, instead of software components, one should represent their physical/executable manifestations for deployment, called artifacts in UML; the diagram should be accompanied by a short description of each node and artifact):
-
-![DeploymentView](https://user-images.githubusercontent.com/9655877/160592491-20e85af9-0758-4e1e-a704-0db1be3ee65d.png)
--->
+<img width="683" height="443" alt="image" src="https://github.com/user-attachments/assets/3d6a97bf-2373-4171-a795-3d28957a6d7c" />
 
 
 ### Functional prototype
@@ -215,8 +199,19 @@ You can find below information and references related with the project managemen
     * list of a few improvements to implement next Sprint;
 
 -->
+To ensure a smooth, transparent, and iterative development process for **Ride4Free**, our team adopted Agile methodologies, specifically focusing on the **Scrum** framework. We utilize a set of practices and tools to plan, implement, monitor, and control our software project effectively.
+
+Our project management workflow is structured around the following key areas:
+
+* **Backlog Management:** We manage both our Product Backlog and Sprint Backlogs using our [GitHub Projects board](https://github.com/orgs/LEIC-ES-2025-26-2LEIC05/projects/16). This board acts as our single source of truth for tracking User Stories, Tasks, effort estimations (Fibonacci sequence), and priorities (MoSCoW method).
+* **Release Management:** We align our releases with the end of our Sprints. Code increments are systematically tagged (e.g., `v0` for Sprint 0, `v1` for Sprint 1) in our GitHub repository to mark stable milestones and evaluate progress.
+* **Sprint Planning & Retrospectives:** * **Plans:** At the beginning of each Sprint, we hold a planning meeting to select User Stories from the Product Backlog, break them down into actionable tasks, and move them to the Sprint Backlog. Visual evidence of our Agile workflow is documented through screenshots of the board at the beginning and end of each Sprint.
+  * **Retrospectives:** At the end of every Sprint, the team conducts a retrospective meeting to inspect our workflow and adapt our processes. The detailed meeting notes (addressing what we did well, what to do differently, open puzzles, and future improvements) are documented in our repository.
+
+---
 
 ### Sprint 0
+The detailed notes from our Sprint 0 Planning and Retrospective (including what we did well, what to do differently, and puzzles) can be found in our dedicated [SprintPlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/SprintPlanningRetrospectives.md).
 
 ### Sprint 1
 
@@ -228,11 +223,11 @@ You can find below information and references related with the project managemen
 
 ### Final Release
 
-[your product name] Development Report
+Ride4Free Development Report
 
-Welcome to the documentation of [your product name]!
+Welcome to the documentation of Ride4Free!
 
-This Software Development Report, tailored for LEIC-ES-2025-26, provides comprehensive details about [your product name], starting from an high-level vision and going into low-level implementation decisions.
+This Software Development Report, tailored for LEIC-ES-2025-26, provides comprehensive details about Ride4Free, starting from an high-level vision and going into low-level implementation decisions.
 
 It is organised by the following activities:
 
@@ -264,26 +259,4 @@ Thank you!!
     team member André Rocha and up202407636@up.pt
     team member name and email
     team member name and email
-    team member Tomás Gonçalves and up202208997@up.pt
-
-Business Modelling
-
-Business modeling in software development involves defining the product's vision, understanding market needs, aligning features with user expectations, and setting the groundwork for strategic planning and execution.
-Product Vision
-Features and Assumptions
-Requirements
-User Stories
-Domain model
-Architecture and Design
-Logical architecture
-Physical architecture
-Functional prototype
-Project management
-Sprint 0
-Sprint 1
-Sprint 2
-Sprint 3
-Sprint 4
-Final Release
-=======
->>>>>>> Stashed changes
+    team member Tomás Gonçalves and up202208997@up.pT
