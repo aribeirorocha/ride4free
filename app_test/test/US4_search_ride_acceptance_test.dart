@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-// O import principal da nossa app
-import 'package:app_test/main.dart'; 
-
 void main() {
   group('US4 - Search Ride (Testes de Aceitação por André Rocha)', () {
     
