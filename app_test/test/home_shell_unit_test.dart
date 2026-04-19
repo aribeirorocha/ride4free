@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-
 import 'package:app_test/main.dart';
 
 void main() {
@@ -9,16 +8,23 @@ void main() {
 
     testWidgets('UT-1: A navegação (BottomNavigationBar) troca de ecrãs corretamente', (tester) async {
       await tester.pumpWidget(const MyApp());
+      await tester.pump();
 
-      // O index default é 1 (OfferRidePage)
+      // O index default é 0 (CommunityBoardPage)
+      expect(find.text('Comunidade Ride4Free'), findsOneWidget);
+      expect(find.text('Oferecer Boleia'), findsNothing);
+
+      // Clicar no ícone de carro para ir para OfferRidePage (index 2)
+      await tester.tap(find.byIcon(Icons.directions_car));
+      await tester.pumpAndSettle();
+
       expect(find.text('Oferecer Boleia'), findsOneWidget);
-      expect(find.text('Boleias Encontradas'), findsNothing);
+      expect(find.text('Comunidade Ride4Free'), findsNothing);
 
-      // Clicar no primeiro ícone (Search)
+      // Clicar no ícone de pesquisa para ir para SearchRidePage (index 1)
       await tester.tap(find.byIcon(Icons.search));
-      await tester.pumpAndSettle(); // Espera que a animação termine
+      await tester.pumpAndSettle();
 
-      // Agora deve estar no ecrã de pesquisa
       expect(find.text('Boleias Encontradas'), findsOneWidget);
       expect(find.text('Oferecer Boleia'), findsNothing);
     });
@@ -38,7 +44,7 @@ void main() {
       await tester.tap(removeIcon);
       await tester.tap(removeIcon);
       await tester.tap(removeIcon);
-      await tester.pump(); // Atualiza o ecrã
+      await tester.pump();
 
       // Verifica se a lógica bloqueou nos 0 lugares e ativou o erro
       expect(find.text('0'), findsOneWidget);
@@ -55,17 +61,27 @@ void main() {
       expect(find.text('+10 Creditos'), findsOneWidget);
     });
 
-    testWidgets('UT-3: O ecrã SearchRidePage mostra a lista de condutores estática', (tester) async {
+    testWidgets('UT-3: O ecrã SearchRidePage carrega no estado inicial correto', (tester) async {
       await tester.pumpWidget(const MaterialApp(home: Scaffold(body: SearchRidePage())));
+      await tester.pump();
 
-      // Verifica se a lista foi gerada com os nomes corretos
-      expect(find.text('Joao Silva'), findsOneWidget);
-      expect(find.text('Maria Santos'), findsOneWidget);
-      expect(find.text('Ricardo Pereira'), findsOneWidget);
-      
-      // Verifica se o botão de reserva está presente
+      // A lista começa vazia — sem dados de API ainda
+      expect(
+        find.text('Procure condutores para o destino acima.'),
+        findsOneWidget,
+      );
+
+      // O slider de tolerância de distância está presente
+      expect(find.text('Raio de Tolerancia'), findsOneWidget);
+      expect(find.byType(Slider), findsOneWidget);
+
+      // O botão principal de reserva está visível
       expect(find.text('Reservar Boleia'), findsOneWidget);
+
+      // O campo de destino está presente e com o valor por defeito
+      expect(find.byType(TextField), findsOneWidget);
+      expect(find.text('FEUP (Polo II)'), findsOneWidget);
     });
-    
+
   });
 }

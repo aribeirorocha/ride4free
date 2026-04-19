@@ -1,9 +1,9 @@
+// ignore_for_file: file_names
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 
 import 'package:app_test/main.dart';
-
 void main() {
   group('US1: Publish Ride (Real UI Tests)', () {
     
