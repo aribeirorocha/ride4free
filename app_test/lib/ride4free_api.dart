@@ -23,12 +23,12 @@ class Ride4FreeConfig {
       return _overrideBaseUrl;
     }
     if (kIsWeb) {
-      return 'https://semiconcealed-kiera-rumbly.ngrok-free.dev';
+      return 'http://localhost:8000';
     }
     if (!kIsWeb && Platform.isAndroid) {
-      return 'https://semiconcealed-kiera-rumbly.ngrok-free.dev';
+      return 'http://10.0.2.2:8000';
     }
-    return 'https://semiconcealed-kiera-rumbly.ngrok-free.dev';
+    return 'http://localhost:8000';
   }
 }
 

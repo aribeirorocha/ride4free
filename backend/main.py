@@ -171,11 +171,10 @@ def list_passengers_for_driver(destination: str, user_id: int = Depends(require_
         raise HTTPException(status_code=400, detail="destination is required")
     rows = db.list_open_passenger_requests_for_destination(destination)
     total_passengers = sum(r["passenger_count"] for r in rows)
-    return {uvicor
+    return {
         "destination": destination.strip(),
-        "request_count": len(rows),
-        "total_passenger_slots": total_passengers,
-        "requests": rows,
+        "total_passengers": total_passengers,
+        "rows": rows,
     }
 
 
