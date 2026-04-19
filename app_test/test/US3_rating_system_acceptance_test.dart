@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:app_test/main.dart';
 import 'package:app_test/profile_rating_button.dart';
-import 'package:app_test/profile_model.dart';
 
 
 
