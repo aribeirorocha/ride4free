@@ -15,7 +15,7 @@ import 'package:app_test/ride4free_api.dart';
 
 Future<void> launchApp(WidgetTester tester) async {
   await tester.pumpWidget(const MyApp());
-  await tester.pump();
+  await tester.pumpAndSettle();
 }
 
 Future<void> launchOfferPage(WidgetTester tester) async {
