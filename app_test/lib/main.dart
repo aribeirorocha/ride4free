@@ -153,7 +153,7 @@ class _CommunityBoardPageState extends State<CommunityBoardPage> {
       children: [
         const _TopTitleBar(title: 'Comunidade Ride4Free'),
         Padding(
-          padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
+          padding: const EdgeInsets.fromLTRB(5, 30, 5, 10),
           child: Column(
             children: [
               SegmentedButton<int>(
@@ -489,110 +489,91 @@ class _SearchRidePageState extends State<SearchRidePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const _TopTitleBar(title: 'Boleias Encontradas'),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const _RouteRow(color: kSuccess, text: 'De: Residencia Universitaria'),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Text('Para:', style: TextStyle(color: kMuted, fontWeight: FontWeight.w700)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      controller: _destController,
-                      decoration: InputDecoration(
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          const _TopTitleBar(title: 'Boleias Encontradas'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const _RouteRow(color: kSuccess, text: 'De: Residencia Universitaria'),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Text('Para:', style: TextStyle(color: kMuted, fontWeight: FontWeight.w700)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _destController,
+                        decoration: InputDecoration(
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
-                      style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  FilledButton(
-                    onPressed: _loading ? null : _search,
-                    style: FilledButton.styleFrom(backgroundColor: kSuccess),
-                    child: Text(_loading ? '…' : 'Procurar condutores'),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton(
-                    onPressed: _registerRequest,
-                    child: const Text('Pedir boleia'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const Divider(height: 18),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 18),
-          child: Row(
-            children: [
-              Text('Raio de Tolerancia', style: TextStyle(fontWeight: FontWeight.w700)),
-              Spacer(),
-              Text('200m', style: TextStyle(color: kRed, fontWeight: FontWeight.w700)),
-            ],
-          ),
-        ),
-        const Padding(
-          padding: EdgeInsets.fromLTRB(18, 6, 18, 10),
-          child: Slider(value: 0.12, onChanged: null),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          child: SizedBox(
-            height: 130,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: const _ConferenceMap(),
-            ),
-          ),
-        ),
-        Expanded(
-          child: _drivers.isEmpty
-              ? const Center(child: Text('Procure condutores para o destino acima.', style: TextStyle(color: kMuted)))
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
-                  itemCount: _drivers.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (context, i) {
-                    final d = _drivers[i];
-                    final name = d['driver_name'] as String? ?? '?';
-                    final seats = d['available_seats']?.toString() ?? '?';
-                    return _RideCard(
-                      name: name,
-                      car: 'Lugares livres: $seats',
-                      rating: '—',
-                      distance: d['destination_display'] as String? ?? '',
-                      credits: '30',
-                    );
-                  },
+                  ],
                 ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(18, 0, 18, 14),
-          child: FilledButton(
-            onPressed: _registerRequest,
-            style: FilledButton.styleFrom(
-              backgroundColor: kRed,
-              minimumSize: const Size.fromHeight(56),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    FilledButton(
+                      onPressed: _loading ? null : _search,
+                      style: FilledButton.styleFrom(backgroundColor: kSuccess),
+                      child: Text(_loading ? '…' : 'Procurar condutores'),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton(
+                      onPressed: _registerRequest,
+                      child: const Text('Pedir boleia'),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            child: const Text('Reservar Boleia', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
           ),
-        ),
-      ],
+          const Divider(height: 18),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 18),
+            child: Row(
+              children: [
+                Text('Raio de Tolerancia', style: TextStyle(fontWeight: FontWeight.w700)),
+                Spacer(),
+                Text('200m', style: TextStyle(color: kRed, fontWeight: FontWeight.w700)),
+              ],
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(18, 6, 18, 10),
+            child: Slider(value: 0.12, onChanged: null),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: SizedBox(
+              height: 130,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: const _ConferenceMap(),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 240, 18, 0),
+            child: FilledButton(
+              onPressed: _registerRequest,
+              style: FilledButton.styleFrom(
+                backgroundColor: kRed,
+                minimumSize: const Size.fromHeight(56),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: const Text('Reservar Boleia', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

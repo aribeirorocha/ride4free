@@ -7,6 +7,9 @@ void main() {
   group('Unit/Widget Tests - Ride4Free App', () {
 
     testWidgets('UT-1: A navegação (BottomNavigationBar) troca de ecrãs corretamente', (tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
       await tester.pumpWidget(const MyApp());
       await tester.pump();
 
