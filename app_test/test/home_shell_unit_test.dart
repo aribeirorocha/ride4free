@@ -70,7 +70,7 @@ void main() {
 
       // A lista começa vazia — sem dados de API ainda
       expect(
-        find.text('Procure condutores para o destino acima.'),
+        find.text('Procurar condutores'),
         findsOneWidget,
       );
 
