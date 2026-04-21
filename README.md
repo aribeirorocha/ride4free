@@ -119,10 +119,10 @@ Our requirements are documented as **User Stories** in our [GitHub Project T4-Sc
 
 | ID | Title | Priority (MoSCoW) | Effort (Fibonacci) | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| #30 | [US1: Publish Solidarity Ride](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/30) | **Must-have** | 8 | In-Progress |
-| #31 | [US2: Book Ride Seat](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/32) | **Must-have** | 5 | In-Progress |
-| #33 | [US3: Search with Walking Tolerance](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/33) | **Should-have** | 3 | In-Progress |
-| #32 | [US4: Rate Passenger Conduct](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/34) | **Could-have** | 3 | In-Progress |
+| #30 | [US1: Publish Solidarity Ride](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/30) | **Must-have** | 21 | In-Progress |
+| #31 | [US2: Book Ride Seat](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/32) | **Must-have** | 13 | In-Progress |
+| #33 | [US3: Search with Walking Tolerance](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/33) | **Should-have** | 8 | In-Progress |
+| #32 | [US4: Rate Passenger Conduct](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/34) | **Could-have** | 13 | In-Progress |
 
 ---
 
