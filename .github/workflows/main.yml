@@ -1,0 +1,349 @@
+# =============================================================================
+# Ride4Free — GitHub Actions CI/CD Pipeline
+# Cobre: Unit Tests, Widget Tests, Integration Tests, Coverage, Analysis,
+#        Build APK, Build Web, e Deployment automático.
+# =============================================================================
+
+name: 🚗 Ride4Free CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  workflow_dispatch:  # Permite correr manualmente
+
+# Cancela runs anteriores do mesmo branch quando há um novo push
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.22.0'
+  JAVA_VERSION: '17'
+
+# =============================================================================
+# JOB 1 — ANÁLISE ESTÁTICA (flutter analyze + dart format)
+# =============================================================================
+jobs:
+  analyze:
+    name: 🔍 Static Analysis & Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: 📦 Instalar dependências
+        run: flutter pub get
+
+      - name: 🎨 Verificar formatação do código (dart format)
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: 🔍 Análise estática (flutter analyze)
+        run: flutter analyze --fatal-infos
+
+# =============================================================================
+# JOB 2 — UNIT TESTS + WIDGET TESTS + COBERTURA
+# =============================================================================
+  test:
+    name: 🧪 Unit & Widget Tests + Coverage
+    runs-on: ubuntu-latest
+    needs: analyze
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: 📦 Instalar dependências
+        run: flutter pub get
+
+      # Corre TODOS os ficheiros de teste com cobertura
+      - name: 🧪 Correr Unit Tests (unit_test.dart)
+        run: |
+          flutter test test/unit_test.dart \
+            --coverage \
+            --coverage-path=coverage/unit_lcov.info \
+            --reporter=github \
+            || true
+
+      - name: 🧩 Correr Widget Tests (widget_tests.dart)
+        run: |
+          flutter test test/widget_tests.dart \
+            --coverage \
+            --coverage-path=coverage/widget_lcov.info \
+            --reporter=github \
+            || true
+
+      - name: 🏠 Correr Home Shell Tests (home_shell_unit_test.dart)
+        run: |
+          flutter test test/home_shell_unit_test.dart \
+            --coverage \
+            --coverage-path=coverage/home_lcov.info \
+            --reporter=github \
+            || true
+
+      - name: 🌐 Correr API Client Tests (api_client_test.dart)
+        run: |
+          flutter test test/api_client_test.dart \
+            --coverage \
+            --coverage-path=coverage/api_lcov.info \
+            --reporter=github \
+            || true
+
+      - name: 📊 Correr Coverage Tests (coverage_test.dart)
+        run: |
+          flutter test test/coverage_test.dart \
+            --coverage \
+            --coverage-path=coverage/cov_lcov.info \
+            --reporter=github \
+            || true
+
+      # Correr todos os testes de uma vez com cobertura total
+      - name: 🎯 Cobertura Total (todos os testes)
+        run: |
+          flutter test \
+            --coverage \
+            --coverage-path=coverage/lcov.info \
+            --reporter=github
+
+      # Instala lcov para gerar relatório HTML
+      - name: 📈 Instalar lcov
+        run: sudo apt-get install -y lcov
+
+      - name: 🔢 Gerar relatório HTML de cobertura
+        run: |
+          genhtml coverage/lcov.info \
+            --output-directory coverage/html \
+            --title "Ride4Free Coverage" \
+            --show-details \
+            --highlight
+
+      - name: 📊 Verificar limiar de cobertura (mínimo 70%)
+        run: |
+          COVERAGE=$(lcov --summary coverage/lcov.info 2>&1 | grep "lines" | grep -oP '\d+\.\d+(?=%)' | head -1)
+          echo "Cobertura de linhas: ${COVERAGE}%"
+          if (( $(echo "$COVERAGE < 70" | bc -l) )); then
+            echo "❌ Cobertura abaixo do mínimo: ${COVERAGE}% < 70%"
+            exit 1
+          else
+            echo "✅ Cobertura OK: ${COVERAGE}%"
+          fi
+
+      # Upload do relatório de cobertura como artefacto
+      - name: 📤 Upload relatório de cobertura
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/html/
+          retention-days: 14
+
+      # Publicar cobertura no PR (comentário automático)
+      - name: 💬 Publicar cobertura no PR
+        uses: romeovs/lcov-reporter-action@v0.4.0
+        if: github.event_name == 'pull_request'
+        with:
+          lcov-file: coverage/lcov.info
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          title: "📊 Relatório de Cobertura de Testes"
+
+# =============================================================================
+# JOB 3 — ACCEPTANCE TESTS (US1, US2, US3, US4)
+# =============================================================================
+  acceptance-tests:
+    name: ✅ Acceptance Tests (US1–US4)
+    runs-on: ubuntu-latest
+    needs: analyze
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: 📦 Instalar dependências
+        run: flutter pub get
+
+      - name: 🚗 US1 — Publish Ride Acceptance Tests
+        run: |
+          flutter test test/us1_publish_ride_acceptance_test.dart \
+            --reporter=github \
+            || true
+
+      - name: 🎟️ US2 — Booking Ride Acceptance Tests
+        run: |
+          flutter test test/us2_booking_ride_acceptance_test.dart \
+            --reporter=github \
+            || true
+
+      - name: ⭐ US3 — Rating System Acceptance Tests
+        run: |
+          flutter test test/us3_rating_system_acceptance_test.dart \
+            --reporter=github \
+            || true
+
+      - name: 🔎 US4 — Search Ride Acceptance Tests
+        run: |
+          flutter test test/us4_search_ride_acceptance_test.dart \
+            --reporter=github \
+            || true
+
+# =============================================================================
+# JOB 4 — BUILD APK (Android)
+# =============================================================================
+  build-android:
+    name: 🤖 Build Android APK
+    runs-on: ubuntu-latest
+    needs: [test, acceptance-tests]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+
+      - name: ☕ Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: 📦 Instalar dependências
+        run: flutter pub get
+
+      - name: 🔨 Build APK (release)
+        run: flutter build apk --release --split-per-abi
+
+      - name: 📤 Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-release
+          path: build/app/outputs/apk/release/*.apk
+          retention-days: 30
+
+# =============================================================================
+# JOB 5 — BUILD WEB
+# =============================================================================
+  build-web:
+    name: 🌐 Build Web
+    runs-on: ubuntu-latest
+    needs: [test, acceptance-tests]
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: 📦 Instalar dependências
+        run: flutter pub get
+
+      - name: 🌐 Build Web
+        run: flutter build web --release --base-href "/"
+
+      - name: 📤 Upload Web Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: build/web/
+          retention-days: 14
+
+# =============================================================================
+# JOB 6 — DEPLOY PARA GITHUB PAGES (apenas em main/master)
+# =============================================================================
+  deploy-web:
+    name: 🚀 Deploy Web → GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build-web
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: 📦 Instalar dependências
+        run: flutter pub get
+
+      - name: 🌐 Build Web para deploy
+        run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
+
+      - name: 🚀 Deploy para GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build/web
+          commit_message: "🚀 Deploy automático — ${{ github.sha }}"
+
+# =============================================================================
+# JOB 7 — MÉTRICAS DE QUALIDADE (Resumo Final)
+# =============================================================================
+  quality-summary:
+    name: 📋 Resumo de Qualidade
+    runs-on: ubuntu-latest
+    needs: [analyze, test, acceptance-tests]
+    if: always()
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: 📦 Instalar dependências
+        run: flutter pub get
+
+      - name: 📏 Contar linhas de código (métricas)
+        run: |
+          echo "=== 📊 MÉTRICAS DO PROJETO RIDE4FREE ===" 
+          echo ""
+          echo "📁 Ficheiros Dart (lib/):"
+          find lib/ -name "*.dart" | wc -l
+          echo ""
+          echo "📝 Linhas de código (lib/):"
+          find lib/ -name "*.dart" | xargs wc -l | tail -1
+          echo ""
+          echo "🧪 Ficheiros de Teste:"
+          find test/ -name "*.dart" | wc -l
+          echo ""
+          echo "🧪 Linhas de Testes:"
+          find test/ -name "*.dart" | xargs wc -l | tail -1
+
+      - name: ✅ Estado dos Jobs
+        run: |
+          echo "=== RESUMO DO PIPELINE ==="
+          echo "🔍 Análise Estática : ${{ needs.analyze.result }}"
+          echo "🧪 Testes + Coverage: ${{ needs.test.result }}"
+          echo "✅ Testes Aceitação : ${{ needs.acceptance-tests.result }}"
