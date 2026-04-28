@@ -168,15 +168,33 @@ Each user interacts with the application via their mobile device. The applicatio
 
 <img width="683" height="443" alt="image" src="https://github.com/user-attachments/assets/3d6a97bf-2373-4171-a795-3d28957a6d7c" />
 
+---
 
 ### Functional prototype
-<!--
-To help on validating all the architectural, design and technological decisions made, we usually implement a functional prototype, a thin vertical slice of the system integrating as much technologies as we can.
 
-In this subsection please describe which feature, or part of it, you have implemented, and how, together with a snapshot of the user interface, if applicable.
+To validate our architectural and technological decisions early in the development process, we implemented a functional prototype focusing on two critical pillars of the **Ride4Free** experience: geospatial interaction and community trust.
 
-At this phase, instead of a complete user story, you can simply implement a small part of a feature that demonstrates thay you can use the technology, for example, show a screen with the app credits (name and authors).
--->
+#### 1. Interactive Map Integration
+We successfully integrated a dynamic, fully interactive map view into the application. In this prototype, the user can open the map screen, pan across different areas, and zoom in/out smoothly to visualize ride locations.
+
+* **Implementation:** Developed using the `flutter_map` package. Tiles are fetched in real-time from an external provider (CartoDB / OpenStreetMap) using a custom dark-themed layer (`dark_all`).
+* **Validation:** Proved that the physical architecture correctly handles external API communication and that Flutter manages complex, gesture-based UI components with high performance.
+
+#### 2. Profile Rating & Community Evaluation
+We implemented an interactive rating system that allows users to evaluate their experience with recent drivers or passengers, fostering a self-regulated and safe community.
+
+* **Implementation:** Built as a custom `StatefulWidget` (ProfileRatingButton) that triggers a bottom-sheet interface. It features a custom star-picker component and local state management to handle real-time UI updates when a user assigns a score (1-5 stars).
+* **Validation:** Demonstrated our ability to build reusable UI components and manage interactive states, ensuring that user feedback is captured and reflected instantly in the interface.
+
+
+**Technical Assumptions Validated:**
+1.  **Frontend Versatility:** Flutter efficiently handles both heavy graphical tasks (Maps) and complex interactive forms (Ratings).
+2.  **State Management:** The prototype confirms that the chosen state management approach is sufficient for handling real-time user interactions.
+3.  **External Connectivity:** Validated the app's capability to integrate with third-party geospatial services.
+
+Below is a snapshot of the functional prototype in action:
+
+<img width="200" height="450" alt="Interactive Map Prototype" src="https://github.com/user-attachments/assets/e3f69d53-4b98-4153-baf1-02279a926f8c" />
 
 ## Project management
 <!--
