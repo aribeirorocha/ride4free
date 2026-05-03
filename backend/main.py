@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from fastapi import Depends, FastAPI, HTTPException, Header, status
+from fastapi import Depends, FastAPI, HTTPException, Header, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
 
@@ -80,12 +80,16 @@ class TokenResponse(BaseModel):
 class PassengerRequestBody(BaseModel):
     destination: str = Field(min_length=1, max_length=500)
     passenger_count: int = Field(default=1, ge=1, le=20)
-
+    origin_lat: float | None = None
+    origin_lng: float | None = None
 
 class DriverOfferBody(BaseModel):
     destination: str = Field(min_length=1, max_length=500)
     available_seats: int = Field(ge=0, le=20)
-
+    origin_lat: float | None = None
+    origin_lng: float | None = None
+    destination_lat: float | None = None
+    destination_lng: float | None = None
 
 class BookDriverOfferBody(BaseModel):
     offer_id: int = Field(ge=1)
@@ -153,10 +157,10 @@ def create_passenger_request(body: PassengerRequestBody, user_id: int = Depends(
 
 
 @app.get("/passenger/drivers")
-def list_drivers_for_passenger(destination: str, user_id: int = Depends(require_user)):
+def list_drivers_for_passenger(destination: str, lat: float | None = None, lng: float | None = None, radius_m: int = Query(default=500, ge=100, le=2000),  user_id: int = Depends(require_user)):
     if not destination.strip():
         raise HTTPException(status_code=400, detail="destination is required")
-    return {"destination": destination.strip(), "drivers": db.list_open_drivers_for_destination(destination)}
+    return {"destination": destination.strip(), "drivers": db.list_open_drivers_for_destination(destination, lat, lng, radius_m)}
 
 
 @app.post("/driver/offers")
@@ -179,8 +183,8 @@ def list_passengers_for_driver(destination: str, user_id: int = Depends(require_
 
 
 @app.get("/community/drivers")
-def list_available_drivers(destination: str | None = None, user_id: int = Depends(require_user)):
-    rows = db.list_community_drivers(destination)
+def list_available_drivers(destination: str | None = None, lat: float | None = None, lng: float | None = None, radius_m = Query(default=500, ge=100, le=2000), user_id: int = Depends(require_user)):
+    rows = db.list_community_drivers(destination, lat, lng, radius_m)
     return {
         "destination_filter": destination.strip() if destination else None,
         "drivers": [
