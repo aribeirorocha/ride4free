@@ -1,8 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'profile_rating_button.dart';
 import 'ride4free_api.dart';
+import 'location_service.dart';
 
 void main() => runApp(const MyApp());
 
@@ -263,7 +267,7 @@ class _CommunityBoardPageState extends State<CommunityBoardPage> {
                 Text(tableName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 8),
                 ...cols.map(
-                  (c) => Text(
+                      (c) => Text(
                     '- ${c['name']} (${c['type']})${(c['primary_key'] as bool? ?? false) ? ' [PK]' : ''}',
                     style: const TextStyle(color: kMuted, fontWeight: FontWeight.w600),
                   ),
@@ -289,6 +293,20 @@ class _OfferRidePageState extends State<OfferRidePage> {
   final _destController = TextEditingController(text: 'FEUP (Polo II)');
   final _api = Ride4FreeApi();
   bool _busy = false;
+  LatLng? _originLatLng;
+  LatLng? _destinationLatLng;
+
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLocation();
+  }
+
+  Future<void> _fetchLocation() async {
+    final loc = await LocationService.getCurrentLocation();
+    if (mounted) setState(() => _originLatLng = loc);
+  }
 
   @override
   void dispose() {
@@ -306,6 +324,10 @@ class _OfferRidePageState extends State<OfferRidePage> {
       await _api.createDriverOffer(
         destination: _destController.text,
         availableSeats: _seats,
+        originLat: _originLatLng?.latitude,
+        originLng: _originLatLng?.longitude,
+        destinationLat: _destinationLatLng?.latitude,
+        destinationLng: _destinationLatLng?.longitude,
       );
       if (mounted) _showMessage(context, 'Viagem publicada (API local).');
     } catch (e) {
@@ -358,7 +380,49 @@ class _OfferRidePageState extends State<OfferRidePage> {
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
             children: [
               _label('PONTO DE PARTIDA'),
-              const _InputLike(text: 'Residencia Universitaria'),
+              const SizedBox(height: 6),
+              if (_originLatLng == null)
+                const Text(
+                  'Toque no mapa para definir o ponto de partida',
+                  style: TextStyle(color: kMuted, fontWeight: FontWeight.w600),
+                )
+              else
+                Text(
+                  'Partida definida ✓ (${_originLatLng!.latitude.toStringAsFixed(4)}, ${_originLatLng!.longitude.toStringAsFixed(4)})',
+                  style: const TextStyle(color: kSuccess, fontWeight: FontWeight.w600),
+                ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 160,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: _ConferenceMap(
+                    userLocation: _originLatLng,
+                    onTap: (latlng) => setState(() => _originLatLng = latlng),
+                  ),
+                ),
+              ),
+              _label('PONTO DE CHEGADA'),
+              const SizedBox(height: 6),
+              if (_destinationLatLng == null)
+                const Text('Toque no mapa para definir o ponto de chegada',
+                    style: TextStyle(color: kMuted, fontWeight: FontWeight.w600))
+              else
+                Text(
+                  'Chegada definida ✓ (${_destinationLatLng!.latitude.toStringAsFixed(4)}, ${_destinationLatLng!.longitude.toStringAsFixed(4)})',
+                  style: const TextStyle(color: kSuccess, fontWeight: FontWeight.w600),
+                ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 160,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: _ConferenceMap(
+                    userLocation: _destinationLatLng,
+                    onTap: (latlng) => setState(() => _destinationLatLng = latlng),
+                  ),
+                ),
+              ),
               const SizedBox(height: 14),
               _label('DESTINO'),
               TextField(
@@ -451,6 +515,46 @@ class _SearchRidePageState extends State<SearchRidePage> {
   final _api = Ride4FreeApi();
   List<Map<String, dynamic>> _drivers = [];
   bool _loading = false;
+  LatLng? _userLocation;
+  LatLng? _pickupLatLng;
+  double _radiusMeters = 500; // default 500m
+  // Label legível da localização atual do passageiro (reverse geocoding)
+  String _locationLabel = 'A obter localização…';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLocation();
+  }
+
+  Future<void> _fetchLocation() async {
+    final loc = await LocationService.getCurrentLocation();
+    if (!mounted || loc == null) return;
+    setState(() => _userLocation = loc);
+    // Reverse geocoding com Nominatim para mostrar nome da rua
+    try {
+      final uri = Uri.parse(
+        'https://nominatim.openstreetmap.org/reverse'
+            '?lat=${loc.latitude}&lon=${loc.longitude}&format=json',
+      );
+      final r = await http.get(uri, headers: {'User-Agent': 'Ride4Free/1.0'});
+      if (r.statusCode == 200 && mounted) {
+        final data = jsonDecode(r.body) as Map<String, dynamic>;
+        final address = data['address'] as Map<String, dynamic>?;
+        final road = address?['road'] as String?
+            ?? address?['pedestrian'] as String?
+            ?? address?['suburb'] as String?
+            ?? data['display_name'] as String?
+            ?? '${loc.latitude.toStringAsFixed(4)}, ${loc.longitude.toStringAsFixed(4)}';
+        setState(() => _locationLabel = road);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _locationLabel =
+        '${loc.latitude.toStringAsFixed(4)}, ${loc.longitude.toStringAsFixed(4)}');
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -465,7 +569,12 @@ class _SearchRidePageState extends State<SearchRidePage> {
     }
     setState(() => _loading = true);
     try {
-      final list = await _api.listDriversForDestination(_destController.text);
+      final list = await _api.listDriversForDestination(
+        _destController.text,
+        lat: (_pickupLatLng ?? _userLocation)?.latitude,
+        lng: (_pickupLatLng ?? _userLocation)?.longitude,
+        radiusM: _radiusMeters.toInt(),
+      );
       if (mounted) setState(() => _drivers = list);
     } catch (e) {
       if (mounted) _showMessage(context, 'Erro: $e');
@@ -480,7 +589,12 @@ class _SearchRidePageState extends State<SearchRidePage> {
       return;
     }
     try {
-      await _api.createPassengerRequest(destination: _destController.text, passengerCount: 1);
+      await _api.createPassengerRequest(
+        destination: _destController.text,
+        passengerCount: 1,
+        originLat: (_pickupLatLng ?? _userLocation)?.latitude,
+        originLng: (_pickupLatLng ?? _userLocation)?.longitude,
+      );
       if (mounted) _showMessage(context, 'Pedido de passageiro registado.');
     } catch (e) {
       if (mounted) _showMessage(context, 'Erro: $e');
@@ -536,32 +650,103 @@ class _SearchRidePageState extends State<SearchRidePage> {
             ),
           ),
           const Divider(height: 18),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 18),
+
+          // Slider funcional
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
             child: Row(
               children: [
-                Text('Raio de Tolerancia', style: TextStyle(fontWeight: FontWeight.w700)),
-                Spacer(),
-                Text('200m', style: TextStyle(color: kRed, fontWeight: FontWeight.w700)),
+                const Text('Raio de Tolerancia', style: TextStyle(fontWeight: FontWeight.w700)),
+                const Spacer(),
+                Text('${_radiusMeters.toInt()}m', style: const TextStyle(color: kRed, fontWeight: FontWeight.w700)),
               ],
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(18, 6, 18, 10),
-            child: Slider(value: 0.12, onChanged: null),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 6, 18, 10),
+            child: Slider(
+              value: _radiusMeters,
+              min: 100,
+              max: 2000,
+              divisions: 19,
+              label: '${_radiusMeters.toInt()}m',
+              onChanged: (v) => setState(() => _radiusMeters = v),
+              onChangeEnd: (v) {
+                setState(() => _radiusMeters = v);
+                if (_drivers.isNotEmpty) _search();
+              },
+            ),
           ),
+
+          // Mapa ligado ao estado
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: _pickupLatLng == null
+                ? const Text(
+              'Toque no mapa para definir o ponto de pickup (ou usa o GPS automaticamente)',
+              style: TextStyle(color: kMuted, fontWeight: FontWeight.w600),
+            )
+                : Text(
+              'Pickup definido ✓ (${_pickupLatLng!.latitude.toStringAsFixed(4)}, ${_pickupLatLng!.longitude.toStringAsFixed(4)})',
+              style: const TextStyle(color: kSuccess, fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(height: 6),
+
+// Mapa com onTap para pickup
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
             child: SizedBox(
               height: 130,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: const _ConferenceMap(),
+                child: _ConferenceMap(
+                  userLocation: _pickupLatLng ?? _userLocation,
+                  radiusMeters: _radiusMeters,
+                  onTap: (latlng) => setState(() {
+                    _pickupLatLng = latlng;
+                    if (_drivers.isNotEmpty) _search();
+                  }),
+                  driverOrigins: _drivers
+                      .where((d) => d['origin_lat'] != null)
+                      .map((d) => LatLng(
+                    (d['origin_lat'] as num).toDouble(),
+                    (d['origin_lng'] as num).toDouble(),
+                  ))
+                      .toList(),
+                ),
               ),
             ),
           ),
+          // Lista de condutores
+          if (_drivers.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(18),
+              child: Text('Procure condutores para o destino acima.', style: TextStyle(color: kMuted)),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
+              itemCount: _drivers.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (context, i) {
+                final d = _drivers[i];
+                final name = d['driver_name'] as String? ?? '?';
+                final seats = d['available_seats']?.toString() ?? '?';
+                return _RideCard(
+                  name: name,
+                  car: 'Lugares livres: $seats',
+                  rating: '—',
+                  distance: d['destination_display'] as String? ?? '',
+                  credits: '30',
+                );
+              },
+            ),
+
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 240, 18, 0),
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 14),
             child: FilledButton(
               onPressed: _registerRequest,
               style: FilledButton.styleFrom(
@@ -1024,15 +1209,34 @@ class _ProfileCard extends StatelessWidget {
   }
 }
 
-class _ConferenceMap extends StatelessWidget {
-  const _ConferenceMap();
+class _ConferenceMap extends StatefulWidget {
+  final LatLng? userLocation;
+  final List<LatLng> driverOrigins;
+  final double radiusMeters;
+  final void Function(LatLng)? onTap; // para o modo condutor
+
+  const _ConferenceMap({
+    this.userLocation,
+    this.driverOrigins = const [],
+    this.radiusMeters = 500,
+    this.onTap,
+  });
+
+  @override
+  State<_ConferenceMap> createState() => _ConferenceMapState();
+}
+
+class _ConferenceMapState extends State<_ConferenceMap> {
+  final _mapController = MapController();
 
   @override
   Widget build(BuildContext context) {
     return FlutterMap(
+      mapController: _mapController,
       options: MapOptions(
-        initialCenter: const LatLng(41.1496, -8.6109),
+        initialCenter: widget.userLocation ?? const LatLng(41.1496, -8.6109),
         initialZoom: 13,
+        onTap: widget.onTap != null ? (_, latlng) => widget.onTap!(latlng) : null,
       ),
       children: [
         TileLayer(
@@ -1040,13 +1244,41 @@ class _ConferenceMap extends StatelessWidget {
           subdomains: const ['a', 'b', 'c', 'd'],
           userAgentPackageName: 'com.example.conference_tool',
         ),
-        const MarkerLayer(
+
+        // Círculo de raio à volta do passageiro
+        if (widget.userLocation != null)
+          CircleLayer(
+            circles: [
+              CircleMarker(
+                point: widget.userLocation!,
+                radius: widget.radiusMeters,
+                useRadiusInMeter: true,
+                color: kRed.withOpacity(0.1),
+                borderColor: kRed,
+                borderStrokeWidth: 2,
+              ),
+            ],
+          ),
+
+        MarkerLayer(
           markers: [
-            Marker(
-              point: LatLng(41.1496, -8.6109),
-              width: 36,
-              height: 36,
-              child: Icon(Icons.location_pin, color: kRed, size: 36),
+            // Marcador do passageiro / posição selecionada
+            if (widget.userLocation != null)
+              Marker(
+                point: widget.userLocation!,
+                width: 36,
+                height: 36,
+                child: const Icon(Icons.my_location, color: kRed, size: 36),
+              ),
+
+            // Marcadores dos condutores disponíveis
+            ...widget.driverOrigins.map(
+                  (loc) => Marker(
+                point: loc,
+                width: 36,
+                height: 36,
+                child: const Icon(Icons.directions_car, color: kSuccess, size: 36),
+              ),
             ),
           ],
         ),
