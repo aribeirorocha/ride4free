@@ -194,7 +194,7 @@ def insert_passenger_request(user_id: int, destination: str, passenger_count: in
         cur = conn.execute(
             """INSERT INTO passenger_requests
             (user_id, destination_norm, destination_display, passenger_count, status, created_at, origin_lat, origin_lng)
-            VALUES (?,?,?,?, 'open', ?)""",
+            VALUES (?,?,?,?, 'open', ?,?,?)""",
             (user_id, norm, destination.strip(), passenger_count, now, origin_lat, origin_lng),
         )
         return int(cur.lastrowid)
