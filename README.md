@@ -119,10 +119,11 @@ Our requirements are documented as **User Stories** in our [GitHub Project T4-Sc
 
 | ID | Title | Priority (MoSCoW) | Effort (Fibonacci) | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| #30 | [US1: Publish Solidarity Ride](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/30) | **Must-have** | 21 | In-Progress |
-| #31 | [US2: Book Ride Seat](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/32) | **Must-have** | 13 | In-Progress |
+| #30 | [US1: Publish Solidarity Ride](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/30) | **Must-have** | 21 | Accepted|
+| #31 | [US2: Book Ride Seat](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/32) | **Must-have** | 13 | Accepted |
 | #33 | [US3: Search with Walking Tolerance](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/33) | **Should-have** | 8 | In-Progress |
 | #32 | [US4: Rate Passenger Conduct](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/34) | **Could-have** | 13 | In-Progress |
+| #81 | [US5: Uni Login](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/81) | **Could-have** | 8 | In-Progress |
 
 ---
 
@@ -229,10 +230,10 @@ Our project management workflow is structured around the following key areas:
 ---
 
 ### Sprint 0
-The detailed notes from our Sprint 0 Planning and Retrospective (including what we did well, what to do differently, and puzzles) can be found in our dedicated [SprintPlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/SprintPlanningRetrospectives.md).
+The detailed notes from our Sprint 0 Planning and Retrospective (including what we did well, what to do differently, and puzzles) can be found in our dedicated [Sprint0PlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/SprintPlanningRetrospectives.md).
 
 ### Sprint 1
-The detailed notes from our Sprint 1 Review, Planning, and Retrospective (including the Agile Patterns applied, achievements, team structure, and future improvements) can be found in our dedicated [SprintPlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/Sprint1PlanningRetrospectives.md).
+The detailed notes from our Sprint 1 Review, Planning, and Retrospective (including the Agile Patterns applied, achievements, team structure, and future improvements) can be found in our dedicated [Sprint1PlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/Sprint1PlanningRetrospectives.md).
 
 ### Sprint 2
 
