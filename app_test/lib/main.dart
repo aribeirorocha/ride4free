@@ -705,7 +705,7 @@ class _SearchRidePageState extends State<SearchRidePage> {
                   radiusMeters: _radiusMeters,
                   onTap: (latlng) => setState(() {
                     _pickupLatLng = latlng;
-                    if (_drivers.isNotEmpty) _search();
+                    _search();
                   }),
                   driverOrigins: _drivers
                       .where((d) => d['origin_lat'] != null)
