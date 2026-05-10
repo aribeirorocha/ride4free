@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import secrets
 import sqlite3
+import math
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -85,6 +86,8 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS passenger_requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    origin_lat REAL,
+    origin_lng REAL,
     destination_norm TEXT NOT NULL,
     destination_display TEXT NOT NULL,
     passenger_count INTEGER NOT NULL DEFAULT 1 CHECK (passenger_count >= 1),
@@ -97,6 +100,10 @@ CREATE INDEX IF NOT EXISTS idx_passenger_dest ON passenger_requests(destination_
 CREATE TABLE IF NOT EXISTS driver_offers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    origin_lat REAL,
+    origin_lng REAL,
+    destination_lat REAL,
+    destination_lng REAL,
     destination_norm TEXT NOT NULL,
     destination_display TEXT NOT NULL,
     available_seats INTEGER NOT NULL CHECK (available_seats >= 0),
@@ -180,36 +187,38 @@ def user_id_from_token(token: str | None) -> int | None:
         return int(row["user_id"]) if row else None
 
 
-def insert_passenger_request(user_id: int, destination: str, passenger_count: int) -> int:
+def insert_passenger_request(user_id: int, destination: str, passenger_count: int, origin_lat=None, origin_lng=None) -> int:
     norm = normalize_destination(destination)
     now = utc_now_iso()
     with get_connection() as conn:
         cur = conn.execute(
             """INSERT INTO passenger_requests
-            (user_id, destination_norm, destination_display, passenger_count, status, created_at)
-            VALUES (?,?,?,?, 'open', ?)""",
-            (user_id, norm, destination.strip(), passenger_count, now),
+            (user_id, destination_norm, destination_display, passenger_count, status, created_at, origin_lat, origin_lng)
+            VALUES (?,?,?,?, 'open', ?,?,?)""",
+            (user_id, norm, destination.strip(), passenger_count, now, origin_lat, origin_lng),
         )
         return int(cur.lastrowid)
 
 
-def insert_driver_offer(user_id: int, destination: str, available_seats: int) -> int:
+def insert_driver_offer(user_id: int, destination: str, available_seats: int, origin_lat=None, origin_lng=None, destination_lat=None, destination_lng=None) -> int:
     norm = normalize_destination(destination)
     now = utc_now_iso()
     status = "open" if available_seats > 0 else "full"
     with get_connection() as conn:
         cur = conn.execute(
             """INSERT INTO driver_offers
-            (user_id, destination_norm, destination_display, available_seats, status, created_at)
-            VALUES (?,?,?,?,?,?)""",
-            (user_id, norm, destination.strip(), available_seats, status, now),
+            (user_id, destination_norm, destination_display, available_seats, status, created_at, origin_lat, origin_lng, destination_lat, destination_lng)
+            VALUES (?,?,?,?,?,?,?,?,?,?)""",
+            (user_id, norm, destination.strip(), available_seats, status, now, origin_lat, origin_lng, destination_lat, destination_lng),
         )
         return int(cur.lastrowid)
 
 
-def list_open_drivers_for_destination(destination: str) -> list[dict]:
-    """Passenger: drivers heading to the same normalized destination."""
-    return list_open_drivers(destination)
+def list_open_drivers_for_destination(destination: str,
+                                      passenger_lat: float | None = None,
+                                      passenger_lng: float | None = None,
+                                      radius_m: int = 500) -> list[dict]:
+    return list_open_drivers(destination, passenger_lat, passenger_lng, radius_m)
 
 
 def list_open_passenger_requests_for_destination(destination: str) -> list[dict]:
@@ -217,7 +226,12 @@ def list_open_passenger_requests_for_destination(destination: str) -> list[dict]
     return list_open_passenger_requests(destination)
 
 
-def list_open_drivers(destination: str | None = None) -> list[dict]:
+""" 'Entirely' done by claude """
+
+def list_open_drivers(destination: str | None = None,
+                      passenger_lat: float | None = None,
+                      passenger_lng: float | None = None,
+                      radius_m: int = 500) -> list[dict]:
     """Community board: list currently open driver offers."""
     args: tuple[str, ...] = ()
     where = "WHERE o.status = 'open' AND o.available_seats > 0"
@@ -229,6 +243,7 @@ def list_open_drivers(destination: str | None = None) -> list[dict]:
         rows = conn.execute(
             f"""
             SELECT o.id, o.destination_display, o.available_seats, o.created_at,
+                   o.origin_lat, o.origin_lng,
                    u.id AS driver_user_id, u.name AS driver_name, u.email AS driver_email
             FROM driver_offers o
             JOIN users u ON u.id = o.user_id
@@ -237,8 +252,11 @@ def list_open_drivers(destination: str | None = None) -> list[dict]:
             """,
             args,
         ).fetchall()
-    return [dict(r) for r in rows]
-
+    return _apply_radius_filter(
+        [dict(r) for r in rows],
+        passenger_lat, passenger_lng, radius_m,
+        lat_key='origin_lat', lng_key='origin_lng'
+    )
 
 def list_open_passenger_requests(destination: str | None = None) -> list[dict]:
     """Community board: list currently open passenger requests."""
@@ -340,17 +358,22 @@ def book_passenger_request(request_id: int, driver_user_id: int) -> dict:
         )
         return {"booking_id": int(cur.lastrowid), "request_id": request_id}
 
-
-def list_community_drivers(destination: str | None = None) -> list[dict]:
+""" 'Entirely' done by claude """
+def list_community_drivers(destination: str | None = None,
+                           passenger_lat: float | None = None,
+                           passenger_lng: float | None = None,
+                           radius_m: int = 500) -> list[dict]:
     args: tuple[str, ...] = ()
     where = "WHERE o.status IN ('open', 'full')"
     if destination and destination.strip():
         where += " AND o.destination_norm = ?"
         args = (normalize_destination(destination),)
+
     with get_connection() as conn:
         rows = conn.execute(
             f"""
             SELECT o.id, o.destination_display, o.available_seats, o.status, o.created_at,
+                   o.origin_lat, o.origin_lng,
                    u.id AS driver_user_id, u.name AS driver_name, u.email AS driver_email,
                    b.id AS booking_id, b.created_at AS booked_at, b.booked_by_user_id,
                    bu.name AS booked_by_name, bu.email AS booked_by_email
@@ -363,7 +386,11 @@ def list_community_drivers(destination: str | None = None) -> list[dict]:
             """,
             args,
         ).fetchall()
-    return [dict(r) for r in rows]
+    return _apply_radius_filter(
+        [dict(r) for r in rows],
+        passenger_lat, passenger_lng, radius_m,
+        lat_key='origin_lat', lng_key='origin_lng'
+    )
 
 
 def list_community_passengers(destination: str | None = None) -> list[dict]:
@@ -417,3 +444,26 @@ def get_database_schema() -> dict:
                 for c in columns
             ]
     return {"tables": schema}
+
+"""Haversine function to find the distance between 2 points on earth"""
+def haversine_meters(lat1, lng1, lat2, lng2) -> float:
+    R = 6_371_000
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlng = math.radians(lng2 - lng1)
+    a = (math.sin(dphi/2)**2 +
+         math.cos(phi1) * math.cos(phi2) * math.sin(dlng/2)**2)
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+def _apply_radius_filter(rows, passenger_lat, passenger_lng,
+                         radius_m, lat_key, lng_key) -> list:
+    if passenger_lat is None or passenger_lng is None:
+        return rows
+    return [
+        r for r in rows
+        if r.get(lat_key) and haversine_meters(
+            passenger_lat, passenger_lng,
+            r[lat_key], r[lng_key]
+        ) <= radius_m
+    ]
+

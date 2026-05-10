@@ -130,18 +130,35 @@ class Ride4FreeApi {
   Future<void> createPassengerRequest({
     required String destination,
     int passengerCount = 1,
+    double? originLat,
+    double? originLng,
   }) async {
     final r = await http.post(
       _u('/passenger/requests'),
       headers: _headers,
-      body: jsonEncode({'destination': destination, 'passenger_count': passengerCount}),
+      body: jsonEncode({
+        'destination': destination,
+        'passenger_count': passengerCount,
+        if (originLat != null) 'origin_lat': originLat,
+        if (originLng != null) 'origin_lng': originLng,
+      }),
     );
     await _jsonOrThrow(r);
   }
 
-  Future<List<Map<String, dynamic>>> listDriversForDestination(String destination) async {
+  Future<List<Map<String, dynamic>>> listDriversForDestination(
+      String destination,{
+        double? lat,
+        double? lng,
+        int radiusM = 500,
+  }) async {
     final r = await http.get(
-      _u('/passenger/drivers', {'destination': destination}),
+      _u('/passenger/drivers', {
+        'destination': destination,
+        if (lat != null) 'lat': '$lat',
+        if (lng != null) 'lng': '$lng',
+        'radius_m': '$radiusM',
+      }),
       headers: _headers,
     );
     final m = await _jsonOrThrow(r);
@@ -149,11 +166,18 @@ class Ride4FreeApi {
     return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
-  Future<void> createDriverOffer({required String destination, required int availableSeats}) async {
+  Future<void> createDriverOffer({required String destination, required int availableSeats, double? originLat, double? originLng, double? destinationLat, double? destinationLng}) async {
     final r = await http.post(
       _u('/driver/offers'),
       headers: _headers,
-      body: jsonEncode({'destination': destination, 'available_seats': availableSeats}),
+      body: jsonEncode({
+        'destination': destination,
+        'available_seats': availableSeats,
+        if (originLat != null) 'origin_lat': originLat,
+        if (originLng != null) 'origin_lng': originLng,
+        if (destinationLat != null) 'destination_lat': destinationLat,
+        if (destinationLng != null) 'destination_lng': destinationLng,
+      }),
     );
     await _jsonOrThrow(r);
   }
