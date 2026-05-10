@@ -385,6 +385,20 @@ class TestRideBookings:
         with pytest.raises(ValueError, match="Passenger request not found"):
             db.book_passenger_request(99999, driver)
 
+    def test_book_passenger_request_already_booked(self, temp_db):
+        db, _ = temp_db
+        db.init_db()
+        
+        passenger = db.insert_user("passenger@example.com", "password123", "Passenger")
+        driver1 = db.insert_user("driver1@example.com", "password123", "Driver1")
+        driver2 = db.insert_user("driver2@example.com", "password123", "Driver2")
+        
+        request_id = db.insert_passenger_request(passenger, "FEUP", 2)
+        db.book_passenger_request(request_id, driver1)
+        
+        with pytest.raises(ValueError, match="Passenger request already booked"):
+            db.book_passenger_request(request_id, driver2)
+
 
 class TestCommunityListing:
     """Tests for community board listing functions."""
