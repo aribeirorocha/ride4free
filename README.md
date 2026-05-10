@@ -119,10 +119,11 @@ Our requirements are documented as **User Stories** in our [GitHub Project T4-Sc
 
 | ID | Title | Priority (MoSCoW) | Effort (Fibonacci) | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| #30 | [US1: Publish Solidarity Ride](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/30) | **Must-have** | 21 | In-Progress |
-| #31 | [US2: Book Ride Seat](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/32) | **Must-have** | 13 | In-Progress |
+| #30 | [US1: Publish Solidarity Ride](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/30) | **Must-have** | 21 | Accepted|
+| #31 | [US2: Book Ride Seat](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/32) | **Must-have** | 13 | Accepted |
 | #33 | [US3: Search with Walking Tolerance](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/33) | **Should-have** | 8 | In-Progress |
 | #32 | [US4: Rate Passenger Conduct](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/34) | **Could-have** | 13 | In-Progress |
+| #81 | [US5: Uni Login](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/81) | **Could-have** | 8 | In-Progress |
 
 ---
 
@@ -229,10 +230,10 @@ Our project management workflow is structured around the following key areas:
 ---
 
 ### Sprint 0
-The detailed notes from our Sprint 0 Planning and Retrospective (including what we did well, what to do differently, and puzzles) can be found in our dedicated [SprintPlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/SprintPlanningRetrospectives.md).
+The detailed notes from our Sprint 0 Planning and Retrospective (including what we did well, what to do differently, and puzzles) can be found in our dedicated [Sprint0PlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/SprintPlanningRetrospectives.md).
 
 ### Sprint 1
-The detailed notes from our Sprint 1 Review, Planning, and Retrospective (including the Agile Patterns applied, achievements, team structure, and future improvements) can be found in our dedicated [SprintPlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/Sprint1PlanningRetrospectives.md).
+The detailed notes from our Sprint 1 Review, Planning, and Retrospective (including the Agile Patterns applied, achievements, team structure, and future improvements) can be found in our dedicated [Sprint1PlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/Sprint1PlanningRetrospectives.md).
 
 ### Sprint 2
 
@@ -242,40 +243,3 @@ The detailed notes from our Sprint 1 Review, Planning, and Retrospective (includ
 
 ### Final Release
 
-Ride4Free Development Report
-
-Welcome to the documentation of Ride4Free!
-
-This Software Development Report, tailored for LEIC-ES-2025-26, provides comprehensive details about Ride4Free, starting from an high-level vision and going into low-level implementation decisions.
-
-It is organised by the following activities:
-
-    Business modeling
-        Product Vision
-        Features and Assumptions
-    Requirements
-        User stories
-        Domain model
-        User interfaces
-    Architecture and Design
-        Logical architecture
-        Physical architecture
-        Functional prototype
-    Project management
-        Sprint 0
-        Sprint 1
-        Sprint 2
-        Sprint 3
-        Final Release
-
-Contributions are expected to be made exclusively by the initial team, but we may open them to the community, after the course, in all areas and topics: requirements, technologies, development, experimentation, testing, etc.
-
-Please contact us!
-
-Thank you!!
-
-    team member Thomas Tuerlinckx and up202403993@up.pt
-    team member André Rocha and up202407636@up.pt
-    team member name and email
-    team member name and email
-    team member Tomás Gonçalves and up202208997@up.pT
