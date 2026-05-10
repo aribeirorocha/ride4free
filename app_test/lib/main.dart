@@ -8,6 +8,7 @@ import 'profile_rating_button.dart';
 import 'ride4free_api.dart';
 import 'session/university_session_store.dart';
 import 'sigarra/sigarra_auth_service.dart';
+import 'location_service.dart';
 
 void main() => runApp(const MyApp());
 
