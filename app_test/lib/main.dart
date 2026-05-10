@@ -537,10 +537,6 @@ class _OfferRidePageState extends State<OfferRidePage> {
   }
 
   Future<void> _publish() async {
-    if (Ride4FreeAuth.token == null) {
-      _showMessage(context, 'Inicie sessão no perfil.');
-      return;
-    }
     setState(() => _busy = true);
     try {
       await _api.createDriverOffer(
