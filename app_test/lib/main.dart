@@ -6,7 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'profile_rating_button.dart';
 import 'ride4free_api.dart';
-import 'location_service.dart';
+import 'session/university_session_store.dart';
+import 'sigarra/sigarra_auth_service.dart';
 
 void main() => runApp(const MyApp());
 
@@ -36,13 +37,230 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: kBackground,
         colorScheme: const ColorScheme.light(primary: kRed),
       ),
-      home: const HomeShell(),
+      home: const AppBootstrapper(),
+    );
+  }
+}
+
+class AppBootstrapper extends StatefulWidget {
+  const AppBootstrapper({super.key});
+
+  @override
+  State<AppBootstrapper> createState() => _AppBootstrapperState();
+}
+
+class _AppBootstrapperState extends State<AppBootstrapper> {
+  final _sessionStore = UniversitySessionStore();
+  final _api = Ride4FreeApi();
+  bool _loading = true;
+  bool _authenticated = false;
+  UniversityIdentity? _identity;
+
+  @override
+  void initState() {
+    super.initState();
+    _restoreSession();
+  }
+
+  Future<void> _restoreSession() async {
+    final isLoggedIn = await _sessionStore.isLoggedIn();
+    final identity = await _sessionStore.identity();
+    if (isLoggedIn && identity != null) {
+      await _ensureRide4FreeSession(identity);
+    }
+    if (!mounted) return;
+    setState(() {
+      _authenticated = isLoggedIn && identity != null;
+      _identity = identity;
+      _loading = false;
+    });
+  }
+
+  Future<void> _onLoginSuccess(UniversityIdentity identity) async {
+    await _sessionStore.markLoggedIn(identity);
+    await _ensureRide4FreeSession(identity);
+    if (!mounted) return;
+    setState(() {
+      _authenticated = true;
+      _identity = identity;
+    });
+  }
+
+  Future<void> _onUniversityLogout() async {
+    await _sessionStore.clear();
+    Ride4FreeAuth.token = null;
+    if (!mounted) return;
+    setState(() {
+      _authenticated = false;
+      _identity = null;
+    });
+  }
+
+  Future<void> _ensureRide4FreeSession(UniversityIdentity identity) async {
+    final email = '${identity.username}@up.pt';
+    final password = 'up_${identity.username}_session';
+    try {
+      final login = await _api.login(email: email, password: password);
+      Ride4FreeAuth.token = login.token;
+      return;
+    } catch (_) {}
+
+    try {
+      final register = await _api.register(
+        email: email,
+        password: password,
+        name: identity.displayName,
+      );
+      Ride4FreeAuth.token = register.token;
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (!_authenticated) {
+      return UniversityLoginPage(onLoginSuccess: _onLoginSuccess);
+    }
+
+    return HomeShell(
+      onUniversityLogout: _onUniversityLogout,
+      identity: _identity!,
+    );
+  }
+}
+
+class UniversityLoginPage extends StatefulWidget {
+  const UniversityLoginPage({super.key, required this.onLoginSuccess});
+
+  final Future<void> Function(UniversityIdentity identity) onLoginSuccess;
+
+  @override
+  State<UniversityLoginPage> createState() => _UniversityLoginPageState();
+}
+
+class _UniversityLoginPageState extends State<UniversityLoginPage> {
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _auth = SigarraAuthService();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text;
+
+    if (username.isEmpty || password.isEmpty) {
+      setState(() => _error = 'Preencha as credenciais universitarias.');
+      return;
+    }
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+
+    try {
+      final identity = await _auth.login(username: username, password: password);
+      if (!mounted) return;
+      if (identity == null) {
+        setState(() => _error = 'Credenciais invalidas. Tente novamente.');
+        return;
+      }
+      await widget.onLoginSuccess(identity);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _error = 'Nao foi possivel autenticar no Sigarra.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Autenticacao Universitaria',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'No primeiro acesso, entre com as suas credenciais da universidade.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: kMuted),
+                  ),
+                  const SizedBox(height: 18),
+                  TextField(
+                    controller: _usernameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Numero mecanografico / utilizador',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Password',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      _error!,
+                      style: const TextStyle(color: kRed, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+                  FilledButton(
+                    onPressed: _busy ? null : _login,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: kRed,
+                      minimumSize: const Size.fromHeight(50),
+                    ),
+                    child: Text(_busy ? 'A autenticar...' : 'Entrar'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
 
 class HomeShell extends StatefulWidget {
-  const HomeShell({super.key});
+  const HomeShell({
+    super.key,
+    required this.onUniversityLogout,
+    required this.identity,
+  });
+
+  final Future<void> Function() onUniversityLogout;
+  final UniversityIdentity identity;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -57,11 +275,14 @@ class _HomeShellState extends State<HomeShell> {
       body: SafeArea(
         child: IndexedStack(
           index: _index,
-          children: const [
-            CommunityBoardPage(),
-            SearchRidePage(),
-            OfferRidePage(),
-            ProfilePage(),
+          children: [
+            const CommunityBoardPage(),
+            const SearchRidePage(),
+            const OfferRidePage(),
+            ProfilePage(
+              onUniversityLogout: widget.onUniversityLogout,
+              identity: widget.identity,
+            ),
           ],
         ),
       ),
@@ -764,68 +985,45 @@ class _SearchRidePageState extends State<SearchRidePage> {
 }
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  const ProfilePage({
+    super.key,
+    required this.onUniversityLogout,
+    required this.identity,
+  });
+
+  final Future<void> Function() onUniversityLogout;
+  final UniversityIdentity identity;
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  final _email = TextEditingController();
-  final _password = TextEditingController();
-  final _name = TextEditingController();
   final _api = Ride4FreeApi();
   bool _busy = false;
-  Ride4FreeUser? _user;
-
-  @override
-  void dispose() {
-    _email.dispose();
-    _password.dispose();
-    _name.dispose();
-    super.dispose();
-  }
-
-  Future<void> _register() async {
-    setState(() => _busy = true);
-    try {
-      final r = await _api.register(email: _email.text, password: _password.text, name: _name.text.isEmpty ? 'Utilizador' : _name.text);
-      Ride4FreeAuth.token = r.token;
-      setState(() => _user = r.user);
-      if (mounted) _showMessage(context, 'Conta criada e sessão iniciada.');
-    } catch (e) {
-      if (mounted) _showMessage(context, 'Erro: $e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _login() async {
-    setState(() => _busy = true);
-    try {
-      final r = await _api.login(email: _email.text, password: _password.text);
-      Ride4FreeAuth.token = r.token;
-      setState(() => _user = r.user);
-      if (mounted) _showMessage(context, 'Sessão iniciada.');
-    } catch (e) {
-      if (mounted) _showMessage(context, 'Erro: $e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
 
   Future<void> _logout() async {
     setState(() => _busy = true);
     try {
       await _api.logout();
-      setState(() => _user = null);
       if (mounted) _showMessage(context, 'Sessão terminada.');
     } catch (e) {
       Ride4FreeAuth.token = null;
-      setState(() => _user = null);
       if (mounted) _showMessage(context, 'Sessão terminada (local).');
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _logoutUniversity() async {
+    setState(() => _busy = true);
+    try {
+      await _logout();
+    } finally {
+      await widget.onUniversityLogout();
+      if (mounted) {
+        _showMessage(context, 'Sessao universitaria terminada.');
+      }
     }
   }
 
@@ -840,50 +1038,33 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               Text('API: ${Ride4FreeConfig.baseUrl}', style: const TextStyle(fontSize: 12, color: kMuted)),
               const SizedBox(height: 8),
-              if (_user != null)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(_user!.name, style: const TextStyle(fontWeight: FontWeight.w800)),
-                  subtitle: Text(_user!.email, style: const TextStyle(color: kMuted)),
-                  trailing: TextButton(onPressed: _busy ? null : _logout, child: const Text('Sair')),
-                )
-              else ...[
-                TextField(
-                  controller: _email,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  radius: 24,
+                  backgroundImage: widget.identity.photoUrl == null
+                      ? null
+                      : NetworkImage(widget.identity.photoUrl!),
+                  child: widget.identity.photoUrl == null
+                      ? const Icon(Icons.person)
+                      : null,
                 ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _password,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password (mín. 6)', border: OutlineInputBorder()),
+                title: Text(
+                  widget.identity.displayName,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _name,
-                  decoration: const InputDecoration(labelText: 'Nome (registo)', border: OutlineInputBorder()),
+                subtitle: Text(
+                  'UP: ${widget.identity.username}',
+                  style: const TextStyle(color: kMuted),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: _busy ? null : _login,
-                        style: FilledButton.styleFrom(backgroundColor: kRed),
-                        child: Text(_busy ? '…' : 'Entrar'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _busy ? null : _register,
-                        child: Text(_busy ? '…' : 'Registar'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : _logoutUniversity,
+                icon: const Icon(Icons.logout),
+                label: const Text('Terminar sessão universitária'),
+              ),
+              const SizedBox(height: 10),
               const SizedBox(height: 16),
               const Divider(),
               const Row(
