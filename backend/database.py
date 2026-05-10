@@ -296,8 +296,6 @@ def book_driver_offer(offer_id: int, passenger_user_id: int) -> dict:
             raise ValueError("Driver offer not found")
         if offer["driver_user_id"] == passenger_user_id:
             raise ValueError("You cannot book your own ride")
-        if offer["status"] != "open" or int(offer["available_seats"]) <= 0:
-            raise ValueError("Driver offer is not open")
 
         existing = conn.execute(
             "SELECT id FROM ride_bookings WHERE driver_offer_id = ?",
@@ -305,6 +303,9 @@ def book_driver_offer(offer_id: int, passenger_user_id: int) -> dict:
         ).fetchone()
         if existing:
             raise ValueError("Driver offer already booked")
+
+        if offer['status'] != 'open' or int(offer['available_seats']) <= 0:
+            raise ValueError("Driver offer is not open")
 
         cur = conn.execute(
             """
@@ -335,8 +336,6 @@ def book_passenger_request(request_id: int, driver_user_id: int) -> dict:
             raise ValueError("Passenger request not found")
         if req["passenger_user_id"] == driver_user_id:
             raise ValueError("You cannot book your own passenger request")
-        if req["status"] != "open":
-            raise ValueError("Passenger request is not open")
 
         existing = conn.execute(
             "SELECT id FROM ride_bookings WHERE passenger_request_id = ?",
@@ -344,6 +343,9 @@ def book_passenger_request(request_id: int, driver_user_id: int) -> dict:
         ).fetchone()
         if existing:
             raise ValueError("Passenger request already booked")
+
+        if req['status'] != 'open':
+            raise ValueError("Passenger request is not open")
 
         cur = conn.execute(
             """

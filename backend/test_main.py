@@ -7,32 +7,33 @@ import tempfile
 import pytest
 from fastapi.testclient import TestClient
 
-# Setup temp DB before importing main
-@pytest.fixture(scope="session", autouse=True)
-def setup_test_db():
-    """Setup temporary database for all tests."""
+@pytest.fixture
+def client():
+    """Provide an isolated TestClient and temporary database for each test."""
     fd, path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     os.environ["RIDE4FREE_DB_PATH"] = path
-    yield path
-    if os.path.exists(path):
-        os.unlink(path)
 
-
-@pytest.fixture
-def client():
-    """Provide a TestClient for each test."""
-    from main import app
     import database as db
+    import main
     from importlib import reload
-    
-    # Reload to pick up new DB path
-    reload(db)
-    
-    # Initialize DB for this test
+
+    # Reload modules to ensure the temporary DB path is used by the app.
+    db = reload(db)
+    main = reload(main)
+    main.db = db
+
     db.init_db()
-    
-    return TestClient(app)
+    client = TestClient(main.app)
+
+    try:
+        yield client
+    finally:
+        client.close()
+        if os.path.exists(path):
+            os.unlink(path)
+        if "RIDE4FREE_DB_PATH" in os.environ:
+            del os.environ["RIDE4FREE_DB_PATH"]
 
 
 @pytest.fixture
