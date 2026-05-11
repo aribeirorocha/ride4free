@@ -30,7 +30,7 @@ Deixar janela aberta
 
 ## 2. App Flutter
 
-Abrir uma nova janela de terminal
+Abrir uma nova janela de terminal.
 
 ```bash
 cd app_test
