@@ -15,7 +15,6 @@ This release marks the transition of Ride4Free from a static prototype to a full
 * **[US2 & US3] Advanced Spatial Ride Searching:** Integrated an interactive map interface (`SearchRidePage`) allowing users to find rides based on a configurable distance tolerance slider (100m to 2000m). Filtering is backed by the mathematical Haversine formula on the SQLite backend to accurately calculate real-world distances between the passenger and available drivers.
 * **Reverse Geocoding (Nominatim):** Integrated OpenStreetMap's Nominatim API to translate raw GPS coordinates into human-readable street names for passenger pickups.
 * **Real-Time Community Board:** Added a community dashboard with separate tabs for Drivers and Passengers, featuring an automated polling mechanism that refreshes data every 3 seconds to keep ride statuses strictly up to date.
-* **Driver Rating UI:** Implemented a new interactive `ProfileRatingButton` and BottomSheet component, enabling users to rate their recent drivers using a 1-5 star system.
 
 ### Changed
 * **Backend API Client Integration:** Replaced static UI mocks with the `Ride4FreeApi` HTTP client. It natively handles `Bearer` token authorization and dynamically routes traffic to `10.0.2.2` (Android Emulator) or `localhost` (Web/iOS) based on the running platform.
