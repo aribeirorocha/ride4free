@@ -166,13 +166,24 @@ class Ride4FreeApi {
     return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
-  Future<void> createDriverOffer({required String destination, required int availableSeats, double? originLat, double? originLng, double? destinationLat, double? destinationLng}) async {
+    Future<void> createDriverOffer({
+    required String destination, 
+    required int availableSeats,
+    String? departureTime, 
+    String? description, 
+    double? originLat, 
+    double? originLng, 
+    double? destinationLat, 
+    double? destinationLng
+  }) async {
     final r = await http.post(
       _u('/driver/offers'),
       headers: _headers,
       body: jsonEncode({
         'destination': destination,
         'available_seats': availableSeats,
+        'description': description,
+        'departure_time': departureTime,
         if (originLat != null) 'origin_lat': originLat,
         if (originLng != null) 'origin_lng': originLng,
         if (destinationLat != null) 'destination_lat': destinationLat,

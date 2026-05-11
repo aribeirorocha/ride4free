@@ -1,5 +1,5 @@
 import 'dart:convert';
-
+import 'dart:async'; 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
@@ -312,12 +312,31 @@ class CommunityBoardPage extends StatefulWidget {
 
 class _CommunityBoardPageState extends State<CommunityBoardPage> {
   final _api = Ride4FreeApi();
+  Timer? _refreshTimer;
   int _section = 0; // 0 = drivers, 1 = passengers, 2 = database
   bool _loading = false;
   List<Map<String, dynamic>> _drivers = [];
   List<Map<String, dynamic>> _passengers = [];
   Map<String, dynamic>? _schema;
+  @override
+  void initState() {
+    super.initState();
+    
+    // 1. Carrega os dados mal a página abre
+    _loadSection();
 
+    // 2. Inicia o Timer para atualizar a cada35 segundos
+    _refreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (mounted && !_loading) { 
+        _loadSection(); 
+      }
+    });
+  }
+  @override
+  void dispose() {
+    _refreshTimer?.cancel(); // Desliga o Timer
+    super.dispose();
+  }
   Future<void> _bookDriver(int offerId) async {
     if (Ride4FreeAuth.token == null) {
       _showMessage(context, 'Inicie sessão no perfil.');
@@ -387,7 +406,7 @@ class _CommunityBoardPageState extends State<CommunityBoardPage> {
                 segments: const [
                   ButtonSegment(value: 0, icon: Icon(Icons.drive_eta), label: Text('Condutores')),
                   ButtonSegment(value: 1, icon: Icon(Icons.people), label: Text('Passageiros')),
-                  ButtonSegment(value: 2, icon: Icon(Icons.storage), label: Text('BD')),
+                  //ButtonSegment(value: 2, icon: Icon(Icons.storage), label: Text('BD')),
                 ],
                 selected: {_section},
                 onSelectionChanged: (selection) {
@@ -396,11 +415,6 @@ class _CommunityBoardPageState extends State<CommunityBoardPage> {
                 },
               ),
               const SizedBox(height: 10),
-              FilledButton(
-                onPressed: _loading ? null : _loadSection,
-                style: FilledButton.styleFrom(backgroundColor: kRed),
-                child: Text(_loading ? 'A carregar…' : 'Atualizar secao'),
-              ),
             ],
           ),
         ),
@@ -414,7 +428,7 @@ class _CommunityBoardPageState extends State<CommunityBoardPage> {
     if (_section == 0) {
       if (_drivers.isEmpty) {
         return const Center(
-          child: Text('Sem condutores disponiveis. Carregue em "Atualizar secao".', style: TextStyle(color: kMuted)),
+          child: Text('À procura de condutores...', style: TextStyle(color: kLighter)),
         );
       }
       return ListView.separated(
@@ -425,15 +439,12 @@ class _CommunityBoardPageState extends State<CommunityBoardPage> {
           final d = _drivers[i];
           return _ProfileCard(
             title: d['driver_name'] as String? ?? 'Condutor',
-            subtitle: d['driver_email'] as String? ?? '',
-            description: d['profile_description'] as String? ?? 'Sem descricao.',
-            statusLabel: (d['booked'] as bool? ?? false)
-                ? 'Reservado por ${d['booked_by_name'] ?? 'utilizador'}'
-                : 'Disponivel',
+            // Aqui vais ler o campo 'description' que a API agora retorna
+            subtitle: "Partida: ${d['departure_time'] ?? 'Horário a definir'}",
+            description: "Lugares: ${d['available_seats']}",
+            statusLabel: (d['booked'] as bool? ?? false) ? 'Reservado' : 'Disponível',
             actionText: (d['booked'] as bool? ?? false) ? null : 'Reservar boleia',
-            onAction: (d['booked'] as bool? ?? false)
-                ? null
-                : () => _bookDriver((d['id'] as num).toInt()),
+            onAction: () => _bookDriver((d['id'] as num).toInt()),
           );
         },
       );
@@ -449,19 +460,19 @@ class _CommunityBoardPageState extends State<CommunityBoardPage> {
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
         itemCount: _passengers.length,
         separatorBuilder: (_, _) => const SizedBox(height: 10),
+        // Dentro do ListView.separated para Condutores (_section == 0)
         itemBuilder: (context, i) {
-          final p = _passengers[i];
+          final d = _drivers[i];
           return _ProfileCard(
-            title: p['passenger_name'] as String? ?? 'Passageiro',
-            subtitle: p['passenger_email'] as String? ?? '',
-            description: p['profile_description'] as String? ?? 'Sem descricao.',
-            statusLabel: (p['booked'] as bool? ?? false)
-                ? 'Reservado por ${p['booked_by_name'] ?? 'utilizador'}'
-                : 'Disponivel',
-            actionText: (p['booked'] as bool? ?? false) ? null : 'Reservar passageiro',
-            onAction: (p['booked'] as bool? ?? false)
-                ? null
-                : () => _bookPassenger((p['id'] as num).toInt()),
+            title: d['driver_name'] as String? ?? 'Condutor',
+            // Se a tua API devolver um campo 'departure_time', usa-o aqui:
+            subtitle: "Hora de Partida: ${d['departure_time'] ?? '08:15'}", 
+            description: d['profile_description'] as String? ?? 'Sem descrição.',
+            statusLabel: (d['booked'] as bool? ?? false)
+                ? 'Reservado'
+                : 'Disponível',
+            actionText: (d['booked'] as bool? ?? false) ? null : 'Reservar boleia',
+            onAction: () => _bookDriver((d['id'] as num).toInt()),
           );
         },
       );
@@ -512,13 +523,19 @@ class OfferRidePage extends StatefulWidget {
 }
 
 class _OfferRidePageState extends State<OfferRidePage> {
+  final TextEditingController _timeController = TextEditingController(text: '08:15');
+  String? _timeError; // Para guardar a mensagem de erro
+  bool _isValidTime(String input) {
+  final RegExp timeRegExp = RegExp(r'^([01]?[0-9]|2[0-3]):[0-5][0-9]$');
+  return timeRegExp.hasMatch(input);
+}
   int _seats = 3;
   final _destController = TextEditingController(text: 'FEUP (Polo II)');
   final _api = Ride4FreeApi();
   bool _busy = false;
   LatLng? _originLatLng;
   LatLng? _destinationLatLng;
-
+ 
 
   @override
   void initState() {
@@ -538,22 +555,37 @@ class _OfferRidePageState extends State<OfferRidePage> {
   }
 
   Future<void> _publish() async {
-    setState(() => _busy = true);
-    try {
-      await _api.createDriverOffer(
-        destination: _destController.text,
-        availableSeats: _seats,
-        originLat: _originLatLng?.latitude,
-        originLng: _originLatLng?.longitude,
-        destinationLat: _destinationLatLng?.latitude,
-        destinationLng: _destinationLatLng?.longitude,
-      );
-      if (mounted) _showMessage(context, 'Viagem publicada (API local).');
-    } catch (e) {
-      if (mounted) _showMessage(context, 'Erro: $e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+  // 1. Validar se a hora escrita no TextField está correta
+  if (!_isValidTime(_timeController.text)) {
+    _showMessage(context, 'Por favor, insira uma hora válida (HH:mm).');
+    return;
+  }
+
+  // 2. Validar se os pontos no mapa foram selecionados (segurança extra)
+  if (_originLatLng == null || _destinationLatLng == null) {
+    _showMessage(context, 'Selecione o ponto de partida e de chegada no mapa.');
+    return;
+  }
+
+  setState(() => _busy = true);
+  try {
+    await _api.createDriverOffer(
+      destination: "Ponto selecionado no mapa", // Texto fixo já que usas o mapa
+      availableSeats: _seats,
+      departureTime: _timeController.text,
+      description: "Boleia universitária rápida",
+      originLat: _originLatLng?.latitude,
+      originLng: _originLatLng?.longitude,
+      destinationLat: _destinationLatLng?.latitude,
+      destinationLng: _destinationLatLng?.longitude,
+    );
+    
+    if (mounted) _showMessage(context, 'Viagem publicada!');
+  } catch (e) {
+    if (mounted) _showMessage(context, 'Erro: $e');
+  } finally {
+    if (mounted) setState(() => _busy = false);
+  }
   }
 
   Future<void> _seePassengers() async {
@@ -641,26 +673,39 @@ class _OfferRidePageState extends State<OfferRidePage> {
                     onTap: (latlng) => setState(() => _destinationLatLng = latlng),
                   ),
                 ),
-              ),
-              const SizedBox(height: 14),
-              _label('DESTINO'),
-              TextField(
-                controller: _destController,
-                decoration: _fieldDecoration(),
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
+              ), 
               const SizedBox(height: 14),
               Row(
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _label('HORA'),
-                        const _InputLike(text: '08:15'),
-                      ],
+                 Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _label('HORA'),
+                          TextField(
+                            controller: _timeController,
+                            keyboardType: TextInputType.datetime,
+                            decoration: InputDecoration(
+                              hintText: '08:30',
+                              errorText: _timeError, // Mostra o erro aqui em baixo a vermelho
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            ),
+                            onChanged: (value) {
+                              setState(() {
+                                if (value.isEmpty) {
+                                  _timeError = 'Obrigatório';
+                                } else if (!_isValidTime(value)) {
+                                  _timeError = 'Formato inválido';
+                                } else {
+                                  _timeError = null; // Tudo OK!
+                                }
+                              });
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -1029,7 +1074,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const _TopTitleBar(title: 'Avaliar Passageiro'),
+        const _TopTitleBar(title: 'Perfil'),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
@@ -1062,6 +1107,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 icon: const Icon(Icons.logout),
                 label: const Text('Terminar sessão universitária'),
               ),
+              /* 
               const SizedBox(height: 10),
               const SizedBox(height: 16),
               const Divider(),
@@ -1123,6 +1169,7 @@ class _ProfilePageState extends State<ProfilePage> {
               const Text('RATE PROFILES', style: TextStyle(color: kRed, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
               const SizedBox(height: 10),
               const ProfileRatingButton(),
+              */
             ],
           ),
         ),
@@ -1362,13 +1409,13 @@ class _ProfileCard extends StatelessWidget {
         children: [
           Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
           const SizedBox(height: 2),
-          Text(subtitle, style: const TextStyle(color: kMuted, fontWeight: FontWeight.w600)),
+          Text(subtitle, style: const TextStyle(color: kDarkText, fontWeight: FontWeight.w600)),
           if (statusLabel != null) ...[
             const SizedBox(height: 6),
             Text(
               statusLabel!,
               style: TextStyle(
-                color: statusLabel!.startsWith('Disponivel') ? kSuccess : kRed,
+                color: statusLabel!.startsWith('Disponivel') ? kSuccess : kSuccess,
                 fontWeight: FontWeight.w800,
               ),
             ),
