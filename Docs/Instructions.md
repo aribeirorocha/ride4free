@@ -17,7 +17,7 @@ source venv/bin/activate        # Windows: venv\Scripts\Activate.ps1
 
 pip install -r requirements.txt
 
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:app --reload
 ```
 
 A API fica disponível em **http://localhost:8000**.  
