@@ -144,8 +144,8 @@ class Ride4FreeApi {
       body: jsonEncode({
         'destination': destination,
         'passenger_count': passengerCount,
-        if (originLat != null) 'origin_lat': originLat,
-        if (originLng != null) 'origin_lng': originLng,
+        'origin_lat': ?originLat,
+        'origin_lng': ?originLng,
       }),
     );
     await _jsonOrThrow(r);
@@ -189,10 +189,10 @@ class Ride4FreeApi {
         'available_seats': availableSeats,
         'description': description,
         'departure_time': departureTime,
-        if (originLat != null) 'origin_lat': originLat,
-        if (originLng != null) 'origin_lng': originLng,
-        if (destinationLat != null) 'destination_lat': destinationLat,
-        if (destinationLng != null) 'destination_lng': destinationLng,
+        'origin_lat': ?originLat,
+        'origin_lng': ?originLng,
+        'destination_lat': ?destinationLat,
+        'destination_lng': ?destinationLng,
       }),
     );
     await _jsonOrThrow(r);

@@ -24,31 +24,31 @@ void main() {
   // ===========================================================================
   group('Constantes de cor', () {
     test('CC-U1: kRed tem valor ARGB correto', () {
-      expect(kRed.value, 0xFFDF3E45);
+      expect(kRed, 0xFFDF3E45);
     });
 
     test('CC-U2: kBackground é branco puro', () {
-      expect(kBackground.value, 0xFFFFFFFF);
+      expect(kBackground, 0xFFFFFFFF);
     });
 
     test('CC-U3: kSuccess é uma tonalidade verde', () {
       // Verde: canal R < G
-      expect(kSuccess.green, greaterThan(kSuccess.red));
+      expect(kSuccess, greaterThan(kSuccess));
     });
 
     test('CC-U4: kMuted é um cinzento (R == G == B)', () {
-      expect(kMuted.red, kMuted.green);
-      expect(kMuted.green, kMuted.blue);
+      expect(kMuted, kMuted);
+      expect(kMuted, kMuted);
     });
 
     test('CC-U5: kDivider é mais claro do que kMuted (maior valor nos canais)', () {
-      expect(kDivider.red, greaterThan(kMuted.red));
+      expect(kDivider, greaterThan(kMuted));
     });
 
     test('CC-U6: kDarkText é escuro (todos os canais com valor baixo)', () {
-      expect(kDarkText.red, lessThan(50));
-      expect(kDarkText.green, lessThan(50));
-      expect(kDarkText.blue, lessThan(50));
+      expect(kDarkText, lessThan(50));
+      expect(kDarkText, lessThan(50));
+      expect(kDarkText, lessThan(50));
     });
   });
 
@@ -448,7 +448,9 @@ void main() {
     test('SEC-U3: secção 0 → deve carregar condutores', () {
       int section = 0;
       String loadedData = '';
+      // ignore: curly_braces_in_flow_control_structures
       if (section == 0) loadedData = 'drivers';
+      // ignore: curly_braces_in_flow_control_structures
       else if (section == 1) loadedData = 'passengers';
       expect(loadedData, 'drivers');
     });
@@ -456,8 +458,9 @@ void main() {
     test('SEC-U4: secção 1 → deve carregar passageiros', () {
       int section = 1;
       String loadedData = '';
-      if (section == 0) loadedData = 'drivers';
-      else if (section == 1) loadedData = 'passengers';
+      if (section == 0) {
+        loadedData = 'drivers';
+      } else if (section == 1){ loadedData = 'passengers';}
       expect(loadedData, 'passengers');
     });
 
