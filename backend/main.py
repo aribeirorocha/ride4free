@@ -86,6 +86,8 @@ class PassengerRequestBody(BaseModel):
 class DriverOfferBody(BaseModel):
     destination: str = Field(min_length=1, max_length=500)
     available_seats: int = Field(ge=0, le=20)
+    departure_time: str | None = None 
+    description: str | None = None
     origin_lat: float | None = None
     origin_lng: float | None = None
     destination_lat: float | None = None
@@ -184,6 +186,8 @@ def create_driver_offer(body: DriverOfferBody, user_id: int = Depends(require_us
         user_id,
         body.destination,
         body.available_seats,
+        departure_time=body.departure_time, 
+        description=body.description,      
         origin_lat=body.origin_lat,
         origin_lng=body.origin_lng,
         destination_lat=body.destination_lat,

@@ -107,6 +107,8 @@ CREATE TABLE IF NOT EXISTS driver_offers (
     destination_norm TEXT NOT NULL,
     destination_display TEXT NOT NULL,
     available_seats INTEGER NOT NULL CHECK (available_seats >= 0),
+    departure_time TEXT, 
+    description TEXT,    
     status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'full', 'cancelled')),
     created_at TEXT NOT NULL
 );
@@ -200,19 +202,25 @@ def insert_passenger_request(user_id: int, destination: str, passenger_count: in
         return int(cur.lastrowid)
 
 
-def insert_driver_offer(user_id: int, destination: str, available_seats: int, origin_lat=None, origin_lng=None, destination_lat=None, destination_lng=None) -> int:
+def insert_driver_offer(user_id: int, destination: str, available_seats: int, 
+                        departure_time: str = None, description: str = None, # Novos argumentos
+                        origin_lat=None, origin_lng=None, 
+                        destination_lat=None, destination_lng=None) -> int:
     norm = normalize_destination(destination)
     now = utc_now_iso()
     status = "open" if available_seats > 0 else "full"
     with get_connection() as conn:
         cur = conn.execute(
             """INSERT INTO driver_offers
-            (user_id, destination_norm, destination_display, available_seats, status, created_at, origin_lat, origin_lng, destination_lat, destination_lng)
-            VALUES (?,?,?,?,?,?,?,?,?,?)""",
-            (user_id, norm, destination.strip(), available_seats, status, now, origin_lat, origin_lng, destination_lat, destination_lng),
+            (user_id, destination_norm, destination_display, available_seats, 
+             departure_time, description, status, created_at, 
+             origin_lat, origin_lng, destination_lat, destination_lng)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (user_id, norm, destination.strip(), available_seats, 
+             departure_time, description, status, now, 
+             origin_lat, origin_lng, destination_lat, destination_lng),
         )
         return int(cur.lastrowid)
-
 
 def list_open_drivers_for_destination(destination: str,
                                       passenger_lat: float | None = None,
@@ -360,7 +368,6 @@ def book_passenger_request(request_id: int, driver_user_id: int) -> dict:
         )
         return {"booking_id": int(cur.lastrowid), "request_id": request_id}
 
-""" 'Entirely' done by claude """
 def list_community_drivers(destination: str | None = None,
                            passenger_lat: float | None = None,
                            passenger_lng: float | None = None,
@@ -376,6 +383,7 @@ def list_community_drivers(destination: str | None = None,
             f"""
             SELECT o.id, o.destination_display, o.available_seats, o.status, o.created_at,
                    o.origin_lat, o.origin_lng,
+                   o.departure_time, o.description, -- ADICIONA ESTAS DUAS COLUNAS AQUI
                    u.id AS driver_user_id, u.name AS driver_name, u.email AS driver_email,
                    b.id AS booking_id, b.created_at AS booked_at, b.booked_by_user_id,
                    bu.name AS booked_by_name, bu.email AS booked_by_email
@@ -393,7 +401,6 @@ def list_community_drivers(destination: str | None = None,
         passenger_lat, passenger_lng, radius_m,
         lat_key='origin_lat', lng_key='origin_lng'
     )
-
 
 def list_community_passengers(destination: str | None = None) -> list[dict]:
     args: tuple[str, ...] = ()
