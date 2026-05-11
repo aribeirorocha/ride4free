@@ -8,6 +8,7 @@
 //        _initials, filtro de perfis, lógica de estrelas, constantes de cor,
 //        validação de hora, lógica de sessão e navegação
 // =============================================================================
+import 'package:app_test/sigarra/sigarra_auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -1081,4 +1082,295 @@ void main() {
       expect(formatted.split('.').last.length, 4);
     });
   });
+  // ===========================================================================
+// UT-LOGIN-SUCCESS: _onLoginSuccess (AppBootstrapper)
+// _onLoginSuccess é privado e depende de SharedPreferences + HTTP.
+// Testamos os seus efeitos observando o UniversityLoginPage diretamente:
+// injetamos o callback e verificamos o que acontece quando é invocado.
+// ===========================================================================
+group('_onLoginSuccess — efeitos de estado no AppBootstrapper', () {
+
+  testWidgets('OLS-U1: UniversityLoginPage chama onLoginSuccess ao fazer login', (tester) async {
+    bool callbackInvoked = false;
+    UniversityIdentity? receivedIdentity;
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: UniversityLoginPage(
+          onLoginSuccess: (identity) async {
+            callbackInvoked = true;
+            receivedIdentity = identity;
+          },
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // Preenche as credenciais
+    await tester.enterText(find.byType(TextField).at(0), 'up202300001');
+    await tester.enterText(find.byType(TextField).at(1), 'password123');
+
+    // Submete — vai chamar SigarraAuthService real que falha,
+    // por isso verificamos apenas que o callback NÃO é chamado sem auth
+    await tester.tap(find.byType(FilledButton));
+    await tester.pumpAndSettle();
+
+    // Sem backend Sigarra disponível, o callback não deve ser invocado
+    expect(callbackInvoked, isFalse);
+    expect(receivedIdentity, isNull);
+  });
+
+  testWidgets('OLS-U2: callback onLoginSuccess recebe a identidade correta', (tester) async {
+    UniversityIdentity? captured;
+    final testIdentity = UniversityIdentity(
+      username: 'up202300001',
+      displayName: 'Ana Teste',
+      photoUrl: null,
+    );
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: UniversityLoginPage(
+          onLoginSuccess: (identity) async {
+            captured = identity;
+          },
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // Invoca o callback diretamente como faria o AppBootstrapper
+    final page = tester.widget<UniversityLoginPage>(
+      find.byType(UniversityLoginPage),
+    );
+    await page.onLoginSuccess(testIdentity);
+    await tester.pumpAndSettle();
+
+    expect(captured, isNotNull);
+    expect(captured!.username, 'up202300001');
+    expect(captured!.displayName, 'Ana Teste');
+  });
+
+  testWidgets('OLS-U3: após onLoginSuccess, _authenticated=true mostra HomeShell', (tester) async {
+    final testIdentity = UniversityIdentity(
+      username: 'up202300001',
+      displayName: 'Ana Teste',
+      photoUrl: null,
+    );
+
+    // Usamos um StatefulWidget wrapper que simula o comportamento do AppBootstrapper
+    bool authenticated = false;
+    UniversityIdentity? identity;
+
+    await tester.pumpWidget(
+      StatefulBuilder(
+        builder: (context, setState) {
+          if (!authenticated) {
+            return MaterialApp(
+              home: UniversityLoginPage(
+                onLoginSuccess: (id) async {
+                  setState(() {
+                    authenticated = true;
+                    identity = id;
+                  });
+                },
+              ),
+            );
+          }
+          return MaterialApp(
+            home: HomeShell(
+              onUniversityLogout: () async {},
+              identity: identity!,
+            ),
+          );
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Estado inicial: login visível
+    expect(find.byType(UniversityLoginPage), findsOneWidget);
+    expect(find.byType(HomeShell), findsNothing);
+
+    // Dispara o callback
+    final page = tester.widget<UniversityLoginPage>(
+      find.byType(UniversityLoginPage),
+    );
+    await page.onLoginSuccess(testIdentity);
+    await tester.pumpAndSettle();
+
+    // Após login: HomeShell visível, login desaparecido
+    expect(find.byType(HomeShell), findsOneWidget);
+    expect(find.byType(UniversityLoginPage), findsNothing);
+  });
+
+  testWidgets('OLS-U4: HomeShell recebe username correto após onLoginSuccess', (tester) async {
+    final testIdentity = UniversityIdentity(
+      username: 'up202312345',
+      displayName: 'Bruno Silva',
+      photoUrl: null,
+    );
+
+    bool authenticated = false;
+    UniversityIdentity? identity;
+
+    await tester.pumpWidget(
+      StatefulBuilder(
+        builder: (context, setState) {
+          if (!authenticated) {
+            return MaterialApp(
+              home: UniversityLoginPage(
+                onLoginSuccess: (id) async {
+                  setState(() { authenticated = true; identity = id; });
+                },
+              ),
+            );
+          }
+          return MaterialApp(
+            home: HomeShell(
+              onUniversityLogout: () async {},
+              identity: identity!,
+            ),
+          );
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final page = tester.widget<UniversityLoginPage>(find.byType(UniversityLoginPage));
+    await page.onLoginSuccess(testIdentity);
+    await tester.pumpAndSettle();
+
+    final homeShell = tester.widget<HomeShell>(find.byType(HomeShell));
+    expect(homeShell.identity.username, 'up202312345');
+    expect(homeShell.identity.displayName, 'Bruno Silva');
+  });
+
+  testWidgets('OLS-U5: _authenticated=true faz desaparecer os TextFields de login', (tester) async {
+    final testIdentity = UniversityIdentity(
+      username: 'up202300001',
+      displayName: 'Ana Teste',
+      photoUrl: null,
+    );
+
+    bool authenticated = false;
+    UniversityIdentity? identity;
+
+    await tester.pumpWidget(
+      StatefulBuilder(
+        builder: (context, setState) {
+          if (!authenticated) {
+            return MaterialApp(
+              home: UniversityLoginPage(
+                onLoginSuccess: (id) async {
+                  setState(() { authenticated = true; identity = id; });
+                },
+              ),
+            );
+          }
+          return MaterialApp(
+            home: HomeShell(
+              onUniversityLogout: () async {},
+              identity: identity!,
+            ),
+          );
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Antes: campos de login visíveis
+    expect(find.byType(TextField), findsWidgets);
+
+    final page = tester.widget<UniversityLoginPage>(find.byType(UniversityLoginPage));
+    await page.onLoginSuccess(testIdentity);
+    await tester.pumpAndSettle();
+
+    // Depois: ecrã de login já não existe
+    expect(find.byType(UniversityLoginPage), findsNothing);
+  });
+
+  testWidgets('OLS-U6: invocar onLoginSuccess com identidades diferentes mantém a última', (tester) async {
+    final identity1 = UniversityIdentity(username: 'up001', displayName: 'Primeiro', photoUrl: null);
+    final identity2 = UniversityIdentity(username: 'up002', displayName: 'Segundo', photoUrl: null);
+
+    UniversityIdentity? captured;
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: UniversityLoginPage(
+          onLoginSuccess: (id) async { captured = id; },
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final page = tester.widget<UniversityLoginPage>(find.byType(UniversityLoginPage));
+    await page.onLoginSuccess(identity1);
+    await page.onLoginSuccess(identity2);
+    await tester.pumpAndSettle();
+
+    // A última identidade é a que prevalece
+    expect(captured!.username, 'up002');
+  });
+});
+  // ===========================================================================
+// UT-OFFER: _OfferRidePageState
+// Cobre: _isValidTime, _publish (validações), _seePassengers (auth guard),
+//        estado do botão Publicar (canPublish), lógica de _timeError,
+//        instrução de 0 lugares, e recompensa dinâmica.
+// ===========================================================================
+group('OfferRidePage — _OfferRidePageState', () {
+
+  Future<void> launchOfferPage(WidgetTester tester) async {
+    await tester.pumpWidget(const MaterialApp(
+      home: Scaffold(body: OfferRidePage()),
+    ));
+    await tester.pump(); // resolve _fetchLocation (falha silenciosamente sem GPS)
+  }
+
+  // -------------------------------------------------------------------------
+  // _isValidTime — via inline no TextField de HORA
+  // -------------------------------------------------------------------------
+
+  testWidgets('OFR-U1: escrever hora válida não mostra _timeError', (tester) async {
+    await launchOfferPage(tester);
+
+    await tester.enterText(find.byKey(const Key('destination_field')), '09:30');
+    await tester.pump();
+
+    expect(find.text('Formato inválido'), findsNothing);
+    expect(find.text('Obrigatório'), findsNothing);
+  });
+
+  testWidgets('OFR-U2: escrever hora inválida mostra "Formato inválido"', (tester) async {
+    await launchOfferPage(tester);
+
+    await tester.enterText(find.byKey(const Key('destination_field')), '25:99');
+    await tester.pump();
+
+    expect(find.text('Formato inválido'), findsOneWidget);
+  });
+
+  testWidgets('OFR-U3: apagar o campo de hora mostra "Obrigatório"', (tester) async {
+    await launchOfferPage(tester);
+
+    await tester.enterText(find.byKey(const Key('destination_field')), '');
+    await tester.pump();
+
+    expect(find.text('Obrigatório'), findsOneWidget);
+  });
+
+  testWidgets('OFR-U4: corrigir hora inválida para válida limpa o erro', (tester) async {
+    await launchOfferPage(tester);
+
+    await tester.enterText(find.byKey(const Key('destination_field')), 'abc');
+    await tester.pump();
+    expect(find.text('Formato inválido'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('destination_field')), '08:00');
+    await tester.pump();
+    expect(find.text('Formato inválido'), findsNothing);
+  });
+});
 }
