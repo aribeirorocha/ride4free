@@ -119,10 +119,11 @@ Our requirements are documented as **User Stories** in our [GitHub Project T4-Sc
 
 | ID | Title | Priority (MoSCoW) | Effort (Fibonacci) | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| #30 | [US1: Publish Solidarity Ride](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/30) | **Must-have** | 8 | In-Progress |
-| #31 | [US2: Book Ride Seat](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/32) | **Must-have** | 5 | In-Progress |
-| #33 | [US3: Search with Walking Tolerance](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/33) | **Should-have** | 3 | In-Progress |
-| #32 | [US4: Rate Passenger Conduct](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/34) | **Could-have** | 3 | In-Progress |
+| #30 | [US1: Publish Solidarity Ride](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/30) | **Must-have** | 21 | Accepted|
+| #31 | [US2: Book Ride Seat](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/32) | **Must-have** | 13 | Accepted |
+| #33 | [US3: Search with Walking Tolerance](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/33) | **Should-have** | 8 | In-Progress |
+| #32 | [US4: Rate Passenger Conduct](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/34) | **Could-have** | 13 | In-Progress |
+| #81 | [US5: Uni Login](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/81) | **Could-have** | 8 | In-Progress |
 
 ---
 
@@ -168,15 +169,33 @@ Each user interacts with the application via their mobile device. The applicatio
 
 <img width="683" height="443" alt="image" src="https://github.com/user-attachments/assets/3d6a97bf-2373-4171-a795-3d28957a6d7c" />
 
+---
 
 ### Functional prototype
-<!--
-To help on validating all the architectural, design and technological decisions made, we usually implement a functional prototype, a thin vertical slice of the system integrating as much technologies as we can.
 
-In this subsection please describe which feature, or part of it, you have implemented, and how, together with a snapshot of the user interface, if applicable.
+To validate our architectural and technological decisions early in the development process, we implemented a functional prototype focusing on two critical pillars of the **Ride4Free** experience: geospatial interaction and community trust.
 
-At this phase, instead of a complete user story, you can simply implement a small part of a feature that demonstrates thay you can use the technology, for example, show a screen with the app credits (name and authors).
--->
+#### 1. Interactive Map Integration
+We successfully integrated a dynamic, fully interactive map view into the application. In this prototype, the user can open the map screen, pan across different areas, and zoom in/out smoothly to visualize ride locations.
+
+* **Implementation:** Developed using the `flutter_map` package. Tiles are fetched in real-time from an external provider (CartoDB / OpenStreetMap) using a custom dark-themed layer (`dark_all`).
+* **Validation:** Proved that the physical architecture correctly handles external API communication and that Flutter manages complex, gesture-based UI components with high performance.
+
+#### 2. Profile Rating & Community Evaluation
+We implemented an interactive rating system that allows users to evaluate their experience with recent drivers or passengers, fostering a self-regulated and safe community.
+
+* **Implementation:** Built as a custom `StatefulWidget` (ProfileRatingButton) that triggers a bottom-sheet interface. It features a custom star-picker component and local state management to handle real-time UI updates when a user assigns a score (1-5 stars).
+* **Validation:** Demonstrated our ability to build reusable UI components and manage interactive states, ensuring that user feedback is captured and reflected instantly in the interface.
+
+
+**Technical Assumptions Validated:**
+1.  **Frontend Versatility:** Flutter efficiently handles both heavy graphical tasks (Maps) and complex interactive forms (Ratings).
+2.  **State Management:** The prototype confirms that the chosen state management approach is sufficient for handling real-time user interactions.
+3.  **External Connectivity:** Validated the app's capability to integrate with third-party geospatial services.
+
+Below is a snapshot of the functional prototype in action:
+
+<img width="200" height="450" alt="Interactive Map Prototype" src="https://github.com/user-attachments/assets/e3f69d53-4b98-4153-baf1-02279a926f8c" />
 
 ## Project management
 <!--
@@ -211,10 +230,10 @@ Our project management workflow is structured around the following key areas:
 ---
 
 ### Sprint 0
-The detailed notes from our Sprint 0 Planning and Retrospective (including what we did well, what to do differently, and puzzles) can be found in our dedicated [SprintPlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/SprintPlanningRetrospectives.md).
+The detailed notes from our Sprint 0 Planning and Retrospective (including what we did well, what to do differently, and puzzles) can be found in our dedicated [Sprint0PlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/SprintPlanningRetrospectives.md).
 
 ### Sprint 1
-The detailed notes from our Sprint 1 Review, Planning, and Retrospective (including the Agile Patterns applied, achievements, team structure, and future improvements) can be found in our dedicated [SprintPlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/Sprint1PlanningRetrospectives.md).
+The detailed notes from our Sprint 1 Review, Planning, and Retrospective (including the Agile Patterns applied, achievements, team structure, and future improvements) can be found in our dedicated [Sprint1PlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/Sprint1PlanningRetrospectives.md).
 
 ### Sprint 2
 
@@ -224,40 +243,3 @@ The detailed notes from our Sprint 1 Review, Planning, and Retrospective (includ
 
 ### Final Release
 
-Ride4Free Development Report
-
-Welcome to the documentation of Ride4Free!
-
-This Software Development Report, tailored for LEIC-ES-2025-26, provides comprehensive details about Ride4Free, starting from an high-level vision and going into low-level implementation decisions.
-
-It is organised by the following activities:
-
-    Business modeling
-        Product Vision
-        Features and Assumptions
-    Requirements
-        User stories
-        Domain model
-        User interfaces
-    Architecture and Design
-        Logical architecture
-        Physical architecture
-        Functional prototype
-    Project management
-        Sprint 0
-        Sprint 1
-        Sprint 2
-        Sprint 3
-        Final Release
-
-Contributions are expected to be made exclusively by the initial team, but we may open them to the community, after the course, in all areas and topics: requirements, technologies, development, experimentation, testing, etc.
-
-Please contact us!
-
-Thank you!!
-
-    team member Thomas Tuerlinckx and up202403993@up.pt
-    team member André Rocha and up202407636@up.pt
-    team member name and email
-    team member name and email
-    team member Tomás Gonçalves and up202208997@up.pT

@@ -1,0 +1,67 @@
+name: Ride4Free CI/CD Pipeline
+
+# O workflow corre automaticamente quando há Push ou Pull Request para a main
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # -------------------------------------------------------------------------
+  # JOB 1: Testar o Backend (Python / FastAPI)
+  # -------------------------------------------------------------------------
+  test_backend:
+    name: Backend Tests (Pytest)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Clonar o repositório
+        uses: actions/checkout@v4
+
+      - name: 🐍 Instalar o Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10' # Podes ajustar para a versão que usam
+
+      - name: 📦 Instalar dependências do Backend
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🧪 Correr Testes do Backend
+        run: |
+          cd backend
+          pytest -v
+
+  # -------------------------------------------------------------------------
+  # JOB 2: Testar o Frontend (Flutter)
+  # -------------------------------------------------------------------------
+  test_frontend:
+    name: Frontend Tests (Flutter)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Clonar o repositório
+        uses: actions/checkout@v4
+
+      - name: 🐦 Configurar o Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: 📦 Instalar dependências do Frontend
+        run: |
+          cd app_test
+          flutter pub get
+
+      - name: 🧹 Verificar formatação e análise estática (Linting)
+        run: |
+          cd app_test
+          flutter analyze
+
+      - name: 🧪 Correr Testes do Frontend (Widget, Unit, Integration)
+        run: |
+          cd app_test
+          flutter test

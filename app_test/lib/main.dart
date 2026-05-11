@@ -1,8 +1,14 @@
+import 'dart:convert';
+import 'dart:async'; 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'profile_rating_button.dart';
 import 'ride4free_api.dart';
+import 'session/university_session_store.dart';
+import 'sigarra/sigarra_auth_service.dart';
+import 'location_service.dart';
 
 void main() => runApp(const MyApp());
 
@@ -27,18 +33,236 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      scrollBehavior: const MaterialScrollBehavior().copyWith(overscroll: false),
       theme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: kBackground,
         colorScheme: const ColorScheme.light(primary: kRed),
       ),
-      home: const HomeShell(),
+      home: const AppBootstrapper(),
+    );
+  }
+}
+
+class AppBootstrapper extends StatefulWidget {
+  const AppBootstrapper({super.key});
+
+  @override
+  State<AppBootstrapper> createState() => _AppBootstrapperState();
+}
+
+class _AppBootstrapperState extends State<AppBootstrapper> {
+  final _sessionStore = UniversitySessionStore();
+  final _api = Ride4FreeApi();
+  bool _loading = true;
+  bool _authenticated = false;
+  UniversityIdentity? _identity;
+
+  @override
+  void initState() {
+    super.initState();
+    _restoreSession();
+  }
+
+  Future<void> _restoreSession() async {
+    final isLoggedIn = await _sessionStore.isLoggedIn();
+    final identity = await _sessionStore.identity();
+    if (isLoggedIn && identity != null) {
+      await _ensureRide4FreeSession(identity);
+    }
+    if (!mounted) return;
+    setState(() {
+      _authenticated = isLoggedIn && identity != null;
+      _identity = identity;
+      _loading = false;
+    });
+  }
+
+  Future<void> _onLoginSuccess(UniversityIdentity identity) async {
+    await _sessionStore.markLoggedIn(identity);
+    await _ensureRide4FreeSession(identity);
+    if (!mounted) return;
+    setState(() {
+      _authenticated = true;
+      _identity = identity;
+    });
+  }
+
+  Future<void> _onUniversityLogout() async {
+    await _sessionStore.clear();
+    Ride4FreeAuth.token = null;
+    if (!mounted) return;
+    setState(() {
+      _authenticated = false;
+      _identity = null;
+    });
+  }
+
+  Future<void> _ensureRide4FreeSession(UniversityIdentity identity) async {
+    final email = '${identity.username}@up.pt';
+    final password = 'up_${identity.username}_session';
+    try {
+      final login = await _api.login(email: email, password: password);
+      Ride4FreeAuth.token = login.token;
+      return;
+    } catch (_) {}
+
+    try {
+      final register = await _api.register(
+        email: email,
+        password: password,
+        name: identity.displayName,
+      );
+      Ride4FreeAuth.token = register.token;
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (!_authenticated) {
+      return UniversityLoginPage(onLoginSuccess: _onLoginSuccess);
+    }
+
+    return HomeShell(
+      onUniversityLogout: _onUniversityLogout,
+      identity: _identity!,
+    );
+  }
+}
+
+class UniversityLoginPage extends StatefulWidget {
+  const UniversityLoginPage({super.key, required this.onLoginSuccess});
+
+  final Future<void> Function(UniversityIdentity identity) onLoginSuccess;
+
+  @override
+  State<UniversityLoginPage> createState() => _UniversityLoginPageState();
+}
+
+class _UniversityLoginPageState extends State<UniversityLoginPage> {
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _auth = SigarraAuthService();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text;
+
+    if (username.isEmpty || password.isEmpty) {
+      setState(() => _error = 'Preencha as credenciais universitarias.');
+      return;
+    }
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+
+    try {
+      final identity = await _auth.login(username: username, password: password);
+      if (!mounted) return;
+      if (identity == null) {
+        setState(() => _error = 'Credenciais invalidas. Tente novamente.');
+        return;
+      }
+      await widget.onLoginSuccess(identity);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _error = 'Nao foi possivel autenticar no Sigarra.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Autenticacao Universitaria',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'No primeiro acesso, entre com as suas credenciais da universidade.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: kMuted),
+                  ),
+                  const SizedBox(height: 18),
+                  TextField(
+                    controller: _usernameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Numero mecanografico / utilizador',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Password',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      _error!,
+                      style: const TextStyle(color: kRed, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+                  FilledButton(
+                    onPressed: _busy ? null : _login,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: kRed,
+                      minimumSize: const Size.fromHeight(50),
+                    ),
+                    child: Text(_busy ? 'A autenticar...' : 'Entrar'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
 
 class HomeShell extends StatefulWidget {
-  const HomeShell({super.key});
+  const HomeShell({
+    super.key,
+    required this.onUniversityLogout,
+    required this.identity,
+  });
+
+  final Future<void> Function() onUniversityLogout;
+  final UniversityIdentity identity;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -53,11 +277,14 @@ class _HomeShellState extends State<HomeShell> {
       body: SafeArea(
         child: IndexedStack(
           index: _index,
-          children: const [
-            CommunityBoardPage(),
-            SearchRidePage(),
-            OfferRidePage(),
-            ProfilePage(),
+          children: [
+            const CommunityBoardPage(),
+            const SearchRidePage(),
+            const OfferRidePage(),
+            ProfilePage(
+              onUniversityLogout: widget.onUniversityLogout,
+              identity: widget.identity,
+            ),
           ],
         ),
       ),
@@ -85,12 +312,31 @@ class CommunityBoardPage extends StatefulWidget {
 
 class _CommunityBoardPageState extends State<CommunityBoardPage> {
   final _api = Ride4FreeApi();
+  Timer? _refreshTimer;
   int _section = 0; // 0 = drivers, 1 = passengers, 2 = database
   bool _loading = false;
   List<Map<String, dynamic>> _drivers = [];
   List<Map<String, dynamic>> _passengers = [];
   Map<String, dynamic>? _schema;
+  @override
+  void initState() {
+    super.initState();
+    
+    // 1. Carrega os dados mal a página abre
+    _loadSection();
 
+    // 2. Inicia o Timer para atualizar a cada35 segundos
+    _refreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (mounted && !_loading) { 
+        _loadSection(); 
+      }
+    });
+  }
+  @override
+  void dispose() {
+    _refreshTimer?.cancel(); // Desliga o Timer
+    super.dispose();
+  }
   Future<void> _bookDriver(int offerId) async {
     if (Ride4FreeAuth.token == null) {
       _showMessage(context, 'Inicie sessão no perfil.');
@@ -160,7 +406,7 @@ class _CommunityBoardPageState extends State<CommunityBoardPage> {
                 segments: const [
                   ButtonSegment(value: 0, icon: Icon(Icons.drive_eta), label: Text('Condutores')),
                   ButtonSegment(value: 1, icon: Icon(Icons.people), label: Text('Passageiros')),
-                  ButtonSegment(value: 2, icon: Icon(Icons.storage), label: Text('BD')),
+                  //ButtonSegment(value: 2, icon: Icon(Icons.storage), label: Text('BD')),
                 ],
                 selected: {_section},
                 onSelectionChanged: (selection) {
@@ -169,11 +415,6 @@ class _CommunityBoardPageState extends State<CommunityBoardPage> {
                 },
               ),
               const SizedBox(height: 10),
-              FilledButton(
-                onPressed: _loading ? null : _loadSection,
-                style: FilledButton.styleFrom(backgroundColor: kRed),
-                child: Text(_loading ? 'A carregar…' : 'Atualizar secao'),
-              ),
             ],
           ),
         ),
@@ -187,7 +428,7 @@ class _CommunityBoardPageState extends State<CommunityBoardPage> {
     if (_section == 0) {
       if (_drivers.isEmpty) {
         return const Center(
-          child: Text('Sem condutores disponiveis. Carregue em "Atualizar secao".', style: TextStyle(color: kMuted)),
+          child: Text('À procura de condutores...', style: TextStyle(color: kLighter)),
         );
       }
       return ListView.separated(
@@ -198,15 +439,12 @@ class _CommunityBoardPageState extends State<CommunityBoardPage> {
           final d = _drivers[i];
           return _ProfileCard(
             title: d['driver_name'] as String? ?? 'Condutor',
-            subtitle: d['driver_email'] as String? ?? '',
-            description: d['profile_description'] as String? ?? 'Sem descricao.',
-            statusLabel: (d['booked'] as bool? ?? false)
-                ? 'Reservado por ${d['booked_by_name'] ?? 'utilizador'}'
-                : 'Disponivel',
+            // Aqui vais ler o campo 'description' que a API agora retorna
+            subtitle: "Partida: ${d['departure_time'] ?? 'Horário a definir'}",
+            description: "Lugares: ${d['available_seats']}",
+            statusLabel: (d['booked'] as bool? ?? false) ? 'Reservado' : 'Disponível',
             actionText: (d['booked'] as bool? ?? false) ? null : 'Reservar boleia',
-            onAction: (d['booked'] as bool? ?? false)
-                ? null
-                : () => _bookDriver((d['id'] as num).toInt()),
+            onAction: () => _bookDriver((d['id'] as num).toInt()),
           );
         },
       );
@@ -222,19 +460,19 @@ class _CommunityBoardPageState extends State<CommunityBoardPage> {
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
         itemCount: _passengers.length,
         separatorBuilder: (_, _) => const SizedBox(height: 10),
+        // Dentro do ListView.separated para Condutores (_section == 0)
         itemBuilder: (context, i) {
-          final p = _passengers[i];
+          final d = _drivers[i];
           return _ProfileCard(
-            title: p['passenger_name'] as String? ?? 'Passageiro',
-            subtitle: p['passenger_email'] as String? ?? '',
-            description: p['profile_description'] as String? ?? 'Sem descricao.',
-            statusLabel: (p['booked'] as bool? ?? false)
-                ? 'Reservado por ${p['booked_by_name'] ?? 'utilizador'}'
-                : 'Disponivel',
-            actionText: (p['booked'] as bool? ?? false) ? null : 'Reservar passageiro',
-            onAction: (p['booked'] as bool? ?? false)
-                ? null
-                : () => _bookPassenger((p['id'] as num).toInt()),
+            title: d['driver_name'] as String? ?? 'Condutor',
+            // Se a tua API devolver um campo 'departure_time', usa-o aqui:
+            subtitle: "Hora de Partida: ${d['departure_time'] ?? '08:15'}", 
+            description: d['profile_description'] as String? ?? 'Sem descrição.',
+            statusLabel: (d['booked'] as bool? ?? false)
+                ? 'Reservado'
+                : 'Disponível',
+            actionText: (d['booked'] as bool? ?? false) ? null : 'Reservar boleia',
+            onAction: () => _bookDriver((d['id'] as num).toInt()),
           );
         },
       );
@@ -263,7 +501,7 @@ class _CommunityBoardPageState extends State<CommunityBoardPage> {
                 Text(tableName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 8),
                 ...cols.map(
-                  (c) => Text(
+                      (c) => Text(
                     '- ${c['name']} (${c['type']})${(c['primary_key'] as bool? ?? false) ? ' [PK]' : ''}',
                     style: const TextStyle(color: kMuted, fontWeight: FontWeight.w600),
                   ),
@@ -285,10 +523,30 @@ class OfferRidePage extends StatefulWidget {
 }
 
 class _OfferRidePageState extends State<OfferRidePage> {
+  final TextEditingController _timeController = TextEditingController(text: '08:15');
+  String? _timeError; // Para guardar a mensagem de erro
+  bool _isValidTime(String input) {
+  final RegExp timeRegExp = RegExp(r'^([01]?[0-9]|2[0-3]):[0-5][0-9]$');
+  return timeRegExp.hasMatch(input);
+}
   int _seats = 3;
   final _destController = TextEditingController(text: 'FEUP (Polo II)');
   final _api = Ride4FreeApi();
   bool _busy = false;
+  LatLng? _originLatLng;
+  LatLng? _destinationLatLng;
+ 
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLocation();
+  }
+
+  Future<void> _fetchLocation() async {
+    final loc = await LocationService.getCurrentLocation();
+    if (mounted) setState(() => _originLatLng = loc);
+  }
 
   @override
   void dispose() {
@@ -297,22 +555,37 @@ class _OfferRidePageState extends State<OfferRidePage> {
   }
 
   Future<void> _publish() async {
-    if (Ride4FreeAuth.token == null) {
-      _showMessage(context, 'Inicie sessão no perfil.');
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      await _api.createDriverOffer(
-        destination: _destController.text,
-        availableSeats: _seats,
-      );
-      if (mounted) _showMessage(context, 'Viagem publicada (API local).');
-    } catch (e) {
-      if (mounted) _showMessage(context, 'Erro: $e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+  // 1. Validar se a hora escrita no TextField está correta
+  if (!_isValidTime(_timeController.text)) {
+    _showMessage(context, 'Por favor, insira uma hora válida (HH:mm).');
+    return;
+  }
+
+  // 2. Validar se os pontos no mapa foram selecionados (segurança extra)
+  if (_originLatLng == null || _destinationLatLng == null) {
+    _showMessage(context, 'Selecione o ponto de partida e de chegada no mapa.');
+    return;
+  }
+
+  setState(() => _busy = true);
+  try {
+    await _api.createDriverOffer(
+      destination: "Ponto selecionado no mapa", // Texto fixo já que usas o mapa
+      availableSeats: _seats,
+      departureTime: _timeController.text,
+      description: "Boleia universitária rápida",
+      originLat: _originLatLng?.latitude,
+      originLng: _originLatLng?.longitude,
+      destinationLat: _destinationLatLng?.latitude,
+      destinationLng: _destinationLatLng?.longitude,
+    );
+    
+    if (mounted) _showMessage(context, 'Viagem publicada!');
+  } catch (e) {
+    if (mounted) _showMessage(context, 'Erro: $e');
+  } finally {
+    if (mounted) setState(() => _busy = false);
+  }
   }
 
   Future<void> _seePassengers() async {
@@ -358,26 +631,81 @@ class _OfferRidePageState extends State<OfferRidePage> {
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
             children: [
               _label('PONTO DE PARTIDA'),
-              const _InputLike(text: 'Residencia Universitaria'),
-              const SizedBox(height: 14),
-              _label('DESTINO'),
-              TextField(
-                controller: _destController,
-                decoration: _fieldDecoration(),
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              const SizedBox(height: 6),
+              if (_originLatLng == null)
+                const Text(
+                  'Toque no mapa para definir o ponto de partida',
+                  style: TextStyle(color: kMuted, fontWeight: FontWeight.w600),
+                )
+              else
+                Text(
+                  'Partida definida ✓ (${_originLatLng!.latitude.toStringAsFixed(4)}, ${_originLatLng!.longitude.toStringAsFixed(4)})',
+                  style: const TextStyle(color: kSuccess, fontWeight: FontWeight.w600),
+                ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 160,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: _ConferenceMap(
+                    userLocation: _originLatLng,
+                    onTap: (latlng) => setState(() => _originLatLng = latlng),
+                  ),
+                ),
               ),
+              _label('PONTO DE CHEGADA'),
+              const SizedBox(height: 6),
+              if (_destinationLatLng == null)
+                const Text('Toque no mapa para definir o ponto de chegada',
+                    style: TextStyle(color: kMuted, fontWeight: FontWeight.w600))
+              else
+                Text(
+                  'Chegada definida ✓ (${_destinationLatLng!.latitude.toStringAsFixed(4)}, ${_destinationLatLng!.longitude.toStringAsFixed(4)})',
+                  style: const TextStyle(color: kSuccess, fontWeight: FontWeight.w600),
+                ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 160,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: _ConferenceMap(
+                    userLocation: _destinationLatLng,
+                    onTap: (latlng) => setState(() => _destinationLatLng = latlng),
+                  ),
+                ),
+              ), 
               const SizedBox(height: 14),
               Row(
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _label('HORA'),
-                        const _InputLike(text: '08:15'),
-                      ],
+                 Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _label('HORA'),
+                          TextField(
+                            controller: _timeController,
+                            keyboardType: TextInputType.datetime,
+                            decoration: InputDecoration(
+                              hintText: '08:30',
+                              errorText: _timeError, // Mostra o erro aqui em baixo a vermelho
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            ),
+                            onChanged: (value) {
+                              setState(() {
+                                if (value.isEmpty) {
+                                  _timeError = 'Obrigatório';
+                                } else if (!_isValidTime(value)) {
+                                  _timeError = 'Formato inválido';
+                                } else {
+                                  _timeError = null; // Tudo OK!
+                                }
+                              });
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -451,6 +779,46 @@ class _SearchRidePageState extends State<SearchRidePage> {
   final _api = Ride4FreeApi();
   List<Map<String, dynamic>> _drivers = [];
   bool _loading = false;
+  LatLng? _userLocation;
+  LatLng? _pickupLatLng;
+  double _radiusMeters = 500; // default 500m
+  // Label legível da localização atual do passageiro (reverse geocoding)
+  String _locationLabel = 'A obter localização…';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLocation();
+  }
+
+  Future<void> _fetchLocation() async {
+    final loc = await LocationService.getCurrentLocation();
+    if (!mounted || loc == null) return;
+    setState(() => _userLocation = loc);
+    // Reverse geocoding com Nominatim para mostrar nome da rua
+    try {
+      final uri = Uri.parse(
+        'https://nominatim.openstreetmap.org/reverse'
+            '?lat=${loc.latitude}&lon=${loc.longitude}&format=json',
+      );
+      final r = await http.get(uri, headers: {'User-Agent': 'Ride4Free/1.0'});
+      if (r.statusCode == 200 && mounted) {
+        final data = jsonDecode(r.body) as Map<String, dynamic>;
+        final address = data['address'] as Map<String, dynamic>?;
+        final road = address?['road'] as String?
+            ?? address?['pedestrian'] as String?
+            ?? address?['suburb'] as String?
+            ?? data['display_name'] as String?
+            ?? '${loc.latitude.toStringAsFixed(4)}, ${loc.longitude.toStringAsFixed(4)}';
+        setState(() => _locationLabel = road);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _locationLabel =
+        '${loc.latitude.toStringAsFixed(4)}, ${loc.longitude.toStringAsFixed(4)}');
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -465,7 +833,12 @@ class _SearchRidePageState extends State<SearchRidePage> {
     }
     setState(() => _loading = true);
     try {
-      final list = await _api.listDriversForDestination(_destController.text);
+      final list = await _api.listDriversForDestination(
+        _destController.text,
+        lat: (_pickupLatLng ?? _userLocation)?.latitude,
+        lng: (_pickupLatLng ?? _userLocation)?.longitude,
+        radiusM: _radiusMeters.toInt(),
+      );
       if (mounted) setState(() => _drivers = list);
     } catch (e) {
       if (mounted) _showMessage(context, 'Erro: $e');
@@ -480,7 +853,12 @@ class _SearchRidePageState extends State<SearchRidePage> {
       return;
     }
     try {
-      await _api.createPassengerRequest(destination: _destController.text, passengerCount: 1);
+      await _api.createPassengerRequest(
+        destination: _destController.text,
+        passengerCount: 1,
+        originLat: (_pickupLatLng ?? _userLocation)?.latitude,
+        originLng: (_pickupLatLng ?? _userLocation)?.longitude,
+      );
       if (mounted) _showMessage(context, 'Pedido de passageiro registado.');
     } catch (e) {
       if (mounted) _showMessage(context, 'Erro: $e');
@@ -536,32 +914,103 @@ class _SearchRidePageState extends State<SearchRidePage> {
             ),
           ),
           const Divider(height: 18),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 18),
+
+          // Slider funcional
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
             child: Row(
               children: [
-                Text('Raio de Tolerancia', style: TextStyle(fontWeight: FontWeight.w700)),
-                Spacer(),
-                Text('200m', style: TextStyle(color: kRed, fontWeight: FontWeight.w700)),
+                const Text('Raio de Tolerancia', style: TextStyle(fontWeight: FontWeight.w700)),
+                const Spacer(),
+                Text('${_radiusMeters.toInt()}m', style: const TextStyle(color: kRed, fontWeight: FontWeight.w700)),
               ],
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(18, 6, 18, 10),
-            child: Slider(value: 0.12, onChanged: null),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 6, 18, 10),
+            child: Slider(
+              value: _radiusMeters,
+              min: 100,
+              max: 2000,
+              divisions: 19,
+              label: '${_radiusMeters.toInt()}m',
+              onChanged: (v) => setState(() => _radiusMeters = v),
+              onChangeEnd: (v) {
+                setState(() => _radiusMeters = v);
+                if (_drivers.isNotEmpty) _search();
+              },
+            ),
           ),
+
+          // Mapa ligado ao estado
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: _pickupLatLng == null
+                ? const Text(
+              'Toque no mapa para definir o ponto de pickup (ou usa o GPS automaticamente)',
+              style: TextStyle(color: kMuted, fontWeight: FontWeight.w600),
+            )
+                : Text(
+              'Pickup definido ✓ (${_pickupLatLng!.latitude.toStringAsFixed(4)}, ${_pickupLatLng!.longitude.toStringAsFixed(4)})',
+              style: const TextStyle(color: kSuccess, fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(height: 6),
+
+// Mapa com onTap para pickup
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
             child: SizedBox(
               height: 130,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: const _ConferenceMap(),
+                child: _ConferenceMap(
+                  userLocation: _pickupLatLng ?? _userLocation,
+                  radiusMeters: _radiusMeters,
+                  onTap: (latlng) => setState(() {
+                    _pickupLatLng = latlng;
+                    _search();
+                  }),
+                  driverOrigins: _drivers
+                      .where((d) => d['origin_lat'] != null)
+                      .map((d) => LatLng(
+                    (d['origin_lat'] as num).toDouble(),
+                    (d['origin_lng'] as num).toDouble(),
+                  ))
+                      .toList(),
+                ),
               ),
             ),
           ),
+          // Lista de condutores
+          if (_drivers.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(18),
+              child: Text('Procure condutores para o destino acima.', style: TextStyle(color: kMuted)),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
+              itemCount: _drivers.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (context, i) {
+                final d = _drivers[i];
+                final name = d['driver_name'] as String? ?? '?';
+                final seats = d['available_seats']?.toString() ?? '?';
+                return _RideCard(
+                  name: name,
+                  car: 'Lugares livres: $seats',
+                  rating: '—',
+                  distance: d['destination_display'] as String? ?? '',
+                  credits: '30',
+                );
+              },
+            ),
+
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 240, 18, 0),
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 14),
             child: FilledButton(
               onPressed: _registerRequest,
               style: FilledButton.styleFrom(
@@ -579,68 +1028,45 @@ class _SearchRidePageState extends State<SearchRidePage> {
 }
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  const ProfilePage({
+    super.key,
+    required this.onUniversityLogout,
+    required this.identity,
+  });
+
+  final Future<void> Function() onUniversityLogout;
+  final UniversityIdentity identity;
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  final _email = TextEditingController();
-  final _password = TextEditingController();
-  final _name = TextEditingController();
   final _api = Ride4FreeApi();
   bool _busy = false;
-  Ride4FreeUser? _user;
-
-  @override
-  void dispose() {
-    _email.dispose();
-    _password.dispose();
-    _name.dispose();
-    super.dispose();
-  }
-
-  Future<void> _register() async {
-    setState(() => _busy = true);
-    try {
-      final r = await _api.register(email: _email.text, password: _password.text, name: _name.text.isEmpty ? 'Utilizador' : _name.text);
-      Ride4FreeAuth.token = r.token;
-      setState(() => _user = r.user);
-      if (mounted) _showMessage(context, 'Conta criada e sessão iniciada.');
-    } catch (e) {
-      if (mounted) _showMessage(context, 'Erro: $e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _login() async {
-    setState(() => _busy = true);
-    try {
-      final r = await _api.login(email: _email.text, password: _password.text);
-      Ride4FreeAuth.token = r.token;
-      setState(() => _user = r.user);
-      if (mounted) _showMessage(context, 'Sessão iniciada.');
-    } catch (e) {
-      if (mounted) _showMessage(context, 'Erro: $e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
 
   Future<void> _logout() async {
     setState(() => _busy = true);
     try {
       await _api.logout();
-      setState(() => _user = null);
       if (mounted) _showMessage(context, 'Sessão terminada.');
     } catch (e) {
       Ride4FreeAuth.token = null;
-      setState(() => _user = null);
       if (mounted) _showMessage(context, 'Sessão terminada (local).');
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _logoutUniversity() async {
+    setState(() => _busy = true);
+    try {
+      await _logout();
+    } finally {
+      await widget.onUniversityLogout();
+      if (mounted) {
+        _showMessage(context, 'Sessao universitaria terminada.');
+      }
     }
   }
 
@@ -648,57 +1074,41 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const _TopTitleBar(title: 'Avaliar Passageiro'),
+        const _TopTitleBar(title: 'Perfil'),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
             children: [
               Text('API: ${Ride4FreeConfig.baseUrl}', style: const TextStyle(fontSize: 12, color: kMuted)),
               const SizedBox(height: 8),
-              if (_user != null)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(_user!.name, style: const TextStyle(fontWeight: FontWeight.w800)),
-                  subtitle: Text(_user!.email, style: const TextStyle(color: kMuted)),
-                  trailing: TextButton(onPressed: _busy ? null : _logout, child: const Text('Sair')),
-                )
-              else ...[
-                TextField(
-                  controller: _email,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  radius: 24,
+                  backgroundImage: widget.identity.photoUrl == null
+                      ? null
+                      : NetworkImage(widget.identity.photoUrl!),
+                  child: widget.identity.photoUrl == null
+                      ? const Icon(Icons.person)
+                      : null,
                 ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _password,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password (mín. 6)', border: OutlineInputBorder()),
+                title: Text(
+                  widget.identity.displayName,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _name,
-                  decoration: const InputDecoration(labelText: 'Nome (registo)', border: OutlineInputBorder()),
+                subtitle: Text(
+                  'UP: ${widget.identity.username}',
+                  style: const TextStyle(color: kMuted),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: _busy ? null : _login,
-                        style: FilledButton.styleFrom(backgroundColor: kRed),
-                        child: Text(_busy ? '…' : 'Entrar'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _busy ? null : _register,
-                        child: Text(_busy ? '…' : 'Registar'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : _logoutUniversity,
+                icon: const Icon(Icons.logout),
+                label: const Text('Terminar sessão universitária'),
+              ),
+              /* 
+              const SizedBox(height: 10),
               const SizedBox(height: 16),
               const Divider(),
               const Row(
@@ -759,6 +1169,7 @@ class _ProfilePageState extends State<ProfilePage> {
               const Text('RATE PROFILES', style: TextStyle(color: kRed, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
               const SizedBox(height: 10),
               const ProfileRatingButton(),
+              */
             ],
           ),
         ),
@@ -998,13 +1409,13 @@ class _ProfileCard extends StatelessWidget {
         children: [
           Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
           const SizedBox(height: 2),
-          Text(subtitle, style: const TextStyle(color: kMuted, fontWeight: FontWeight.w600)),
+          Text(subtitle, style: const TextStyle(color: kDarkText, fontWeight: FontWeight.w600)),
           if (statusLabel != null) ...[
             const SizedBox(height: 6),
             Text(
               statusLabel!,
               style: TextStyle(
-                color: statusLabel!.startsWith('Disponivel') ? kSuccess : kRed,
+                color: statusLabel!.startsWith('Disponivel') ? kSuccess : kSuccess,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -1024,15 +1435,34 @@ class _ProfileCard extends StatelessWidget {
   }
 }
 
-class _ConferenceMap extends StatelessWidget {
-  const _ConferenceMap();
+class _ConferenceMap extends StatefulWidget {
+  final LatLng? userLocation;
+  final List<LatLng> driverOrigins;
+  final double radiusMeters;
+  final void Function(LatLng)? onTap; // para o modo condutor
+
+  const _ConferenceMap({
+    this.userLocation,
+    this.driverOrigins = const [],
+    this.radiusMeters = 500,
+    this.onTap,
+  });
+
+  @override
+  State<_ConferenceMap> createState() => _ConferenceMapState();
+}
+
+class _ConferenceMapState extends State<_ConferenceMap> {
+  final _mapController = MapController();
 
   @override
   Widget build(BuildContext context) {
     return FlutterMap(
+      mapController: _mapController,
       options: MapOptions(
-        initialCenter: const LatLng(41.1496, -8.6109),
+        initialCenter: widget.userLocation ?? const LatLng(41.1496, -8.6109),
         initialZoom: 13,
+        onTap: widget.onTap != null ? (_, latlng) => widget.onTap!(latlng) : null,
       ),
       children: [
         TileLayer(
@@ -1040,13 +1470,41 @@ class _ConferenceMap extends StatelessWidget {
           subdomains: const ['a', 'b', 'c', 'd'],
           userAgentPackageName: 'com.example.conference_tool',
         ),
-        const MarkerLayer(
+
+        // Círculo de raio à volta do passageiro
+        if (widget.userLocation != null)
+          CircleLayer(
+            circles: [
+              CircleMarker(
+                point: widget.userLocation!,
+                radius: widget.radiusMeters,
+                useRadiusInMeter: true,
+                color: kRed.withOpacity(0.1),
+                borderColor: kRed,
+                borderStrokeWidth: 2,
+              ),
+            ],
+          ),
+
+        MarkerLayer(
           markers: [
-            Marker(
-              point: LatLng(41.1496, -8.6109),
-              width: 36,
-              height: 36,
-              child: Icon(Icons.location_pin, color: kRed, size: 36),
+            // Marcador do passageiro / posição selecionada
+            if (widget.userLocation != null)
+              Marker(
+                point: widget.userLocation!,
+                width: 36,
+                height: 36,
+                child: const Icon(Icons.my_location, color: kRed, size: 36),
+              ),
+
+            // Marcadores dos condutores disponíveis
+            ...widget.driverOrigins.map(
+                  (loc) => Marker(
+                point: loc,
+                width: 36,
+                height: 36,
+                child: const Icon(Icons.directions_car, color: kSuccess, size: 36),
+              ),
             ),
           ],
         ),
