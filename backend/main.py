@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from fastapi import Depends, FastAPI, HTTPException, Header, status
+from fastapi import Depends, FastAPI, HTTPException, Header, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
 
@@ -80,12 +80,18 @@ class TokenResponse(BaseModel):
 class PassengerRequestBody(BaseModel):
     destination: str = Field(min_length=1, max_length=500)
     passenger_count: int = Field(default=1, ge=1, le=20)
-
+    origin_lat: float | None = None
+    origin_lng: float | None = None
 
 class DriverOfferBody(BaseModel):
     destination: str = Field(min_length=1, max_length=500)
     available_seats: int = Field(ge=0, le=20)
-
+    departure_time: str | None = None 
+    description: str | None = None
+    origin_lat: float | None = None
+    origin_lng: float | None = None
+    destination_lat: float | None = None
+    destination_lng: float | None = None
 
 class BookDriverOfferBody(BaseModel):
     offer_id: int = Field(ge=1)
@@ -148,20 +154,45 @@ def me(user_id: int = Depends(require_user)):
 
 @app.post("/passenger/requests")
 def create_passenger_request(body: PassengerRequestBody, user_id: int = Depends(require_user)):
-    rid = db.insert_passenger_request(user_id, body.destination, body.passenger_count)
+    rid = db.insert_passenger_request(
+        user_id,
+        body.destination,
+        body.passenger_count,
+        origin_lat=body.origin_lat,
+        origin_lng=body.origin_lng,
+    )
     return {"id": rid, "message": "Request created"}
 
 
 @app.get("/passenger/drivers")
-def list_drivers_for_passenger(destination: str, user_id: int = Depends(require_user)):
+def list_drivers_for_passenger(
+        destination: str,
+        lat: float | None = None,
+        lng: float | None = None,
+        radius_m: int = Query(default=500, ge=100, le=2000),
+        user_id: int = Depends(require_user),
+):
     if not destination.strip():
         raise HTTPException(status_code=400, detail="destination is required")
-    return {"destination": destination.strip(), "drivers": db.list_open_drivers_for_destination(destination)}
+    return {
+        "destination": destination.strip(),
+        "drivers": db.list_open_drivers_for_destination(destination, lat, lng, radius_m),
+    }
 
 
 @app.post("/driver/offers")
 def create_driver_offer(body: DriverOfferBody, user_id: int = Depends(require_user)):
-    oid = db.insert_driver_offer(user_id, body.destination, body.available_seats)
+    oid = db.insert_driver_offer(
+        user_id,
+        body.destination,
+        body.available_seats,
+        departure_time=body.departure_time, 
+        description=body.description,      
+        origin_lat=body.origin_lat,
+        origin_lng=body.origin_lng,
+        destination_lat=body.destination_lat,
+        destination_lng=body.destination_lng,
+    )
     return {"id": oid, "message": "Offer created"}
 
 
@@ -179,8 +210,14 @@ def list_passengers_for_driver(destination: str, user_id: int = Depends(require_
 
 
 @app.get("/community/drivers")
-def list_available_drivers(destination: str | None = None, user_id: int = Depends(require_user)):
-    rows = db.list_community_drivers(destination)
+def list_available_drivers(
+        destination: str | None = None,
+        lat: float | None = None,
+        lng: float | None = None,
+        radius_m: int = Query(default=500, ge=100, le=2000),
+        user_id: int = Depends(require_user),
+):
+    rows = db.list_community_drivers(destination, lat, lng, radius_m)
     return {
         "destination_filter": destination.strip() if destination else None,
         "drivers": [
@@ -192,7 +229,7 @@ def list_available_drivers(destination: str | None = None, user_id: int = Depend
                     f"with {r['available_seats']} seat(s) available."
                     if not r.get("booking_id")
                     else f"{r['driver_name']}'s ride to {r['destination_display']} "
-                    f"was booked by {r.get('booked_by_name', 'another user')}."
+                         f"was booked by {r.get('booked_by_name', 'another user')}."
                 ),
             }
             for r in rows
@@ -214,7 +251,7 @@ def list_available_passengers(destination: str | None = None, user_id: int = Dep
                     f"to {r['destination_display']}."
                     if not r.get("booking_id")
                     else f"{r['passenger_name']}'s request to {r['destination_display']} "
-                    f"was booked by {r.get('booked_by_name', 'another user')}."
+                         f"was booked by {r.get('booked_by_name', 'another user')}."
                 ),
             }
             for r in rows
