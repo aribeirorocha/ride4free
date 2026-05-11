@@ -4,8 +4,8 @@ Integration tests for main.py — FastAPI endpoints for Ride4Free.
 
 import os
 import tempfile
-import pytest
-from fastapi.testclient import TestClient
+import pytest # type: ignore
+from fastapi.testclient import TestClient # type: ignore
 
 @pytest.fixture
 def client():
