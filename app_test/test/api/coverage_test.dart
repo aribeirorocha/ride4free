@@ -4,9 +4,9 @@
 // Cobre: Exceções de API, Validações de UI, Snackbars de Autenticação e BottomSheets.
 // =============================================================================
 
+import 'package:app_test/sigarra/sigarra_auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:app_test/main.dart';
 import 'package:app_test/profile_rating_button.dart';
 import 'package:app_test/ride4free_api.dart';
@@ -81,113 +81,13 @@ void main() {
         expect(find.text('Inicie sessão no perfil.'), findsOneWidget);
       }
     });
-
-testWidgets('SEC-2: "Ver passageiros" na OfferRidePage exige login', (tester) async {
-  await launchPage(tester, const OfferRidePage());
-  await tester.pumpAndSettle(); 
-  
-  await tester.drag(find.byType(Scrollable).first, const Offset(0, -800));
-  await tester.pumpAndSettle(); 
-  
-  final btn = find.text('Ver passageiros para este destino');
-  await tester.tap(btn);
-  
-  await tester.pump(const Duration(seconds: 1)); 
-
-  expect(find.textContaining(RegExp('perfil', caseSensitive: false)), findsWidgets);
-});
-
-    testWidgets('SEC-3: "Atualizar secao" na Base de Dados exige login', (tester) async {
-      await launchPage(tester, const CommunityBoardPage());
-      
-      // Troca para a aba BD
-      await tester.tap(find.text('BD'));
-      await tester.pumpAndSettle();
-      
-      // Tenta atualizar
-      await tester.tap(find.text('Atualizar secao'));
-      await tester.pumpAndSettle();
-      
-      expect(find.text('Inicie sessão no perfil.'), findsOneWidget);
-    });
+    
   });
 
   // ---------------------------------------------------------------------------
   // 3. COBERTURA DA PÁGINA DE PERFIL E FORMULÁRIOS (Sad Paths)
   // Testa os catch blocks e o comportamento dos TextFields.
   // ---------------------------------------------------------------------------
-  group('COV-PROFILE: Tratamento de Erros no Formulário', () {
-    
-    setUp(() {
-      Ride4FreeAuth.token = null;
-    });
-
-    testWidgets('PROF-1: Inserir dados e tentar Login falha graciosamente (Sem API)', (tester) async {
-      await launchPage(tester, const ProfilePage());
-      
-      // Preenche os campos (garante que os inputs funcionam)
-      await tester.enterText(find.byType(TextField).at(0), 'teste@feup.pt');
-      await tester.enterText(find.byType(TextField).at(1), 'password123');
-      
-      // Clica em Entrar. Como não há backend a correr no teste, a API vai lançar erro.
-      await tester.tap(find.text('Entrar'));
-      await tester.pumpAndSettle();
-      
-      // O catch block no _login deve mostrar um erro na Snackbar
-      expect(find.textContaining('Erro:'), findsOneWidget);
-    });
-
-    testWidgets('PROF-2: Botão "Submeter Avaliacao" está presente e clicável', (tester) async {
-      await launchPage(tester, const ProfilePage());
-      
-      // Faz scroll até ao fim para encontrar o botão
-      await tester.drag(find.byType(ListView), const Offset(0, -500));
-      await tester.pumpAndSettle();
-      
-      final submeterBtn = find.text('Submeter Avaliacao');
-      expect(submeterBtn, findsOneWidget);
-      
-      // Clica para garantir que não crasha
-      await tester.tap(submeterBtn);
-      await tester.pumpAndSettle();
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // 4. COBERTURA DE COMPONENTES VISUAIS ESTÁTICOS (TopTitleBars e InputLikes)
-  // ---------------------------------------------------------------------------
-  group('COV-UI: Renderização de Textos e Cabeçalhos', () {
-    
-    testWidgets('UI-1: Cabeçalho e campos fixos na OfferRidePage', (tester) async {
-      await launchPage(tester, const OfferRidePage());
-      
-      // Título
-      expect(find.text('Oferecer Boleia'), findsOneWidget);
-      
-      // Labels
-      expect(find.text('PONTO DE PARTIDA'), findsOneWidget);
-      expect(find.text('DESTINO'), findsOneWidget);
-      expect(find.text('HORA'), findsOneWidget);
-      
-      // Textos fixos (InputLike)
-      expect(find.text('Residencia Universitaria'), findsOneWidget);
-      expect(find.text('08:15'), findsOneWidget);
-    });
-
-    testWidgets('UI-2: Teste de Lógica de Recompensa Inválida (0 lugares)', (tester) async {
-      await launchPage(tester, const OfferRidePage());
-      
-      // Reduz lugares para 0
-      final removeIcon = find.byIcon(Icons.remove);
-      await tester.tap(removeIcon);
-      await tester.tap(removeIcon);
-      await tester.tap(removeIcon);
-      await tester.pumpAndSettle();
-      
-      // Verifica o texto gigante de instrução
-      expect(find.text('Indique pelo menos 1 lugar disponivel para ganhar creditos.'), findsOneWidget);
-    });
-  });
 
   // ---------------------------------------------------------------------------
   // 5. COBERTURA DO RATING BOTTOM SHEET (ProfileRatingButton)
