@@ -13,7 +13,14 @@ import 'location_service.dart';
 void main() => runApp(const MyApp());
 
 void _showMessage(BuildContext context, String text) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(text)),
+      );
+    }
+  });
 }
 
 const kRed = Color(0xFFDF3E45);
@@ -45,7 +52,10 @@ class MyApp extends StatelessWidget {
 }
 
 class AppBootstrapper extends StatefulWidget {
-  const AppBootstrapper({super.key});
+  final Ride4FreeApi? api; 
+  final SigarraAuthService? authService;
+  const AppBootstrapper({super.key, this.api, this.authService});
+  
 
   @override
   State<AppBootstrapper> createState() => _AppBootstrapperState();
@@ -53,7 +63,8 @@ class AppBootstrapper extends StatefulWidget {
 
 class _AppBootstrapperState extends State<AppBootstrapper> {
   final _sessionStore = UniversitySessionStore();
-  final _api = Ride4FreeApi();
+  late final Ride4FreeApi _api = widget.api ?? Ride4FreeApi();
+  late final SigarraAuthService _auth = widget.authService ?? SigarraAuthService();
   bool _loading = true;
   bool _authenticated = false;
   UniversityIdentity? _identity;
@@ -123,9 +134,12 @@ class _AppBootstrapperState extends State<AppBootstrapper> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    if (!_authenticated) {
-      return UniversityLoginPage(onLoginSuccess: _onLoginSuccess);
-    }
+  if (!_authenticated) {
+    return UniversityLoginPage(
+      onLoginSuccess: _onLoginSuccess,
+     authService: _auth, 
+    );
+  }
 
     return HomeShell(
       onUniversityLogout: _onUniversityLogout,
@@ -135,9 +149,14 @@ class _AppBootstrapperState extends State<AppBootstrapper> {
 }
 
 class UniversityLoginPage extends StatefulWidget {
-  const UniversityLoginPage({super.key, required this.onLoginSuccess});
+  const UniversityLoginPage({
+    super.key, 
+    required this.onLoginSuccess, 
+    this.authService // Adiciona isto
+  });
 
   final Future<void> Function(UniversityIdentity identity) onLoginSuccess;
+  final SigarraAuthService? authService;
 
   @override
   State<UniversityLoginPage> createState() => _UniversityLoginPageState();
@@ -146,7 +165,7 @@ class UniversityLoginPage extends StatefulWidget {
 class _UniversityLoginPageState extends State<UniversityLoginPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _auth = SigarraAuthService();
+  late final _auth = widget.authService ?? SigarraAuthService();
   bool _busy = false;
   String? _error;
 
@@ -213,6 +232,7 @@ class _UniversityLoginPageState extends State<UniversityLoginPage> {
                   ),
                   const SizedBox(height: 18),
                   TextField(
+                    key: const Key('user_field'),
                     controller: _usernameController,
                     decoration: const InputDecoration(
                       labelText: 'Numero mecanografico / utilizador',
@@ -221,6 +241,7 @@ class _UniversityLoginPageState extends State<UniversityLoginPage> {
                   ),
                   const SizedBox(height: 10),
                   TextField(
+                    key: const Key('pass_field'),
                     controller: _passwordController,
                     obscureText: true,
                     decoration: const InputDecoration(
@@ -307,10 +328,10 @@ class CommunityBoardPage extends StatefulWidget {
   const CommunityBoardPage({super.key});
 
   @override
-  State<CommunityBoardPage> createState() => _CommunityBoardPageState();
+  State<CommunityBoardPage> createState() => CommunityBoardPageState();
 }
 
-class _CommunityBoardPageState extends State<CommunityBoardPage> {
+class CommunityBoardPageState extends State<CommunityBoardPage> {
   final _api = Ride4FreeApi();
   Timer? _refreshTimer;
   int _section = 0; // 0 = drivers, 1 = passengers, 2 = database
@@ -397,7 +418,7 @@ class _CommunityBoardPageState extends State<CommunityBoardPage> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const _TopTitleBar(title: 'Comunidade Ride4Free'),
+        const TopTitleBar(title: 'Comunidade Ride4Free'),
         Padding(
           padding: const EdgeInsets.fromLTRB(5, 30, 5, 10),
           child: Column(
@@ -437,7 +458,7 @@ class _CommunityBoardPageState extends State<CommunityBoardPage> {
         separatorBuilder: (_, _) => const SizedBox(height: 10),
         itemBuilder: (context, i) {
           final d = _drivers[i];
-          return _ProfileCard(
+          return ProfileCard(
             title: d['driver_name'] as String? ?? 'Condutor',
             // Aqui vais ler o campo 'description' que a API agora retorna
             subtitle: "Partida: ${d['departure_time'] ?? 'Horário a definir'}",
@@ -453,7 +474,7 @@ class _CommunityBoardPageState extends State<CommunityBoardPage> {
     if (_section == 1) {
       if (_passengers.isEmpty) {
         return const Center(
-          child: Text('Sem passageiros disponiveis. Carregue em "Atualizar secao".', style: TextStyle(color: kMuted)),
+          child: Text('Sem passageiros disponiveis.', style: TextStyle(color: kMuted)),
         );
       }
       return ListView.separated(
@@ -463,7 +484,7 @@ class _CommunityBoardPageState extends State<CommunityBoardPage> {
         // Dentro do ListView.separated para Condutores (_section == 0)
         itemBuilder: (context, i) {
           final d = _drivers[i];
-          return _ProfileCard(
+          return ProfileCard(
             title: d['driver_name'] as String? ?? 'Condutor',
             // Se a tua API devolver um campo 'departure_time', usa-o aqui:
             subtitle: "Hora de Partida: ${d['departure_time'] ?? '08:15'}", 
@@ -625,7 +646,7 @@ class _OfferRidePageState extends State<OfferRidePage> {
     final canPublish = _seats > 0 && !_busy;
     return Column(
       children: [
-        const _TopTitleBar(title: 'Oferecer Boleia'),
+        const TopTitleBar(title: 'Oferecer Boleia'),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
@@ -683,7 +704,8 @@ class _OfferRidePageState extends State<OfferRidePage> {
                         children: [
                           _label('HORA'),
                           TextField(
-                            controller: _timeController,
+                            key: const Key('destination_field'), 
+                            controller: _destController,
                             keyboardType: TextInputType.datetime,
                             decoration: InputDecoration(
                               hintText: '08:30',
@@ -712,7 +734,7 @@ class _OfferRidePageState extends State<OfferRidePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _label('LUGARES'),
-                        _SeatPicker(
+                        SeatPicker(
                           seats: _seats,
                           onDec: () {
                             if (_seats > 0) setState(() => _seats--);
@@ -725,7 +747,7 @@ class _OfferRidePageState extends State<OfferRidePage> {
                 ],
               ),
               const SizedBox(height: 26),
-              _RewardPanel(valid: canPublish, rewardText: '+${_seats * 10} Creditos'),
+              RewardPanel(valid: canPublish, rewardText: '+${_seats * 10} Créditos'),
               const SizedBox(height: 20),
               FilledButton(
                 onPressed: canPublish ? _publish : null,
@@ -870,13 +892,13 @@ class _SearchRidePageState extends State<SearchRidePage> {
     return SingleChildScrollView(
       child: Column(
         children: [
-          const _TopTitleBar(title: 'Boleias Encontradas'),
+          const TopTitleBar(title: 'Boleias Encontradas'),
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const _RouteRow(color: kSuccess, text: 'De: Residencia Universitaria'),
+                const RouteRow(color: kSuccess, text: 'De: Residencia Universitaria'),
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -999,7 +1021,7 @@ class _SearchRidePageState extends State<SearchRidePage> {
                 final d = _drivers[i];
                 final name = d['driver_name'] as String? ?? '?';
                 final seats = d['available_seats']?.toString() ?? '?';
-                return _RideCard(
+                return RideCard(
                   name: name,
                   car: 'Lugares livres: $seats',
                   rating: '—',
@@ -1074,7 +1096,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const _TopTitleBar(title: 'Perfil'),
+        const TopTitleBar(title: 'Perfil'),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
@@ -1133,10 +1155,10 @@ class _ProfilePageState extends State<ProfilePage> {
               const SizedBox(height: 12),
               const Center(child: Text('★★★★★', style: TextStyle(fontSize: 44, color: Color(0xFFF3BC41), letterSpacing: 2))),
               const SizedBox(height: 16),
-              const _TickRow(text: 'Chegou a horas'),
-              const _TickRow(text: 'Nao sujou o carro'),
-              const _TickRow(text: 'Foi respeitador'),
-              const _TickRow(text: 'Boa conversa'),
+              const TickRow(text: 'Chegou a horas'),
+              const TickRow(text: 'Nao sujou o carro'),
+              const TickRow(text: 'Foi respeitador'),
+              const TickRow(text: 'Boa conversa'),
               const SizedBox(height: 18),
               Container(
                 decoration: BoxDecoration(
@@ -1178,9 +1200,9 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 }
 
-class _TopTitleBar extends StatelessWidget {
+class TopTitleBar extends StatelessWidget {
   final String title;
-  const _TopTitleBar({required this.title});
+  const TopTitleBar({required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -1200,9 +1222,9 @@ class _TopTitleBar extends StatelessWidget {
   }
 }
 
-class _InputLike extends StatelessWidget {
+class InputLike extends StatelessWidget {
   final String text;
-  const _InputLike({required this.text});
+  const InputLike({required this.text});
 
   @override
   Widget build(BuildContext context) {
@@ -1219,12 +1241,12 @@ class _InputLike extends StatelessWidget {
   }
 }
 
-class _SeatPicker extends StatelessWidget {
+class SeatPicker extends StatelessWidget {
   final int seats;
   final VoidCallback onDec;
   final VoidCallback onInc;
 
-  const _SeatPicker({required this.seats, required this.onDec, required this.onInc});
+  const SeatPicker({required this.seats, required this.onDec, required this.onInc});
 
   @override
   Widget build(BuildContext context) {
@@ -1246,10 +1268,10 @@ class _SeatPicker extends StatelessWidget {
   }
 }
 
-class _RewardPanel extends StatelessWidget {
+class RewardPanel extends StatelessWidget {
   final bool valid;
   final String rewardText;
-  const _RewardPanel({required this.valid, required this.rewardText});
+  const RewardPanel({required this.valid, required this.rewardText});
 
   @override
   Widget build(BuildContext context) {
@@ -1266,7 +1288,7 @@ class _RewardPanel extends StatelessWidget {
           children: [
             Text('Lotacao Invalida', style: TextStyle(color: kRed, fontWeight: FontWeight.w800, fontSize: 17)),
             SizedBox(height: 4),
-            Text('Indique pelo menos 1 lugar disponivel para ganhar creditos.', textAlign: TextAlign.center, style: TextStyle(color: kMuted, fontWeight: FontWeight.w600)),
+            Text('Indique pelo menos 1 lugar disponivel para ganhar créditos.', textAlign: TextAlign.center, style: TextStyle(color: kMuted, fontWeight: FontWeight.w600)),
           ],
         ),
       );
@@ -1293,10 +1315,10 @@ class _RewardPanel extends StatelessWidget {
   }
 }
 
-class _RouteRow extends StatelessWidget {
+class RouteRow extends StatelessWidget {
   final Color color;
   final String text;
-  const _RouteRow({required this.color, required this.text});
+  const RouteRow({required this.color, required this.text});
 
   @override
   Widget build(BuildContext context) {
@@ -1310,14 +1332,14 @@ class _RouteRow extends StatelessWidget {
   }
 }
 
-class _RideCard extends StatelessWidget {
+class RideCard extends StatelessWidget {
   final String name;
   final String car;
   final String rating;
   final String distance;
   final String credits;
 
-  const _RideCard({required this.name, required this.car, required this.rating, required this.distance, required this.credits});
+  const RideCard({required this.name, required this.car, required this.rating, required this.distance, required this.credits});
 
   @override
   Widget build(BuildContext context) {
@@ -1348,7 +1370,7 @@ class _RideCard extends StatelessWidget {
           Column(
             children: [
               Text(credits, style: const TextStyle(color: kRed, fontWeight: FontWeight.w800, fontSize: 30)),
-              const Text('Creditos', style: TextStyle(color: kMuted, fontWeight: FontWeight.w700)),
+              const Text('Créditos', style: TextStyle(color: kMuted, fontWeight: FontWeight.w700)),
             ],
           ),
         ],
@@ -1357,9 +1379,9 @@ class _RideCard extends StatelessWidget {
   }
 }
 
-class _TickRow extends StatelessWidget {
+class TickRow extends StatelessWidget {
   final String text;
-  const _TickRow({required this.text});
+  const TickRow({required this.text});
 
   @override
   Widget build(BuildContext context) {
@@ -1377,7 +1399,7 @@ class _TickRow extends StatelessWidget {
   }
 }
 
-class _ProfileCard extends StatelessWidget {
+class ProfileCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final String description;
@@ -1385,7 +1407,7 @@ class _ProfileCard extends StatelessWidget {
   final String? actionText;
   final VoidCallback? onAction;
 
-  const _ProfileCard({
+  const ProfileCard({
     required this.title,
     required this.subtitle,
     required this.description,
