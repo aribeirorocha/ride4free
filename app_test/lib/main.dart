@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
-import 'profile_rating_button.dart';
 import 'ride4free_api.dart';
 import 'session/university_session_store.dart';
 import 'sigarra/sigarra_auth_service.dart';
@@ -374,6 +373,7 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
     }
   }
 
+  // ignore: unused_element
   Future<void> _bookPassenger(int requestId) async {
     if (Ride4FreeAuth.token == null) {
       _showMessage(context, 'Inicie sessão no perfil.');
@@ -775,13 +775,6 @@ class _OfferRidePageState extends State<OfferRidePage> {
     );
   }
 
-  InputDecoration _fieldDecoration() {
-    return InputDecoration(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E2E2), width: 2)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E2E2), width: 2)),
-    );
-  }
 
   Widget _label(String text) => Text(
     text,
@@ -805,6 +798,7 @@ class _SearchRidePageState extends State<SearchRidePage> {
   LatLng? _pickupLatLng;
   double _radiusMeters = 500; // default 500m
   // Label legível da localização atual do passageiro (reverse geocoding)
+  // ignore: unused_field
   String _locationLabel = 'A obter localização…';
 
   @override
@@ -1016,7 +1010,7 @@ class _SearchRidePageState extends State<SearchRidePage> {
               physics: const NeverScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
               itemCount: _drivers.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (context, i) {
                 final d = _drivers[i];
                 final name = d['driver_name'] as String? ?? '?';

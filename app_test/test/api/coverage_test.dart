@@ -4,7 +4,6 @@
 // Cobre: Exceções de API, Validações de UI, Snackbars de Autenticação e BottomSheets.
 // =============================================================================
 
-import 'package:app_test/sigarra/sigarra_auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:app_test/main.dart';

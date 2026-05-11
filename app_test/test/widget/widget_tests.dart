@@ -1,8 +1,6 @@
 import 'package:app_test/sigarra/sigarra_auth_service.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:app_test/profile_model.dart';
-import 'package:app_test/session/university_session_store.dart'; 
+import 'package:flutter_test/flutter_test.dart'; 
 import 'package:app_test/main.dart';
 import 'package:app_test/ride4free_api.dart';
 
