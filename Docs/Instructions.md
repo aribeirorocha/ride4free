@@ -9,7 +9,7 @@
 
 ## 1. Backend (API)
 
-Abrir uma janela do terminal
+Abrir uma janela de terminal.
 
 ```bash
 cd backend
@@ -44,7 +44,7 @@ flutter run -d chrome           # ou -d android / -d ios
 ## 3. Primeira Utilização
 
 1. Abre a app
-2. Vai ao separador **Perfil** (ícone de pessoa) e cria uma conta
+2. Entra com os teus dados da faculdade
 3. Já podes oferecer ou procurar boleias
 
 > O backend tem de estar a correr antes de abrir a app.
