@@ -9,7 +9,8 @@ class UniversitySessionStore {
   static const String _kPhotoUrl = 'university_photo_url';
 
 
-  final Ride4FreeApi _api = Ride4FreeApi();
+  final Ride4FreeApi _api;
+  UniversitySessionStore({Ride4FreeApi? api}) : _api = api ?? Ride4FreeApi();
 
   Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
