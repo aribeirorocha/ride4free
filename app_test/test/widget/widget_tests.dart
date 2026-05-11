@@ -1,6 +1,8 @@
+import 'package:app_test/sigarra/sigarra_auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:app_test/profile_model.dart';
+import 'package:app_test/session/university_session_store.dart'; 
 import 'package:app_test/main.dart';
 import 'package:app_test/ride4free_api.dart';
 
@@ -78,16 +80,24 @@ void main() {
   });
 
   group('ProfilePage - Widget Tests', () {
+    final mockIdentity = UniversityIdentity(
+      username: 'up202300000',
+      displayName: 'Utilizador Teste',
+      photoUrl: null,
+    );
+
     Future<void> launchProfilePage(WidgetTester tester) async {
       Ride4FreeAuth.token = null;
-      await tester.pumpWidget(const MaterialApp(
-        home: Scaffold(body: ProfilePage()),
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: ProfilePage(
+          onUniversityLogout: () async {},
+          identity: mockIdentity,
+        )),
       ));
       await tester.pumpAndSettle();
     }
 
     testWidgets('WP-1: Page loads with title "Avaliar Passageiro"', (tester) async {
-      Ride4FreeAuth.token = null;
       await launchProfilePage(tester);
       expect(find.text('Avaliar Passageiro'), findsOneWidget);
     });

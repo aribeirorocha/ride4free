@@ -13,6 +13,10 @@ class UniversityIdentity {
 }
 
 class SigarraAuthService {
+  // ADICIONADO: Permite injetar um cliente HTTP para os testes unitários
+  final http.Client? _client;
+  SigarraAuthService({http.Client? client}) : _client = client;
+
   static final Uri _loginUri = Uri.parse(
     'https://sigarra.up.pt/feup/pt/vld_validacao.validacao',
   );
@@ -24,10 +28,14 @@ class SigarraAuthService {
     required String username,
     required String password,
   }) async {
-    final response = await http.post(
+    // ALTERADO: Usa o cliente injetado (testes) ou o cliente real (app)
+    final response = await (_client?.post(
       _loginUri,
       body: {'p_user': username, 'p_pass': password},
-    );
+    ) ?? http.post(
+      _loginUri,
+      body: {'p_user': username, 'p_pass': password},
+    ));
 
     if (response.statusCode != 200) {
       return null;
@@ -43,10 +51,15 @@ class SigarraAuthService {
     }
 
     final cookieHeader = response.headers['set-cookie'];
-    final homeResponse = await http.get(
+    
+    // ALTERADO: Usa o cliente injetado (testes) ou o cliente real (app)
+    final homeResponse = await (_client?.get(
       _homeUri,
       headers: cookieHeader == null ? null : {'cookie': _cookieValue(cookieHeader)},
-    );
+    ) ?? http.get(
+      _homeUri,
+      headers: cookieHeader == null ? null : {'cookie': _cookieValue(cookieHeader)},
+    ));
 
     final profileHtml = homeResponse.statusCode == 200 ? homeResponse.body : response.body;
     final parsedName = _extractName(profileHtml);
