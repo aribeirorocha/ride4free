@@ -1196,6 +1196,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
 class TopTitleBar extends StatelessWidget {
   final String title;
+  // ignore: use_key_in_widget_constructors
   const TopTitleBar({required this.title});
 
   @override
@@ -1218,6 +1219,7 @@ class TopTitleBar extends StatelessWidget {
 
 class InputLike extends StatelessWidget {
   final String text;
+  // ignore: use_key_in_widget_constructors
   const InputLike({required this.text});
 
   @override
@@ -1240,6 +1242,7 @@ class SeatPicker extends StatelessWidget {
   final VoidCallback onDec;
   final VoidCallback onInc;
 
+  // ignore: use_key_in_widget_constructors
   const SeatPicker({required this.seats, required this.onDec, required this.onInc});
 
   @override
@@ -1265,6 +1268,7 @@ class SeatPicker extends StatelessWidget {
 class RewardPanel extends StatelessWidget {
   final bool valid;
   final String rewardText;
+  // ignore: use_key_in_widget_constructors
   const RewardPanel({required this.valid, required this.rewardText});
 
   @override
@@ -1312,6 +1316,7 @@ class RewardPanel extends StatelessWidget {
 class RouteRow extends StatelessWidget {
   final Color color;
   final String text;
+  // ignore: use_key_in_widget_constructors
   const RouteRow({required this.color, required this.text});
 
   @override
@@ -1333,6 +1338,7 @@ class RideCard extends StatelessWidget {
   final String distance;
   final String credits;
 
+  // ignore: use_key_in_widget_constructors
   const RideCard({required this.name, required this.car, required this.rating, required this.distance, required this.credits});
 
   @override
@@ -1375,7 +1381,7 @@ class RideCard extends StatelessWidget {
 
 class TickRow extends StatelessWidget {
   final String text;
-  const TickRow({required this.text});
+  const TickRow({super.key, required this.text});
 
   @override
   Widget build(BuildContext context) {
@@ -1401,7 +1407,7 @@ class ProfileCard extends StatelessWidget {
   final String? actionText;
   final VoidCallback? onAction;
 
-  const ProfileCard({
+  const ProfileCard({super.key, 
     required this.title,
     required this.subtitle,
     required this.description,
@@ -1495,7 +1501,7 @@ class _ConferenceMapState extends State<_ConferenceMap> {
                 point: widget.userLocation!,
                 radius: widget.radiusMeters,
                 useRadiusInMeter: true,
-                color: kRed.withOpacity(0.1),
+                color: kRed,
                 borderColor: kRed,
                 borderStrokeWidth: 2,
               ),

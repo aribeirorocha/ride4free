@@ -71,9 +71,11 @@ class UniversitySessionStore {
         await prefs.remove(_kPhotoUrl);
       }
       
+      // ignore: avoid_print
       print("Sessão sincronizada com backend local. Token ativo.");
 
     } catch (e) {
+      // ignore: avoid_print
       print("Erro crítico na sincronização com o backend: $e");
       // Opcional: podes re-lançar o erro se quiseres impedir o login caso o backend esteja offline
       rethrow; 
