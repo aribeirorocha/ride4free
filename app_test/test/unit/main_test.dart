@@ -24,31 +24,40 @@ void main() {
   // ===========================================================================
   group('Constantes de cor', () {
     test('CC-U1: kRed tem valor ARGB correto', () {
-      expect(kRed, 0xFFDF3E45);
+      // ignore: deprecated_member_use
+      expect(kRed.value, 0xFFDF3E45);
     });
 
     test('CC-U2: kBackground é branco puro', () {
-      expect(kBackground, 0xFFFFFFFF);
+      // ignore: deprecated_member_use
+      expect(kBackground.value, 0xFFFFFFFF);
     });
 
     test('CC-U3: kSuccess é uma tonalidade verde', () {
       // Verde: canal R < G
-      expect(kSuccess, greaterThan(kSuccess));
+      // ignore: deprecated_member_use
+      expect(kSuccess.green, greaterThan(kSuccess.red));
     });
 
     test('CC-U4: kMuted é um cinzento (R == G == B)', () {
-      expect(kMuted, kMuted);
-      expect(kMuted, kMuted);
+      // ignore: deprecated_member_use
+      expect(kMuted.red, kMuted.green);
+      // ignore: deprecated_member_use
+      expect(kMuted.green, kMuted.blue);
     });
 
     test('CC-U5: kDivider é mais claro do que kMuted (maior valor nos canais)', () {
-      expect(kDivider, greaterThan(kMuted));
+      // ignore: deprecated_member_use
+      expect(kDivider.red, greaterThan(kMuted.red));
     });
 
     test('CC-U6: kDarkText é escuro (todos os canais com valor baixo)', () {
-      expect(kDarkText, lessThan(50));
-      expect(kDarkText, lessThan(50));
-      expect(kDarkText, lessThan(50));
+      // ignore: deprecated_member_use
+      expect(kDarkText.red, lessThan(50));
+      // ignore: deprecated_member_use
+      expect(kDarkText.green, lessThan(50));
+      // ignore: deprecated_member_use
+      expect(kDarkText.blue, lessThan(50));
     });
   });
 
@@ -448,10 +457,9 @@ void main() {
     test('SEC-U3: secção 0 → deve carregar condutores', () {
       int section = 0;
       String loadedData = '';
-      // ignore: curly_braces_in_flow_control_structures
-      if (section == 0) loadedData = 'drivers';
-      // ignore: curly_braces_in_flow_control_structures
-      else if (section == 1) loadedData = 'passengers';
+      if (section == 0) {
+        loadedData = 'drivers';
+      } else if (section == 1) {loadedData = 'passengers';}
       expect(loadedData, 'drivers');
     });
 
@@ -460,7 +468,7 @@ void main() {
       String loadedData = '';
       if (section == 0) {
         loadedData = 'drivers';
-      } else if (section == 1){ loadedData = 'passengers';}
+      } else if (section == 1) {loadedData = 'passengers';}
       expect(loadedData, 'passengers');
     });
 
