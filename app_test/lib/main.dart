@@ -670,6 +670,7 @@ class _OfferRidePageState extends State<OfferRidePage> {
                   borderRadius: BorderRadius.circular(14),
                   child: _ConferenceMap(
                     userLocation: _originLatLng,
+                    radiusMeters: 10,
                     onTap: (latlng) => setState(() => _originLatLng = latlng),
                   ),
                 ),
@@ -691,6 +692,7 @@ class _OfferRidePageState extends State<OfferRidePage> {
                   borderRadius: BorderRadius.circular(14),
                   child: _ConferenceMap(
                     userLocation: _destinationLatLng,
+                    radiusMeters: 10,
                     onTap: (latlng) => setState(() => _destinationLatLng = latlng),
                   ),
                 ),
