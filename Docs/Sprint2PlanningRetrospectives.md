@@ -37,7 +37,8 @@ Para maximizar a eficiência e garantir que a *Definition of Done* (DoD) era rig
 **Evidência Visual do Scrumboard:**
 *Abaixo encontra-se o estado final do nosso quadro Kanban após a conclusão da Sprint 2, demonstrando o fluxo das User Stories desde o Product Backlog até à coluna "Done".*
 
-`[ INSERIR IMAGEM DO SCRUMBOARD AQUI ]`
+<img width="1500" height="700" alt="image" src="https://github.com/user-attachments/assets/4a67e4a7-148f-4460-bc90-267e259f5537" />
+
 
 **Notas da Reunião:**
 
