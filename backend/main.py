@@ -10,13 +10,20 @@ from __future__ import annotations
 
 import sqlite3
 
-from fastapi import Depends, FastAPI, HTTPException, Header, Query, status
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, EmailStr, Field
+from contextlib import asynccontextmanager
+from fastapi import Depends, FastAPI, HTTPException, Header, Query, status # type: ignore
+from fastapi.middleware.cors import CORSMiddleware # type: ignore
+from pydantic import BaseModel, EmailStr, Field # type: ignore
 
 import database as db
 
-app = FastAPI(title="Ride4Free API", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    db.init_db()
+    yield
+
+app = FastAPI(title="Ride4Free API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -25,11 +32,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def startup():
-    db.init_db()
 
 
 # --- Auth dependency ---
