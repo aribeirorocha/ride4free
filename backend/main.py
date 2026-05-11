@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import sqlite3
 
-from fastapi import Depends, FastAPI, HTTPException, Header, Query, status
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, EmailStr, Field
+from fastapi import Depends, FastAPI, HTTPException, Header, Query, status # type: ignore
+from fastapi.middleware.cors import CORSMiddleware # type: ignore
+from pydantic import BaseModel, EmailStr, Field # type: ignore
 
 import database as db
 

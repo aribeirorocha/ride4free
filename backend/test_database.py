@@ -4,7 +4,7 @@ Unit tests for database.py — user management, sessions, requests, offers, book
 
 import os
 import tempfile
-import pytest
+import pytest # type: ignore
 import sqlite3
 from pathlib import Path
 
@@ -494,3 +494,390 @@ class TestDatabaseSchema:
         assert "type" in col
         assert "not_null" in col
         assert "primary_key" in col
+
+
+
+@pytest.fixture(autouse=True)
+def temp_db():
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    os.environ["RIDE4FREE_DB_PATH"] = path
+
+    import database as db
+    from importlib import reload
+    reload(db)
+
+    yield db, path
+
+    if os.path.exists(path):
+        os.unlink(path)
+    if "RIDE4FREE_DB_PATH" in os.environ:
+        del os.environ["RIDE4FREE_DB_PATH"]
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def make_user(temp_db):
+    """Devolve uma função que cria utilizadores na DB de teste."""
+    db, _ = temp_db
+    db.init_db()
+    _counter = [0]
+
+    def _make(email=None, name=None):
+        _counter[0] += 1
+        e = email or f"user{_counter[0]}@example.com"
+        n = name or f"User{_counter[0]}"
+        return db.insert_user(e, "password123", n)
+
+    return _make
+
+
+# Coordenadas reais: FEUP e Residência Universitária do Porto
+FEUP_LAT, FEUP_LNG = 41.1780, -8.5980
+RESIDENCIA_LAT, RESIDENCIA_LNG = 41.1850, -8.6020  # ~850 m de FEUP
+FAR_LAT, FAR_LNG = 41.3000, -8.7500                # ~18 km de FEUP
+
+
+# ---------------------------------------------------------------------------
+# 1. departure_time e description
+# ---------------------------------------------------------------------------
+
+class TestDriverOfferNewFields:
+
+    def test_insert_driver_offer_with_departure_time(self, temp_db, make_user):
+        db, _ = temp_db
+        uid = make_user()
+        oid = db.insert_driver_offer(uid, "FEUP", 3, departure_time="08:15")
+        assert oid > 0
+
+    def test_insert_driver_offer_with_description(self, temp_db, make_user):
+        db, _ = temp_db
+        uid = make_user()
+        oid = db.insert_driver_offer(uid, "FEUP", 3, description="Passo pela rotunda")
+        assert oid > 0
+
+    def test_insert_driver_offer_with_both_new_fields(self, temp_db, make_user):
+        db, _ = temp_db
+        uid = make_user()
+        oid = db.insert_driver_offer(uid, "FEUP", 2, departure_time="09:00", description="Saio pontual")
+        assert oid > 0
+
+    def test_departure_time_persisted_in_community_drivers(self, temp_db, make_user):
+        db, _ = temp_db
+        uid = make_user()
+        db.insert_driver_offer(uid, "FEUP", 2, departure_time="07:45")
+
+        drivers = db.list_community_drivers()
+        assert drivers[0]["departure_time"] == "07:45"
+
+    def test_description_persisted_in_community_drivers(self, temp_db, make_user):
+        db, _ = temp_db
+        uid = make_user()
+        db.insert_driver_offer(uid, "FEUP", 2, description="Tenho mala grande")
+
+        drivers = db.list_community_drivers()
+        assert drivers[0]["description"] == "Tenho mala grande"
+
+    def test_departure_time_none_by_default(self, temp_db, make_user):
+        db, _ = temp_db
+        uid = make_user()
+        db.insert_driver_offer(uid, "FEUP", 2)
+
+        drivers = db.list_community_drivers()
+        assert drivers[0]["departure_time"] is None
+
+    def test_description_none_by_default(self, temp_db, make_user):
+        db, _ = temp_db
+        uid = make_user()
+        db.insert_driver_offer(uid, "FEUP", 2)
+
+        drivers = db.list_community_drivers()
+        assert drivers[0]["description"] is None
+
+    def test_departure_time_visible_in_list_open_drivers(self, temp_db, make_user):
+        db, _ = temp_db
+        uid = make_user()
+        db.insert_driver_offer(uid, "FEUP", 2, departure_time="08:15")
+
+        offers = db.list_open_drivers("FEUP")
+        assert offers[0]["departure_time"] == "08:15"
+
+    def test_description_visible_in_list_open_drivers(self, temp_db, make_user):
+        db, _ = temp_db
+        uid = make_user()
+        db.insert_driver_offer(uid, "FEUP", 2, description="Só mulheres")
+
+        offers = db.list_open_drivers("FEUP")
+        assert offers[0]["description"] == "Só mulheres"
+
+
+# ---------------------------------------------------------------------------
+# 2. Coordenadas GPS
+# ---------------------------------------------------------------------------
+
+class TestGPSCoordinates:
+
+    def test_insert_driver_offer_with_origin_coords(self, temp_db, make_user):
+        db, _ = temp_db
+        uid = make_user()
+        oid = db.insert_driver_offer(
+            uid, "FEUP", 3,
+            origin_lat=RESIDENCIA_LAT, origin_lng=RESIDENCIA_LNG
+        )
+        assert oid > 0
+
+    def test_insert_driver_offer_with_destination_coords(self, temp_db, make_user):
+        db, _ = temp_db
+        uid = make_user()
+        oid = db.insert_driver_offer(
+            uid, "FEUP", 3,
+            destination_lat=FEUP_LAT, destination_lng=FEUP_LNG
+        )
+        assert oid > 0
+
+    def test_origin_coords_persisted_in_community_drivers(self, temp_db, make_user):
+        db, _ = temp_db
+        uid = make_user()
+        db.insert_driver_offer(
+            uid, "FEUP", 2,
+            origin_lat=RESIDENCIA_LAT, origin_lng=RESIDENCIA_LNG
+        )
+        drivers = db.list_community_drivers()
+        assert drivers[0]["origin_lat"] == pytest.approx(RESIDENCIA_LAT, abs=1e-6)
+        assert drivers[0]["origin_lng"] == pytest.approx(RESIDENCIA_LNG, abs=1e-6)
+
+    def test_passenger_request_with_origin_coords(self, temp_db, make_user):
+        db, _ = temp_db
+        uid = make_user()
+        rid = db.insert_passenger_request(
+            uid, "FEUP", 1,
+            origin_lat=RESIDENCIA_LAT, origin_lng=RESIDENCIA_LNG
+        )
+        assert rid > 0
+
+
+# ---------------------------------------------------------------------------
+# 3. Haversine e filtro por raio
+# ---------------------------------------------------------------------------
+
+class TestHaversineAndRadiusFilter:
+
+    def test_haversine_same_point_is_zero(self, temp_db, make_user):
+        db, _ = temp_db
+        dist = db.haversine_meters(FEUP_LAT, FEUP_LNG, FEUP_LAT, FEUP_LNG)
+        assert dist == pytest.approx(0.0, abs=1e-3)
+
+    def test_haversine_known_distance(self, temp_db, make_user):
+        db, _ = temp_db
+        # FEUP <-> Residência ~850 m
+        dist = db.haversine_meters(FEUP_LAT, FEUP_LNG, RESIDENCIA_LAT, RESIDENCIA_LNG)
+        assert 700 < dist < 1000
+
+    def test_haversine_far_distance(self, temp_db, make_user):
+        db, _ = temp_db
+        dist = db.haversine_meters(FEUP_LAT, FEUP_LNG, FAR_LAT, FAR_LNG)
+        assert dist > 10_000
+
+    def test_list_open_drivers_radius_includes_nearby(self, temp_db, make_user):
+        db, _ = temp_db
+        uid = make_user()
+        # Oferta com destino em FEUP
+        db.insert_driver_offer(
+            uid, "FEUP", 2,
+            destination_lat=FEUP_LAT, destination_lng=FEUP_LNG
+        )
+        # Passageiro em Residência (< 1000 m de FEUP), raio 1500 m
+        offers = db.list_open_drivers(
+            passenger_lat=RESIDENCIA_LAT,
+            passenger_lng=RESIDENCIA_LNG,
+            radius_m=1500
+        )
+        assert len(offers) == 1
+
+    def test_list_open_drivers_radius_excludes_far(self, temp_db, make_user):
+        db, _ = temp_db
+        uid = make_user()
+        # Oferta com destino em FEUP
+        db.insert_driver_offer(
+            uid, "FEUP", 2,
+            destination_lat=FEUP_LAT, destination_lng=FEUP_LNG
+        )
+        # Passageiro muito longe, raio 500 m
+        offers = db.list_open_drivers(
+            passenger_lat=FAR_LAT,
+            passenger_lng=FAR_LNG,
+            radius_m=500
+        )
+        assert len(offers) == 0
+
+    def test_list_community_drivers_radius_includes_nearby(self, temp_db, make_user):
+        db, _ = temp_db
+        uid = make_user()
+        db.insert_driver_offer(
+            uid, "FEUP", 2,
+            origin_lat=RESIDENCIA_LAT, origin_lng=RESIDENCIA_LNG
+        )
+        drivers = db.list_community_drivers(
+            passenger_lat=RESIDENCIA_LAT,
+            passenger_lng=RESIDENCIA_LNG,
+            radius_m=100
+        )
+        assert len(drivers) == 1
+
+    def test_list_community_drivers_radius_excludes_far(self, temp_db, make_user):
+        db, _ = temp_db
+        uid = make_user()
+        db.insert_driver_offer(
+            uid, "FEUP", 2,
+            origin_lat=RESIDENCIA_LAT, origin_lng=RESIDENCIA_LNG
+        )
+        drivers = db.list_community_drivers(
+            passenger_lat=FAR_LAT,
+            passenger_lng=FAR_LNG,
+            radius_m=500
+        )
+        assert len(drivers) == 0
+
+    def test_radius_filter_no_coords_returns_all(self, temp_db, make_user):
+        """Sem coordenadas de passageiro, não filtra por raio."""
+        db, _ = temp_db
+        uid = make_user()
+        db.insert_driver_offer(uid, "FEUP", 2)
+        db.insert_driver_offer(uid, "City Center", 3)
+
+        drivers = db.list_community_drivers()
+        assert len(drivers) == 2
+
+    def test_offer_without_coords_excluded_from_radius_filter(self, temp_db, make_user):
+        """Oferta sem coordenadas é excluída quando se filtra por raio."""
+        db, _ = temp_db
+        uid = make_user()
+        db.insert_driver_offer(uid, "FEUP", 2)  # sem coords
+
+        offers = db.list_open_drivers(
+            passenger_lat=RESIDENCIA_LAT,
+            passenger_lng=RESIDENCIA_LNG,
+            radius_m=5000
+        )
+        assert len(offers) == 0
+
+
+# ---------------------------------------------------------------------------
+# 4. list_open_drivers (a função de pesquisa do passageiro)
+# ---------------------------------------------------------------------------
+
+class TestListOpenDrivers:
+
+    def test_list_open_drivers_returns_open_only(self, temp_db, make_user):
+        db, _ = temp_db
+        driver = make_user("driver@example.com", "Driver")
+        passenger = make_user("p@example.com", "P")
+        offer_id = db.insert_driver_offer(driver, "FEUP", 1)
+        db.book_driver_offer(offer_id, passenger)  # fica 'full'
+
+        offers = db.list_open_drivers("FEUP")
+        assert len(offers) == 0
+
+    def test_list_open_drivers_returns_multiple(self, temp_db, make_user):
+        db, _ = temp_db
+        d1 = make_user("d1@example.com", "D1")
+        d2 = make_user("d2@example.com", "D2")
+        db.insert_driver_offer(d1, "FEUP", 2)
+        db.insert_driver_offer(d2, "FEUP", 3)
+
+        offers = db.list_open_drivers("FEUP")
+        assert len(offers) == 2
+
+    def test_list_open_drivers_ignores_other_destinations(self, temp_db, make_user):
+        db, _ = temp_db
+        uid = make_user()
+        db.insert_driver_offer(uid, "FEUP", 2)
+        db.insert_driver_offer(uid, "City Center", 2)
+
+        offers = db.list_open_drivers("FEUP")
+        assert len(offers) == 1
+        assert offers[0]["destination_display"] == "FEUP"
+
+    def test_list_open_drivers_has_driver_info(self, temp_db, make_user):
+        db, _ = temp_db
+        uid = make_user("driver@example.com", "Bob")
+        db.insert_driver_offer(uid, "FEUP", 2)
+
+        offers = db.list_open_drivers("FEUP")
+        assert offers[0]["driver_name"] == "Bob"
+        assert offers[0]["driver_user_id"] == uid
+
+    def test_list_open_drivers_for_destination_alias(self, temp_db, make_user):
+        """list_open_drivers_for_destination é alias de list_open_drivers."""
+        db, _ = temp_db
+        uid = make_user()
+        db.insert_driver_offer(uid, "FEUP", 2)
+
+        offers = db.list_open_drivers_for_destination("FEUP")
+        assert len(offers) == 1
+
+
+# ---------------------------------------------------------------------------
+# 5. list_community_passengers com estado fulfilled
+# ---------------------------------------------------------------------------
+
+class TestCommunityPassengersStates:
+
+    def test_fulfilled_passenger_still_appears_in_community(self, temp_db, make_user):
+        db, _ = temp_db
+        passenger = make_user("p@example.com", "Passenger")
+        driver = make_user("d@example.com", "Driver")
+
+        request_id = db.insert_passenger_request(passenger, "FEUP", 1)
+        db.book_passenger_request(request_id, driver)
+
+        passengers = db.list_community_passengers()
+        assert len(passengers) == 1
+        assert passengers[0]["status"] == "fulfilled"
+
+    def test_cancelled_passenger_not_in_community(self, temp_db, make_user):
+        """Pedidos cancelados não aparecem na community board."""
+        db, _ = temp_db
+        uid = make_user()
+
+        rid = db.insert_passenger_request(uid, "FEUP", 1)
+
+        # Cancela manualmente via SQL
+        import sqlite3
+        path = os.environ["RIDE4FREE_DB_PATH"]
+        conn = sqlite3.connect(path)
+        conn.execute("UPDATE passenger_requests SET status = 'cancelled' WHERE id = ?", (rid,))
+        conn.commit()
+        conn.close()
+
+        passengers = db.list_community_passengers()
+        assert len(passengers) == 0
+
+    def test_fulfilled_passenger_has_booking_info(self, temp_db, make_user):
+        db, _ = temp_db
+        passenger = make_user("p@example.com", "Passenger")
+        driver = make_user("d@example.com", "Driver")
+
+        request_id = db.insert_passenger_request(passenger, "FEUP", 1)
+        db.book_passenger_request(request_id, driver)
+
+        passengers = db.list_community_passengers()
+        assert passengers[0]["booking_id"] is not None
+        assert passengers[0]["booked_by_name"] == "Driver"
+
+    def test_open_and_fulfilled_both_visible(self, temp_db, make_user):
+        db, _ = temp_db
+        passenger = make_user("p@example.com", "Passenger")
+        driver = make_user("d@example.com", "Driver")
+
+        db.insert_passenger_request(passenger, "FEUP", 1)           # open
+        rid2 = db.insert_passenger_request(passenger, "City Center", 1)
+        db.book_passenger_request(rid2, driver)                      # fulfilled
+
+        passengers = db.list_community_passengers()
+        statuses = {r["status"] for r in passengers}
+        assert "open" in statuses
+        assert "fulfilled" in statuses
