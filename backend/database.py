@@ -235,36 +235,45 @@ def list_open_passenger_requests_for_destination(destination: str) -> list[dict]
 
 
 """ 'Entirely' done by claude """
-
 def list_open_drivers(destination: str | None = None,
                       passenger_lat: float | None = None,
                       passenger_lng: float | None = None,
                       radius_m: int = 500) -> list[dict]:
-    """Community board: list currently open driver offers."""
-    args: tuple[str, ...] = ()
+    args = []
+    # Base da pesquisa: viagens abertas e com lugares
     where = "WHERE o.status = 'open' AND o.available_seats > 0"
-    if destination and destination.strip():
-        where += " AND o.destination_norm = ?"
-        args = (normalize_destination(destination),)
+    
+    # SE NÃO houver coordenadas, filtramos por texto
+    # SE HOUVER coordenadas (Mapa), ignoramos o filtro de texto para não falhar
+    if not (passenger_lat and passenger_lng):
+        if destination and destination.strip():
+            where += " AND o.destination_norm = ?"
+            args.append(normalize_destination(destination))
 
     with get_connection() as conn:
         rows = conn.execute(
             f"""
             SELECT o.id, o.destination_display, o.available_seats, o.created_at,
-                   o.origin_lat, o.origin_lng,
+                   o.origin_lat, o.origin_lng, o.destination_lat, o.destination_lng,
+                   o.departure_time, o.description,
                    u.id AS driver_user_id, u.name AS driver_name, u.email AS driver_email
             FROM driver_offers o
             JOIN users u ON u.id = o.user_id
             {where}
             ORDER BY o.created_at DESC
             """,
-            args,
+            tuple(args),
         ).fetchall()
-    return _apply_radius_filter(
-        [dict(r) for r in rows],
-        passenger_lat, passenger_lng, radius_m,
-        lat_key='origin_lat', lng_key='origin_lng'
-    )
+    
+    # Se o passageiro usou o MAPA, aplicamos o filtro de RAIO (Distância)
+    if passenger_lat and passenger_lng:
+        return _apply_radius_filter(
+            [dict(r) for r in rows],
+            passenger_lat, passenger_lng, radius_m,
+            lat_key='destination_lat', lng_key='destination_lng' # Filtra pela chegada!
+        )
+    
+    return [dict(r) for r in rows]
 
 def list_open_passenger_requests(destination: str | None = None) -> list[dict]:
     """Community board: list currently open passenger requests."""
