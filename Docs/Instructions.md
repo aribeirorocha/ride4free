@@ -9,6 +9,8 @@
 
 ## 1. Backend (API)
 
+Abrir uma janela do terminal
+
 ```bash
 cd backend
 
@@ -23,9 +25,12 @@ uvicorn main:app --reload
 A API fica disponível em **http://localhost:8000**.  
 Documentação interativa: **http://localhost:8000/docs**
 
+Deixar janela aberta
 ---
 
 ## 2. App Flutter
+
+Abrir uma nova janela de terminal
 
 ```bash
 cd app_test
