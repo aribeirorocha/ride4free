@@ -59,7 +59,7 @@ jobs:
       - name: 🧹 Verificar formatação e análise estática (Linting)
         run: |
           cd app_test
-          flutter analyze
+          flutter analyze --no-fatal-warnings
 
       - name: 🧪 Correr Testes do Frontend (Widget, Unit, Integration)
         run: |

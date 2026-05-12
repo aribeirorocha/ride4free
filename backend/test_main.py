@@ -4,35 +4,36 @@ Integration tests for main.py — FastAPI endpoints for Ride4Free.
 
 import os
 import tempfile
-import pytest
-from fastapi.testclient import TestClient
-
-# Setup temp DB before importing main
-@pytest.fixture(scope="session", autouse=True)
-def setup_test_db():
-    """Setup temporary database for all tests."""
-    fd, path = tempfile.mkstemp(suffix=".db")
-    os.close(fd)
-    os.environ["RIDE4FREE_DB_PATH"] = path
-    yield path
-    if os.path.exists(path):
-        os.unlink(path)
-
+import pytest # type: ignore
+from fastapi.testclient import TestClient # type: ignore
 
 @pytest.fixture
 def client():
-    """Provide a TestClient for each test."""
-    from main import app
+    """Provide an isolated TestClient and temporary database for each test."""
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    os.environ["RIDE4FREE_DB_PATH"] = path
+
     import database as db
+    import main
     from importlib import reload
-    
-    # Reload to pick up new DB path
-    reload(db)
-    
-    # Initialize DB for this test
+
+    # Reload modules to ensure the temporary DB path is used by the app.
+    db = reload(db)
+    main = reload(main)
+    main.db = db
+
     db.init_db()
-    
-    return TestClient(app)
+    client = TestClient(main.app)
+
+    try:
+        yield client
+    finally:
+        client.close()
+        if os.path.exists(path):
+            os.unlink(path)
+        if "RIDE4FREE_DB_PATH" in os.environ:
+            del os.environ["RIDE4FREE_DB_PATH"]
 
 
 @pytest.fixture
@@ -565,3 +566,549 @@ class TestDatabaseSchema:
         response = client.get("/database/schema")
         
         assert response.status_code == 401
+
+@pytest.fixture
+def client():
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    os.environ["RIDE4FREE_DB_PATH"] = path
+
+    import database as db
+    import main
+    from importlib import reload
+
+    db = reload(db)
+    main = reload(main)
+    main.db = db
+    db.init_db()
+
+    c = TestClient(main.app)
+    try:
+        yield c
+    finally:
+        c.close()
+        if os.path.exists(path):
+            os.unlink(path)
+        if "RIDE4FREE_DB_PATH" in os.environ:
+            del os.environ["RIDE4FREE_DB_PATH"]
+
+
+@pytest.fixture
+def two_tokens(client):
+    """Cria dois utilizadores e devolve (driver_token, passenger_token)."""
+    r1 = client.post("/users/register", json={
+        "email": "driver@test.com", "password": "password123", "name": "Driver"
+    })
+    r2 = client.post("/users/register", json={
+        "email": "passenger@test.com", "password": "password123", "name": "Passenger"
+    })
+    return r1.json()["token"], r2.json()["token"]
+
+
+# Coordenadas: FEUP e Residência (< 1 km), ponto distante (> 15 km)
+FEUP = {"lat": 41.1780, "lng": -8.5980}
+RESIDENCIA = {"lat": 41.1850, "lng": -8.6020}
+FAR = {"lat": 41.3000, "lng": -8.7500}
+
+
+# ---------------------------------------------------------------------------
+# 1. departure_time e description em /driver/offers
+# ---------------------------------------------------------------------------
+
+class TestDriverOfferNewFields:
+
+    def test_create_offer_with_departure_time(self, client, two_tokens):
+        driver_token, _ = two_tokens
+        response = client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={"destination": "FEUP", "available_seats": 2, "departure_time": "08:15"}
+        )
+        assert response.status_code == 200
+        assert response.json()["id"] > 0
+
+    def test_create_offer_with_description(self, client, two_tokens):
+        driver_token, _ = two_tokens
+        response = client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={"destination": "FEUP", "available_seats": 2, "description": "Passo pela rotunda"}
+        )
+        assert response.status_code == 200
+        assert response.json()["id"] > 0
+
+    def test_create_offer_with_both_new_fields(self, client, two_tokens):
+        driver_token, _ = two_tokens
+        response = client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={
+                "destination": "FEUP",
+                "available_seats": 3,
+                "departure_time": "09:00",
+                "description": "Saio pontual, não espero"
+            }
+        )
+        assert response.status_code == 200
+
+    def test_departure_time_visible_in_community_drivers(self, client, two_tokens):
+        driver_token, _ = two_tokens
+        client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={"destination": "FEUP", "available_seats": 2, "departure_time": "07:45"}
+        )
+        response = client.get(
+            "/community/drivers",
+            headers={"Authorization": f"Bearer {driver_token}"}
+        )
+        assert response.status_code == 200
+        driver = response.json()["drivers"][0]
+        assert driver["departure_time"] == "07:45"
+
+    def test_description_visible_in_community_drivers(self, client, two_tokens):
+        driver_token, _ = two_tokens
+        client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={"destination": "FEUP", "available_seats": 2, "description": "Tenho mala grande"}
+        )
+        response = client.get(
+            "/community/drivers",
+            headers={"Authorization": f"Bearer {driver_token}"}
+        )
+        driver = response.json()["drivers"][0]
+        assert driver["description"] == "Tenho mala grande"
+
+    def test_departure_time_null_by_default(self, client, two_tokens):
+        driver_token, _ = two_tokens
+        client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={"destination": "FEUP", "available_seats": 2}
+        )
+        response = client.get(
+            "/community/drivers",
+            headers={"Authorization": f"Bearer {driver_token}"}
+        )
+        driver = response.json()["drivers"][0]
+        assert driver["departure_time"] is None
+
+    def test_description_null_by_default(self, client, two_tokens):
+        driver_token, _ = two_tokens
+        client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={"destination": "FEUP", "available_seats": 2}
+        )
+        response = client.get(
+            "/community/drivers",
+            headers={"Authorization": f"Bearer {driver_token}"}
+        )
+        driver = response.json()["drivers"][0]
+        assert driver["description"] is None
+
+    def test_departure_time_visible_in_passenger_drivers(self, client, two_tokens):
+        driver_token, passenger_token = two_tokens
+        client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={"destination": "FEUP", "available_seats": 2, "departure_time": "08:30"}
+        )
+        response = client.get(
+            "/passenger/drivers",
+            headers={"Authorization": f"Bearer {passenger_token}"},
+            params={"destination": "FEUP"}
+        )
+        assert response.status_code == 200
+        driver = response.json()["drivers"][0]
+        assert driver["departure_time"] == "08:30"
+
+    def test_available_seats_exceeds_max_returns_422(self, client, two_tokens):
+        driver_token, _ = two_tokens
+        response = client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={"destination": "FEUP", "available_seats": 25}
+        )
+        assert response.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# 2. Coordenadas GPS em pedidos e ofertas
+# ---------------------------------------------------------------------------
+
+class TestGPSCoordinates:
+
+    def test_create_passenger_request_with_coords(self, client, two_tokens):
+        _, passenger_token = two_tokens
+        response = client.post(
+            "/passenger/requests",
+            headers={"Authorization": f"Bearer {passenger_token}"},
+            json={
+                "destination": "FEUP",
+                "passenger_count": 1,
+                "origin_lat": RESIDENCIA["lat"],
+                "origin_lng": RESIDENCIA["lng"]
+            }
+        )
+        assert response.status_code == 200
+        assert response.json()["id"] > 0
+
+    def test_create_driver_offer_with_origin_coords(self, client, two_tokens):
+        driver_token, _ = two_tokens
+        response = client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={
+                "destination": "FEUP",
+                "available_seats": 2,
+                "origin_lat": RESIDENCIA["lat"],
+                "origin_lng": RESIDENCIA["lng"]
+            }
+        )
+        assert response.status_code == 200
+
+    def test_create_driver_offer_with_destination_coords(self, client, two_tokens):
+        driver_token, _ = two_tokens
+        response = client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={
+                "destination": "FEUP",
+                "available_seats": 2,
+                "destination_lat": FEUP["lat"],
+                "destination_lng": FEUP["lng"]
+            }
+        )
+        assert response.status_code == 200
+
+    def test_create_driver_offer_with_all_coords(self, client, two_tokens):
+        driver_token, _ = two_tokens
+        response = client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={
+                "destination": "FEUP",
+                "available_seats": 2,
+                "origin_lat": RESIDENCIA["lat"],
+                "origin_lng": RESIDENCIA["lng"],
+                "destination_lat": FEUP["lat"],
+                "destination_lng": FEUP["lng"]
+            }
+        )
+        assert response.status_code == 200
+
+    def test_origin_coords_visible_in_community_drivers(self, client, two_tokens):
+        driver_token, _ = two_tokens
+        client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={
+                "destination": "FEUP",
+                "available_seats": 2,
+                "origin_lat": RESIDENCIA["lat"],
+                "origin_lng": RESIDENCIA["lng"]
+            }
+        )
+        response = client.get(
+            "/community/drivers",
+            headers={"Authorization": f"Bearer {driver_token}"}
+        )
+        driver = response.json()["drivers"][0]
+        assert driver["origin_lat"] == pytest.approx(RESIDENCIA["lat"], abs=1e-6)
+        assert driver["origin_lng"] == pytest.approx(RESIDENCIA["lng"], abs=1e-6)
+
+
+# ---------------------------------------------------------------------------
+# 3. Filtro por raio em /passenger/drivers
+# ---------------------------------------------------------------------------
+
+class TestRadiusFilterPassengerDrivers:
+
+    def test_nearby_offer_included_with_radius(self, client, two_tokens):
+        driver_token, passenger_token = two_tokens
+        # Oferta com destino em FEUP
+        client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={
+                "destination": "FEUP",
+                "available_seats": 2,
+                "destination_lat": FEUP["lat"],
+                "destination_lng": FEUP["lng"]
+            }
+        )
+        # Passageiro em Residência, raio 1500 m (FEUP está a ~850 m)
+        response = client.get(
+            "/passenger/drivers",
+            headers={"Authorization": f"Bearer {passenger_token}"},
+            params={
+                "destination": "FEUP",
+                "lat": RESIDENCIA["lat"],
+                "lng": RESIDENCIA["lng"],
+                "radius_m": 1500
+            }
+        )
+        assert response.status_code == 200
+        assert len(response.json()["drivers"]) == 1
+
+    def test_far_offer_excluded_with_radius(self, client, two_tokens):
+        driver_token, passenger_token = two_tokens
+        client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={
+                "destination": "FEUP",
+                "available_seats": 2,
+                "destination_lat": FEUP["lat"],
+                "destination_lng": FEUP["lng"]
+            }
+        )
+        # Passageiro muito longe, raio 500 m
+        response = client.get(
+            "/passenger/drivers",
+            headers={"Authorization": f"Bearer {passenger_token}"},
+            params={
+                "destination": "FEUP",
+                "lat": FAR["lat"],
+                "lng": FAR["lng"],
+                "radius_m": 500
+            }
+        )
+        assert response.status_code == 200
+        assert len(response.json()["drivers"]) == 0
+
+    def test_radius_m_below_minimum_returns_422(self, client, two_tokens):
+        _, passenger_token = two_tokens
+        response = client.get(
+            "/passenger/drivers",
+            headers={"Authorization": f"Bearer {passenger_token}"},
+            params={"destination": "FEUP", "radius_m": 50}
+        )
+        assert response.status_code == 422
+
+    def test_radius_m_above_maximum_returns_422(self, client, two_tokens):
+        _, passenger_token = two_tokens
+        response = client.get(
+            "/passenger/drivers",
+            headers={"Authorization": f"Bearer {passenger_token}"},
+            params={"destination": "FEUP", "radius_m": 5000}
+        )
+        assert response.status_code == 422
+
+    def test_no_coords_returns_all_matching_destination(self, client, two_tokens):
+        driver_token, passenger_token = two_tokens
+        client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={"destination": "FEUP", "available_seats": 2}
+        )
+        response = client.get(
+            "/passenger/drivers",
+            headers={"Authorization": f"Bearer {passenger_token}"},
+            params={"destination": "FEUP"}
+        )
+        assert response.status_code == 200
+        assert len(response.json()["drivers"]) == 1
+
+
+# ---------------------------------------------------------------------------
+# 4. Filtro por raio em /community/drivers
+# ---------------------------------------------------------------------------
+
+class TestRadiusFilterCommunityDrivers:
+
+    def test_nearby_driver_included(self, client, two_tokens):
+        driver_token, passenger_token = two_tokens
+        client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={
+                "destination": "FEUP",
+                "available_seats": 2,
+                "origin_lat": RESIDENCIA["lat"],
+                "origin_lng": RESIDENCIA["lng"]
+            }
+        )
+        response = client.get(
+            "/community/drivers",
+            headers={"Authorization": f"Bearer {passenger_token}"},
+            params={"lat": RESIDENCIA["lat"], "lng": RESIDENCIA["lng"], "radius_m": 100}
+        )
+        assert response.status_code == 200
+        assert len(response.json()["drivers"]) == 1
+
+    def test_far_driver_excluded(self, client, two_tokens):
+        driver_token, passenger_token = two_tokens
+        client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={
+                "destination": "FEUP",
+                "available_seats": 2,
+                "origin_lat": RESIDENCIA["lat"],
+                "origin_lng": RESIDENCIA["lng"]
+            }
+        )
+        response = client.get(
+            "/community/drivers",
+            headers={"Authorization": f"Bearer {passenger_token}"},
+            params={"lat": FAR["lat"], "lng": FAR["lng"], "radius_m": 500}
+        )
+        assert response.status_code == 200
+        assert len(response.json()["drivers"]) == 0
+
+
+# ---------------------------------------------------------------------------
+# 5. profile_description em /community/drivers e /community/passengers
+# ---------------------------------------------------------------------------
+
+class TestProfileDescription:
+
+    def test_unbooked_driver_profile_description(self, client, two_tokens):
+        driver_token, _ = two_tokens
+        client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={"destination": "FEUP", "available_seats": 3}
+        )
+        response = client.get(
+            "/community/drivers",
+            headers={"Authorization": f"Bearer {driver_token}"}
+        )
+        desc = response.json()["drivers"][0]["profile_description"]
+        assert "Driver" in desc
+        assert "FEUP" in desc
+        assert "3" in desc
+
+    def test_booked_driver_profile_description(self, client, two_tokens):
+        driver_token, passenger_token = two_tokens
+        offer_resp = client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={"destination": "FEUP", "available_seats": 1}
+        )
+        offer_id = offer_resp.json()["id"]
+        client.post(
+            "/bookings/driver-offer",
+            headers={"Authorization": f"Bearer {passenger_token}"},
+            json={"offer_id": offer_id}
+        )
+        response = client.get(
+            "/community/drivers",
+            headers={"Authorization": f"Bearer {driver_token}"}
+        )
+        desc = response.json()["drivers"][0]["profile_description"]
+        assert "booked by" in desc
+        assert "Passenger" in desc
+
+    def test_booked_driver_has_booked_true(self, client, two_tokens):
+        driver_token, passenger_token = two_tokens
+        offer_resp = client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={"destination": "FEUP", "available_seats": 1}
+        )
+        offer_id = offer_resp.json()["id"]
+        client.post(
+            "/bookings/driver-offer",
+            headers={"Authorization": f"Bearer {passenger_token}"},
+            json={"offer_id": offer_id}
+        )
+        response = client.get(
+            "/community/drivers",
+            headers={"Authorization": f"Bearer {driver_token}"}
+        )
+        assert response.json()["drivers"][0]["booked"] is True
+
+    def test_unbooked_driver_has_booked_false(self, client, two_tokens):
+        driver_token, _ = two_tokens
+        client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={"destination": "FEUP", "available_seats": 2}
+        )
+        response = client.get(
+            "/community/drivers",
+            headers={"Authorization": f"Bearer {driver_token}"}
+        )
+        assert response.json()["drivers"][0]["booked"] is False
+
+    def test_unbooked_passenger_profile_description(self, client, two_tokens):
+        _, passenger_token = two_tokens
+        client.post(
+            "/passenger/requests",
+            headers={"Authorization": f"Bearer {passenger_token}"},
+            json={"destination": "FEUP", "passenger_count": 2}
+        )
+        response = client.get(
+            "/community/passengers",
+            headers={"Authorization": f"Bearer {passenger_token}"}
+        )
+        desc = response.json()["passengers"][0]["profile_description"]
+        assert "Passenger" in desc
+        assert "2" in desc
+        assert "FEUP" in desc
+
+    def test_booked_passenger_profile_description(self, client, two_tokens):
+        driver_token, passenger_token = two_tokens
+        req_resp = client.post(
+            "/passenger/requests",
+            headers={"Authorization": f"Bearer {passenger_token}"},
+            json={"destination": "FEUP", "passenger_count": 1}
+        )
+        request_id = req_resp.json()["id"]
+        client.post(
+            "/bookings/passenger-request",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={"request_id": request_id}
+        )
+        response = client.get(
+            "/community/passengers",
+            headers={"Authorization": f"Bearer {passenger_token}"}
+        )
+        desc = response.json()["passengers"][0]["profile_description"]
+        assert "booked by" in desc
+        assert "Driver" in desc
+
+    def test_booked_passenger_has_booked_true(self, client, two_tokens):
+        driver_token, passenger_token = two_tokens
+        req_resp = client.post(
+            "/passenger/requests",
+            headers={"Authorization": f"Bearer {passenger_token}"},
+            json={"destination": "FEUP", "passenger_count": 1}
+        )
+        request_id = req_resp.json()["id"]
+        client.post(
+            "/bookings/passenger-request",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={"request_id": request_id}
+        )
+        response = client.get(
+            "/community/passengers",
+            headers={"Authorization": f"Bearer {passenger_token}"}
+        )
+        assert response.json()["passengers"][0]["booked"] is True
+
+    def test_community_drivers_destination_filter_in_response(self, client, two_tokens):
+        driver_token, _ = two_tokens
+        client.post(
+            "/driver/offers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            json={"destination": "FEUP", "available_seats": 2}
+        )
+        response = client.get(
+            "/community/drivers",
+            headers={"Authorization": f"Bearer {driver_token}"},
+            params={"destination": "FEUP"}
+        )
+        assert response.json()["destination_filter"] == "FEUP"
+
+    def test_community_passengers_destination_filter_none_when_absent(self, client, two_tokens):
+        _, passenger_token = two_tokens
+        response = client.get(
+            "/community/passengers",
+            headers={"Authorization": f"Bearer {passenger_token}"}
+        )
+        assert response.json()["destination_filter"] is None

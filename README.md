@@ -230,12 +230,13 @@ Our project management workflow is structured around the following key areas:
 ---
 
 ### Sprint 0
-The detailed notes from our Sprint 0 Planning and Retrospective (including what we did well, what to do differently, and puzzles) can be found in our dedicated [Sprint0PlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/SprintPlanningRetrospectives.md).
+The detailed notes from our Sprint 0 Planning and Retrospective (including what we did well, what to do differently, and puzzles) can be found in our dedicated [Sprint0PlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/Docs/SprintPlanningRetrospectives.md).
 
 ### Sprint 1
-The detailed notes from our Sprint 1 Review, Planning, and Retrospective (including the Agile Patterns applied, achievements, team structure, and future improvements) can be found in our dedicated [Sprint1PlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/Sprint1PlanningRetrospectives.md).
+The detailed notes from our Sprint 1 Review, Planning, and Retrospective (including the Agile Patterns applied, achievements, team structure, and future improvements) can be found in our dedicated [Sprint1PlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/Docs/Sprint1PlanningRetrospectives.md).
 
 ### Sprint 2
+The detailed notes from our Sprint 2 Review, Planning, and Retrospective (including the Agile Patterns applied, the delivery of the Advanced Filtering and University Authentication features, team structure, and future improvements) can be found in our dedicated [Sprint2PlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/Docs/Sprint2PlanningRetrospectives.md).
 
 ### Sprint 3
 

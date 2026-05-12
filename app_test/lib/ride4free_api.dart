@@ -57,9 +57,14 @@ class Ride4FreeUser {
 }
 
 class Ride4FreeApi {
-  Ride4FreeApi({String? baseUrl}) : _base = baseUrl ?? Ride4FreeConfig.baseUrl;
+
+  Ride4FreeApi({String? baseUrl, http.Client? client}) 
+      : _base = baseUrl ?? Ride4FreeConfig.baseUrl,
+        _client = client ?? http.Client();
 
   final String _base;
+
+  final http.Client _client;
 
   Map<String, String> get _headers {
     final h = <String, String>{'Content-Type': 'application/json'};
@@ -89,7 +94,7 @@ class Ride4FreeApi {
     required String password,
     required String name,
   }) async {
-    final r = await http.post(
+    final r = await _client.post(
       _u('/users/register'),
       headers: _headers,
       body: jsonEncode({'email': email, 'password': password, 'name': name}),
@@ -104,7 +109,7 @@ class Ride4FreeApi {
     required String email,
     required String password,
   }) async {
-    final r = await http.post(
+    final r = await _client.post(
       _u('/users/login'),
       headers: _headers,
       body: jsonEncode({'email': email, 'password': password}),
@@ -116,13 +121,13 @@ class Ride4FreeApi {
   }
 
   Future<void> logout() async {
-    final r = await http.post(_u('/users/logout'), headers: _headers);
+    final r = await _client.post(_u('/users/logout'), headers: _headers);
     await _jsonOrThrow(r);
     Ride4FreeAuth.token = null;
   }
 
   Future<Ride4FreeUser> me() async {
-    final r = await http.get(_u('/users/me'), headers: _headers);
+    final r = await _client.get(_u('/users/me'), headers: _headers);
     final m = await _jsonOrThrow(r);
     return Ride4FreeUser.fromJson(m);
   }
@@ -133,14 +138,14 @@ class Ride4FreeApi {
     double? originLat,
     double? originLng,
   }) async {
-    final r = await http.post(
+    final r = await _client.post(
       _u('/passenger/requests'),
       headers: _headers,
       body: jsonEncode({
         'destination': destination,
         'passenger_count': passengerCount,
-        if (originLat != null) 'origin_lat': originLat,
-        if (originLng != null) 'origin_lng': originLng,
+        'origin_lat': ?originLat,
+        'origin_lng': ?originLng,
       }),
     );
     await _jsonOrThrow(r);
@@ -152,7 +157,7 @@ class Ride4FreeApi {
         double? lng,
         int radiusM = 500,
   }) async {
-    final r = await http.get(
+    final r = await _client.get(
       _u('/passenger/drivers', {
         'destination': destination,
         if (lat != null) 'lat': '$lat',
@@ -166,24 +171,35 @@ class Ride4FreeApi {
     return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
-  Future<void> createDriverOffer({required String destination, required int availableSeats, double? originLat, double? originLng, double? destinationLat, double? destinationLng}) async {
-    final r = await http.post(
+    Future<void> createDriverOffer({
+    required String destination, 
+    required int availableSeats,
+    String? departureTime, 
+    String? description, 
+    double? originLat, 
+    double? originLng, 
+    double? destinationLat, 
+    double? destinationLng
+  }) async {
+    final r = await _client.post(
       _u('/driver/offers'),
       headers: _headers,
       body: jsonEncode({
         'destination': destination,
         'available_seats': availableSeats,
-        if (originLat != null) 'origin_lat': originLat,
-        if (originLng != null) 'origin_lng': originLng,
-        if (destinationLat != null) 'destination_lat': destinationLat,
-        if (destinationLng != null) 'destination_lng': destinationLng,
+        'description': description,
+        'departure_time': departureTime,
+        'origin_lat': ?originLat,
+        'origin_lng': ?originLng,
+        'destination_lat': ?destinationLat,
+        'destination_lng': ?destinationLng,
       }),
     );
     await _jsonOrThrow(r);
   }
 
   Future<Map<String, dynamic>> listPassengersForDestination(String destination) async {
-    final r = await http.get(
+    final r = await _client.get(
       _u('/driver/passengers', {'destination': destination}),
       headers: _headers,
     );
@@ -195,7 +211,7 @@ class Ride4FreeApi {
     final q = (destination != null && destination.trim().isNotEmpty)
         ? {'destination': destination.trim()}
         : null;
-    final r = await http.get(_u('/community/drivers', q), headers: _headers);
+    final r = await _client.get(_u('/community/drivers', q), headers: _headers);
     final m = await _jsonOrThrow(r);
     final list = m['drivers'] as List<dynamic>? ?? [];
     return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
@@ -205,19 +221,19 @@ class Ride4FreeApi {
     final q = (destination != null && destination.trim().isNotEmpty)
         ? {'destination': destination.trim()}
         : null;
-    final r = await http.get(_u('/community/passengers', q), headers: _headers);
+    final r = await _client.get(_u('/community/passengers', q), headers: _headers);
     final m = await _jsonOrThrow(r);
     final list = m['passengers'] as List<dynamic>? ?? [];
     return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
   Future<Map<String, dynamic>> getDatabaseSchema() async {
-    final r = await http.get(_u('/database/schema'), headers: _headers);
+    final r = await _client.get(_u('/database/schema'), headers: _headers);
     return _jsonOrThrow(r);
   }
 
   Future<void> bookDriverOffer(int offerId) async {
-    final r = await http.post(
+    final r = await _client.post(
       _u('/bookings/driver-offer'),
       headers: _headers,
       body: jsonEncode({'offer_id': offerId}),
@@ -226,7 +242,7 @@ class Ride4FreeApi {
   }
 
   Future<void> bookPassengerRequest(int requestId) async {
-    final r = await http.post(
+    final r = await _client.post(
       _u('/bookings/passenger-request'),
       headers: _headers,
       body: jsonEncode({'request_id': requestId}),

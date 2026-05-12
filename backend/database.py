@@ -107,6 +107,8 @@ CREATE TABLE IF NOT EXISTS driver_offers (
     destination_norm TEXT NOT NULL,
     destination_display TEXT NOT NULL,
     available_seats INTEGER NOT NULL CHECK (available_seats >= 0),
+    departure_time TEXT, 
+    description TEXT,    
     status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'full', 'cancelled')),
     created_at TEXT NOT NULL
 );
@@ -200,19 +202,25 @@ def insert_passenger_request(user_id: int, destination: str, passenger_count: in
         return int(cur.lastrowid)
 
 
-def insert_driver_offer(user_id: int, destination: str, available_seats: int, origin_lat=None, origin_lng=None, destination_lat=None, destination_lng=None) -> int:
+def insert_driver_offer(user_id: int, destination: str, available_seats: int, 
+                        departure_time: str = None, description: str = None, # Novos argumentos
+                        origin_lat=None, origin_lng=None, 
+                        destination_lat=None, destination_lng=None) -> int:
     norm = normalize_destination(destination)
     now = utc_now_iso()
     status = "open" if available_seats > 0 else "full"
     with get_connection() as conn:
         cur = conn.execute(
             """INSERT INTO driver_offers
-            (user_id, destination_norm, destination_display, available_seats, status, created_at, origin_lat, origin_lng, destination_lat, destination_lng)
-            VALUES (?,?,?,?,?,?,?,?,?,?)""",
-            (user_id, norm, destination.strip(), available_seats, status, now, origin_lat, origin_lng, destination_lat, destination_lng),
+            (user_id, destination_norm, destination_display, available_seats, 
+             departure_time, description, status, created_at, 
+             origin_lat, origin_lng, destination_lat, destination_lng)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (user_id, norm, destination.strip(), available_seats, 
+             departure_time, description, status, now, 
+             origin_lat, origin_lng, destination_lat, destination_lng),
         )
         return int(cur.lastrowid)
-
 
 def list_open_drivers_for_destination(destination: str,
                                       passenger_lat: float | None = None,
@@ -227,36 +235,45 @@ def list_open_passenger_requests_for_destination(destination: str) -> list[dict]
 
 
 """ 'Entirely' done by claude """
-
 def list_open_drivers(destination: str | None = None,
                       passenger_lat: float | None = None,
                       passenger_lng: float | None = None,
                       radius_m: int = 500) -> list[dict]:
-    """Community board: list currently open driver offers."""
-    args: tuple[str, ...] = ()
+    args = []
+    # Base da pesquisa: viagens abertas e com lugares
     where = "WHERE o.status = 'open' AND o.available_seats > 0"
-    if destination and destination.strip():
-        where += " AND o.destination_norm = ?"
-        args = (normalize_destination(destination),)
+    
+    # SE NÃO houver coordenadas, filtramos por texto
+    # SE HOUVER coordenadas (Mapa), ignoramos o filtro de texto para não falhar
+    if not (passenger_lat and passenger_lng):
+        if destination and destination.strip():
+            where += " AND o.destination_norm = ?"
+            args.append(normalize_destination(destination))
 
     with get_connection() as conn:
         rows = conn.execute(
             f"""
             SELECT o.id, o.destination_display, o.available_seats, o.created_at,
-                   o.origin_lat, o.origin_lng,
+                   o.origin_lat, o.origin_lng, o.destination_lat, o.destination_lng,
+                   o.departure_time, o.description,
                    u.id AS driver_user_id, u.name AS driver_name, u.email AS driver_email
             FROM driver_offers o
             JOIN users u ON u.id = o.user_id
             {where}
             ORDER BY o.created_at DESC
             """,
-            args,
+            tuple(args),
         ).fetchall()
-    return _apply_radius_filter(
-        [dict(r) for r in rows],
-        passenger_lat, passenger_lng, radius_m,
-        lat_key='origin_lat', lng_key='origin_lng'
-    )
+    
+    # Se o passageiro usou o MAPA, aplicamos o filtro de RAIO (Distância)
+    if passenger_lat and passenger_lng:
+        return _apply_radius_filter(
+            [dict(r) for r in rows],
+            passenger_lat, passenger_lng, radius_m,
+            lat_key='destination_lat', lng_key='destination_lng' # Filtra pela chegada!
+        )
+    
+    return [dict(r) for r in rows]
 
 def list_open_passenger_requests(destination: str | None = None) -> list[dict]:
     """Community board: list currently open passenger requests."""
@@ -296,8 +313,6 @@ def book_driver_offer(offer_id: int, passenger_user_id: int) -> dict:
             raise ValueError("Driver offer not found")
         if offer["driver_user_id"] == passenger_user_id:
             raise ValueError("You cannot book your own ride")
-        if offer["status"] != "open" or int(offer["available_seats"]) <= 0:
-            raise ValueError("Driver offer is not open")
 
         existing = conn.execute(
             "SELECT id FROM ride_bookings WHERE driver_offer_id = ?",
@@ -305,6 +320,9 @@ def book_driver_offer(offer_id: int, passenger_user_id: int) -> dict:
         ).fetchone()
         if existing:
             raise ValueError("Driver offer already booked")
+
+        if offer['status'] != 'open' or int(offer['available_seats']) <= 0:
+            raise ValueError("Driver offer is not open")
 
         cur = conn.execute(
             """
@@ -335,8 +353,6 @@ def book_passenger_request(request_id: int, driver_user_id: int) -> dict:
             raise ValueError("Passenger request not found")
         if req["passenger_user_id"] == driver_user_id:
             raise ValueError("You cannot book your own passenger request")
-        if req["status"] != "open":
-            raise ValueError("Passenger request is not open")
 
         existing = conn.execute(
             "SELECT id FROM ride_bookings WHERE passenger_request_id = ?",
@@ -344,6 +360,9 @@ def book_passenger_request(request_id: int, driver_user_id: int) -> dict:
         ).fetchone()
         if existing:
             raise ValueError("Passenger request already booked")
+
+        if req['status'] != 'open':
+            raise ValueError("Passenger request is not open")
 
         cur = conn.execute(
             """
@@ -358,7 +377,6 @@ def book_passenger_request(request_id: int, driver_user_id: int) -> dict:
         )
         return {"booking_id": int(cur.lastrowid), "request_id": request_id}
 
-""" 'Entirely' done by claude """
 def list_community_drivers(destination: str | None = None,
                            passenger_lat: float | None = None,
                            passenger_lng: float | None = None,
@@ -374,6 +392,7 @@ def list_community_drivers(destination: str | None = None,
             f"""
             SELECT o.id, o.destination_display, o.available_seats, o.status, o.created_at,
                    o.origin_lat, o.origin_lng,
+                   o.departure_time, o.description, -- ADICIONA ESTAS DUAS COLUNAS AQUI
                    u.id AS driver_user_id, u.name AS driver_name, u.email AS driver_email,
                    b.id AS booking_id, b.created_at AS booked_at, b.booked_by_user_id,
                    bu.name AS booked_by_name, bu.email AS booked_by_email
@@ -391,7 +410,6 @@ def list_community_drivers(destination: str | None = None,
         passenger_lat, passenger_lng, radius_m,
         lat_key='origin_lat', lng_key='origin_lng'
     )
-
 
 def list_community_passengers(destination: str | None = None) -> list[dict]:
     args: tuple[str, ...] = ()
