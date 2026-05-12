@@ -894,25 +894,6 @@ class _SearchRidePageState extends State<SearchRidePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const RouteRow(color: kSuccess, text: 'De: Residencia Universitaria'),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Text('Para:', style: TextStyle(color: kMuted, fontWeight: FontWeight.w700)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: _destController,
-                        decoration: InputDecoration(
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
