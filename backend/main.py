@@ -10,13 +10,20 @@ from __future__ import annotations
 
 import sqlite3
 
-from fastapi import Depends, FastAPI, HTTPException, Header, Query, status
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, EmailStr, Field
+from contextlib import asynccontextmanager
+from fastapi import Depends, FastAPI, HTTPException, Header, Query, status # type: ignore
+from fastapi.middleware.cors import CORSMiddleware # type: ignore
+from pydantic import BaseModel, EmailStr, Field # type: ignore
 
 import database as db
 
-app = FastAPI(title="Ride4Free API", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    db.init_db()
+    yield
+
+app = FastAPI(title="Ride4Free API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -25,11 +32,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def startup():
-    db.init_db()
 
 
 # --- Auth dependency ---
@@ -86,6 +88,8 @@ class PassengerRequestBody(BaseModel):
 class DriverOfferBody(BaseModel):
     destination: str = Field(min_length=1, max_length=500)
     available_seats: int = Field(ge=0, le=20)
+    departure_time: str | None = None 
+    description: str | None = None
     origin_lat: float | None = None
     origin_lng: float | None = None
     destination_lat: float | None = None
@@ -184,6 +188,8 @@ def create_driver_offer(body: DriverOfferBody, user_id: int = Depends(require_us
         user_id,
         body.destination,
         body.available_seats,
+        departure_time=body.departure_time, 
+        description=body.description,      
         origin_lat=body.origin_lat,
         origin_lng=body.origin_lng,
         destination_lat=body.destination_lat,
