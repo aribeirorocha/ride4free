@@ -545,13 +545,13 @@ class OfferRidePage extends StatefulWidget {
 
 class _OfferRidePageState extends State<OfferRidePage> {
   final TextEditingController _timeController = TextEditingController(text: '08:15');
-  String? _timeError; // Para guardar a mensagem de erro
+  String? _timeError; 
   bool _isValidTime(String input) {
   final RegExp timeRegExp = RegExp(r'^([01]?[0-9]|2[0-3]):[0-5][0-9]$');
   return timeRegExp.hasMatch(input);
 }
   int _seats = 3;
-  final _destController = TextEditingController(text: 'FEUP (Polo II)');
+  final _destController = TextEditingController(text: '');
   final _api = Ride4FreeApi();
   bool _busy = false;
   LatLng? _originLatLng;
@@ -707,10 +707,10 @@ class _OfferRidePageState extends State<OfferRidePage> {
                           _label('HORA'),
                           TextField(
                             key: const Key('destination_field'), 
-                            controller: _destController,
+                            controller: _timeController,
                             keyboardType: TextInputType.datetime,
                             decoration: InputDecoration(
-                              hintText: '08:30',
+                              hintText: 'HH:MM',
                               errorText: _timeError, // Mostra o erro aqui em baixo a vermelho
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -792,7 +792,7 @@ class SearchRidePage extends StatefulWidget {
 }
 
 class _SearchRidePageState extends State<SearchRidePage> {
-  final _destController = TextEditingController(text: 'FEUP (Polo II)');
+  final _destController = TextEditingController(text: '');
   final _api = Ride4FreeApi();
   List<Map<String, dynamic>> _drivers = [];
   bool _loading = false;
@@ -1503,7 +1503,8 @@ class _ConferenceMapState extends State<_ConferenceMap> {
                 point: widget.userLocation!,
                 radius: widget.radiusMeters,
                 useRadiusInMeter: true,
-                color: kRed,
+                // ignore: deprecated_member_use
+                color: kRed.withOpacity(0.3),
                 borderColor: kRed,
                 borderStrokeWidth: 2,
               ),
