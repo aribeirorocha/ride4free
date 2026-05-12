@@ -852,7 +852,7 @@ class _SearchRidePageState extends State<SearchRidePage> {
     setState(() => _loading = true);
     try {
       final list = await _api.listDriversForDestination(
-        _destController.text,
+        'Destino via Mapa',
         lat: (_pickupLatLng ?? _userLocation)?.latitude,
         lng: (_pickupLatLng ?? _userLocation)?.longitude,
         radiusM: _radiusMeters.toInt(),
@@ -872,7 +872,7 @@ class _SearchRidePageState extends State<SearchRidePage> {
     }
     try {
       await _api.createPassengerRequest(
-        destination: _destController.text,
+        destination: 'Destino a combinar',
         passengerCount: 1,
         originLat: (_pickupLatLng ?? _userLocation)?.latitude,
         originLng: (_pickupLatLng ?? _userLocation)?.longitude,
