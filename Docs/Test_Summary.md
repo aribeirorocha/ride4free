@@ -16,7 +16,8 @@ A nossa suite de testes foi desenhada para garantir a máxima qualidade de códi
 *(Nota: Imagens geradas a partir da execução da suite no nosso pipeline CI/CD)*
 
 <img width="500" height="46" alt="image" src="https://github.com/user-attachments/assets/5a7cf1e9-f817-4d9f-8dfb-246663c8da11" />
-<img width="200" height="500" alt="image" src="https://github.com/user-attachments/assets/664d957c-57ba-435f-bb18-b56151a7521a" />
+<img width="250" height="500" alt="image" src="https://github.com/user-attachments/assets/3814cbfd-bdc8-427c-b5ec-a2186b1abf7f" />
+
 ---
 
 ## 1. Estratégias Avançadas de Teste (Sprint 2)
