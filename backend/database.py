@@ -126,9 +126,19 @@ CREATE TABLE IF NOT EXISTS ride_bookings (
 """
 
 
+def _migrate_firebase_uid(conn: sqlite3.Connection) -> None:
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
+    if "firebase_uid" not in cols:
+        conn.execute("ALTER TABLE users ADD COLUMN firebase_uid TEXT")
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_firebase_uid ON users(firebase_uid)"
+    )
+
+
 def init_db() -> None:
     with get_connection() as conn:
         conn.executescript(SCHEMA)
+        _migrate_firebase_uid(conn)
 
 
 def new_session_token() -> str:
@@ -187,6 +197,37 @@ def user_id_from_token(token: str | None) -> int | None:
             (token,),
         ).fetchone()
         return int(row["user_id"]) if row else None
+
+
+def get_or_create_user_by_firebase_uid(firebase_uid: str, email: str, name: str) -> int:
+    uid = firebase_uid.strip()
+    email_norm = email.strip().lower()
+    display_name = name.strip() or email_norm.split("@", 1)[0]
+    now = utc_now_iso()
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT id FROM users WHERE firebase_uid = ?",
+            (uid,),
+        ).fetchone()
+        if row:
+            return int(row["id"])
+        row = conn.execute(
+            "SELECT id FROM users WHERE email = ? COLLATE NOCASE",
+            (email_norm,),
+        ).fetchone()
+        if row:
+            conn.execute(
+                "UPDATE users SET firebase_uid = ? WHERE id = ?",
+                (uid, int(row["id"])),
+            )
+            return int(row["id"])
+        pw = hash_password(secrets.token_urlsafe(32))
+        cur = conn.execute(
+            """INSERT INTO users (email, password_hash, name, created_at, firebase_uid)
+               VALUES (?,?,?,?,?)""",
+            (email_norm, pw, display_name, now, uid),
+        )
+        return int(cur.lastrowid)
 
 
 def insert_passenger_request(user_id: int, destination: str, passenger_count: int, origin_lat=None, origin_lng=None) -> int:

@@ -1,3 +1,5 @@
+import 'package:app_test/firebase/firebase_auth_service.dart';
+import 'package:app_test/ride4free_session_sync.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../sigarra/sigarra_auth_service.dart';
 import '../ride4free_api.dart';
@@ -8,9 +10,11 @@ class UniversitySessionStore {
   static const String _kDisplayName = 'university_display_name';
   static const String _kPhotoUrl = 'university_photo_url';
 
-
   final Ride4FreeApi _api;
-  UniversitySessionStore({Ride4FreeApi? api}) : _api = api ?? Ride4FreeApi();
+  final FirebaseAuthService? _firebaseAuth;
+  UniversitySessionStore({Ride4FreeApi? api, FirebaseAuthService? firebaseAuth})
+      : _api = api ?? Ride4FreeApi(),
+        _firebaseAuth = firebaseAuth;
 
   Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
@@ -36,30 +40,16 @@ class UniversitySessionStore {
     final prefs = await SharedPreferences.getInstance();
     
     try {
-      // 1. Tentar registar o utilizador no teu backend local
-      // Usamos o username do Sigarra para criar um "email" único
-      final String userEmail = "${identity.username}@fe.up.pt";
-      final String userPass = "pass_${identity.username}"; // Password interna padronizada
+      final String userEmail = '${identity.username}@fe.up.pt';
+      final String userPass = 'pass_${identity.username}';
 
-      String token;
-      try {
-        final result = await _api.register(
-          email: userEmail,
-          password: userPass,
-          name: identity.displayName,
-        );
-        token = result.token;
-      } catch (e) {
-        // 2. Se o registo falhar (ex: utilizador já existe), fazemos login
-        final result = await _api.login(
-          email: userEmail,
-          password: userPass,
-        );
-        token = result.token;
-      }
-
-      // 3. ATUALIZAR O TOKEN GLOBAL (Isto resolve o erro 401)
-      Ride4FreeAuth.token = token;
+      await syncRide4FreeApiSession(
+        email: userEmail,
+        password: userPass,
+        displayName: identity.displayName,
+        api: _api,
+        firebaseAuth: _firebaseAuth,
+      );
 
       // 4. Guardar os dados locais nas SharedPreferences
       await prefs.setBool(_kLoggedIn, true);
@@ -82,14 +72,17 @@ class UniversitySessionStore {
     }
   }
 
-  Future<void> clear() async {
+  Future<void> clear({FirebaseAuthService? firebaseAuth}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kLoggedIn);
     await prefs.remove(_kUsername);
     await prefs.remove(_kDisplayName);
     await prefs.remove(_kPhotoUrl);
-    
-    // Limpar o token da API ao sair
+
+    final auth = firebaseAuth ?? _firebaseAuth;
+    if (auth != null) {
+      await auth.signOut();
+    }
     Ride4FreeAuth.token = null;
   }
 }
