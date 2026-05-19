@@ -45,4 +45,9 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Firebase (keep firebase_options.dart placeholder; ignore real config from flutterfire)
+**/google-services.json
+**/GoogleService-Info.plist
+*-firebase-adminsdk*.json
+
 

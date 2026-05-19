@@ -1,15 +1,23 @@
 import 'dart:convert';
-import 'dart:async'; 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
+import 'package:app_test/firebase/firebase_auth_service.dart';
+import 'package:app_test/firebase/firebase_bootstrap.dart';
+import 'package:app_test/ride4free_session_sync.dart';
+
 import 'ride4free_api.dart';
 import 'session/university_session_store.dart';
 import 'sigarra/sigarra_auth_service.dart';
 import 'location_service.dart';
 
-void main() => runApp(const MyApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeFirebase();
+  runApp(const MyApp());
+}
 
 void _showMessage(BuildContext context, String text) {
 
@@ -62,6 +70,7 @@ class AppBootstrapper extends StatefulWidget {
 
 class _AppBootstrapperState extends State<AppBootstrapper> {
   final _sessionStore = UniversitySessionStore();
+  final _firebaseAuth = FirebaseAuthService();
   late final Ride4FreeApi _api = widget.api ?? Ride4FreeApi();
   late final SigarraAuthService _auth = widget.authService ?? SigarraAuthService();
   bool _loading = true;
@@ -99,7 +108,7 @@ class _AppBootstrapperState extends State<AppBootstrapper> {
   }
 
   Future<void> _onUniversityLogout() async {
-    await _sessionStore.clear();
+    await _sessionStore.clear(firebaseAuth: _firebaseAuth);
     Ride4FreeAuth.token = null;
     if (!mounted) return;
     setState(() {
@@ -109,21 +118,16 @@ class _AppBootstrapperState extends State<AppBootstrapper> {
   }
 
   Future<void> _ensureRide4FreeSession(UniversityIdentity identity) async {
-    final email = '${identity.username}@up.pt';
-    final password = 'up_${identity.username}_session';
+    final email = '${identity.username}@fe.up.pt';
+    final password = 'pass_${identity.username}';
     try {
-      final login = await _api.login(email: email, password: password);
-      Ride4FreeAuth.token = login.token;
-      return;
-    } catch (_) {}
-
-    try {
-      final register = await _api.register(
+      await syncRide4FreeApiSession(
         email: email,
         password: password,
-        name: identity.displayName,
+        displayName: identity.displayName,
+        api: _api,
+        firebaseAuth: _firebaseAuth,
       );
-      Ride4FreeAuth.token = register.token;
     } catch (_) {}
   }
 
@@ -1490,7 +1494,8 @@ class _ConferenceMapState extends State<_ConferenceMap> {
       ),
       children: [
         TileLayer(
-          urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+          urlTemplate:
+          'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
           subdomains: const ['a', 'b', 'c', 'd'],
           userAgentPackageName: 'com.example.conference_tool',
         ),

@@ -104,6 +104,6 @@ class SigarraAuthService {
     if (match != null) {
       return Uri.parse('https://sigarra.up.pt').resolve(match.group(1)!).toString();
     }
-    return 'https://sigarra.up.pt/fotografias_service.foto?pct_cod=$username';
+    return 'https://sigarra.up.pt/feup/pt/fotografias_service.foto?pct_cod=$username';
   }
 }
