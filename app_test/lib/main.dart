@@ -331,6 +331,21 @@ class CommunityBoardPage extends StatefulWidget {
 }
 
 class CommunityBoardPageState extends State<CommunityBoardPage> {
+  String _timeAgo(String? dateStr) {
+    if (dateStr == null) return '';
+    try {
+      final date = DateTime.parse(dateStr).toLocal();
+      final diff = DateTime.now().difference(date);
+
+      if (diff.inMinutes < 1) return 'Agora mesmo';
+      if (diff.inMinutes < 60) return 'Há ${diff.inMinutes}m';
+      if (diff.inHours < 24) return 'Há ${diff.inHours}h';
+      if (diff.inDays == 1) return 'Ontem';
+      return 'Há ${diff.inDays}d';
+    } catch (_) {
+      return '';
+    }
+  }
   final _api = Ride4FreeApi();
   Timer? _refreshTimer;
   int _section = 0; // 0 = drivers, 1 = passengers, 2 = database
@@ -367,8 +382,24 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
       await _api.bookDriverOffer(offerId);
       if (mounted) _showMessage(context, 'Boleia reservada com sucesso.');
       await _loadSection();
+    } on Ride4FreeApiException catch (e) {
+      if (mounted) {
+        String msg = 'Erro ao reservar boleia.';
+        try {
+          final body = jsonDecode(e.body);
+          // Se o backend devolver o erro específico de reservar a própria boleia:
+          if (body['detail'] == 'You cannot book your own ride') {
+            msg = 'Não podes reservar a tua própria boleia!';
+          } else {
+            // Para outros erros do backend, mostra só o texto limpo
+            msg = body['detail'] ?? msg;
+          }
+        } catch (_) {}
+        _showMessage(context, msg);
+      }
+      if (mounted) setState(() => _loading = false);
     } catch (e) {
-      if (mounted) _showMessage(context, 'Erro ao reservar boleia: $e');
+      if (mounted) _showMessage(context, 'Erro inesperado.');
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -384,8 +415,23 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
       await _api.bookPassengerRequest(requestId);
       if (mounted) _showMessage(context, 'Passageiro associado a esta viagem.');
       await _loadSection();
+    } on Ride4FreeApiException catch (e) {
+      if (mounted) {
+        String msg = 'Erro ao associar passageiro.';
+        try {
+          final body = jsonDecode(e.body);
+          if (body['detail'] == 'You cannot book your own ride' || 
+              body['detail'] == 'You cannot book your own request') {
+            msg = 'Não podes dar boleia a ti próprio!';
+          } else {
+            msg = body['detail'] ?? msg;
+          }
+        } catch (_) {}
+        _showMessage(context, msg);
+      }
+      if (mounted) setState(() => _loading = false);
     } catch (e) {
-      if (mounted) _showMessage(context, 'Erro ao reservar passageiro: $e');
+      if (mounted) _showMessage(context, 'Erro inesperado.');
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -463,15 +509,16 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
           final origin = d['description'] as String? ?? 'Local a definir';
           final dest = d['destination_display'] as String? ?? 'Destino a definir';
           final time = d['departure_time'] ?? 'Horário a definir';
+          final timeStr = _timeAgo(d['created_at'] as String?);
           
           return ProfileCard(
             title: d['driver_name'] as String? ?? 'Condutor',
-            // AQUI: Juntamos tudo no subtítulo com quebras de linha (\n)
             subtitle: "📍 De: $origin\n🏁 Para: $dest\n⏰ Partida: $time",
             description: "Lugares disponíveis: ${d['available_seats']}",
             statusLabel: (d['booked'] as bool? ?? false) ? 'Reservado' : 'Disponível',
             actionText: (d['booked'] as bool? ?? false) ? null : 'Reservar boleia',
             onAction: () => _bookDriver((d['id'] as num).toInt()),
+            timeAgoText: timeStr,
           );
         },
       );
@@ -502,19 +549,21 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
           final count = p['passenger_count']?.toString() ?? '1';
           final status = p['status'] as String? ?? 'open';
           final isBooked = status == 'fulfilled';
+          final timeStr = _timeAgo(p['created_at'] as String?);
 
           return ProfileCard(
             title: p['passenger_name'] as String? ?? 'Passageiro',
             // Design muito mais limpo com Emojis e espaçamento
-            subtitle: "📍 Precisa de ir para:\n$dest",
+            subtitle: "📍 Precisa de ir para: $dest",
             description: "🚶‍♂️ Necessita de $count lugar(es)",
             
             // Lógica de cores e texto melhorada
-            statusLabel: isBooked ? '✓ Boleia Encontrada' : 'A aguardar condutor',
+            statusLabel: isBooked ? '✓ Boleia Encontrada' : ' A aguardar condutor ...',
             
             // O botão agora faz sentido para quem está a ler!
             actionText: isBooked ? null : 'Dar boleia a esta pessoa',
             onAction: () => _bookPassenger((p['id'] as num).toInt()),
+            timeAgoText: timeStr,
           );
         },
       );
@@ -595,30 +644,18 @@ class _OfferRidePageState extends State<OfferRidePage> {
       final uri = Uri.parse(
         'https://nominatim.openstreetmap.org/reverse?lat=${loc.latitude}&lon=${loc.longitude}&format=json',
       );
-      // Faz o pedido à API
       final r = await http.get(uri, headers: {'User-Agent': 'Ride4Free/1.0'});
       
       if (r.statusCode == 200 && mounted) {
         final data = jsonDecode(r.body) as Map<String, dynamic>;
         final address = data['address'] as Map<String, dynamic>?;
         
-        // Tenta extrair a rua, senão a zona, senão o nome geral
         final roadName = address?['road'] as String?
             ?? address?['pedestrian'] as String?
             ?? address?['suburb'] as String?
             ?? data['display_name'] as String?;
-
-        setState(() {
-          if (isOrigin) {
-            _originAddress = roadName;
-          } else {
-            _destinationAddress = roadName;
-          }
-        });
       }
-    } catch (_) {
-      // Se a net falhar, ignora em silêncio (mostra as coordenadas na mesma)
-    }
+    } catch (_) {}
   }
 
   @override
@@ -750,12 +787,9 @@ class _OfferRidePageState extends State<OfferRidePage> {
                     userLocation: _destinationLatLng,
                     radiusMeters: 10,
                     onTap: (latlng) {
-                      setState(() {
-                        _destinationLatLng = latlng;
-                        _destinationAddress = 'A obter rua...'; // Dá feedback instantâneo
-                      });
-                      _getAddressFromLatLng(latlng, false); // Pede o nome à API
-                    },
+                    // Atualiza os condutores em redor
+                    _getAddressFromLatLng(latlng, false); // false = é o destino // Obtém a rua
+                  },
                   ),
               ), 
               const SizedBox(height: 14),
@@ -852,16 +886,34 @@ class SearchRidePage extends StatefulWidget {
   State<SearchRidePage> createState() => _SearchRidePageState();
 }
 
+class ProfilePage extends StatefulWidget {
+  const ProfilePage({
+    super.key,
+    required this.onUniversityLogout,
+    required this.identity,
+  });
+
+  final Future<void> Function() onUniversityLogout;
+  final UniversityIdentity identity;
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
 class _SearchRidePageState extends State<SearchRidePage> {
-  final _destController = TextEditingController(text: '');
+  final _destController = TextEditingController(text: 'FEUP (Polo II)');
   final _api = Ride4FreeApi();
   List<Map<String, dynamic>> _drivers = [];
   bool _loading = false;
   LatLng? _userLocation;
+  
+  // Variáveis para o Ponto de Recolha
   LatLng? _pickupLatLng;
+  String? _pickupAddress;
+  
   double _radiusMeters = 500; // default 500m
-  // Label legível da localização atual do passageiro (reverse geocoding)
-  // ignore: unused_field
+  int _tabIndex = 0; // 0 = Procurar, 1 = Pedir Boleia
+  int _neededSeats = 1;
+
   String _locationLabel = 'A obter localização…';
 
   @override
@@ -874,7 +926,6 @@ class _SearchRidePageState extends State<SearchRidePage> {
     final loc = await LocationService.getCurrentLocation();
     if (!mounted || loc == null) return;
     setState(() => _userLocation = loc);
-    // Reverse geocoding com Nominatim para mostrar nome da rua
     try {
       final uri = Uri.parse(
         'https://nominatim.openstreetmap.org/reverse'
@@ -899,6 +950,30 @@ class _SearchRidePageState extends State<SearchRidePage> {
     }
   }
 
+  // NOVA FUNÇÃO: Obter morada exata quando se clica no mapa
+  Future<void> _getAddressFromLatLng(LatLng loc) async {
+    try {
+      final uri = Uri.parse(
+        'https://nominatim.openstreetmap.org/reverse?lat=${loc.latitude}&lon=${loc.longitude}&format=json',
+      );
+      final r = await http.get(uri, headers: {'User-Agent': 'Ride4Free/1.0'});
+      
+      if (r.statusCode == 200 && mounted) {
+        final data = jsonDecode(r.body) as Map<String, dynamic>;
+        final address = data['address'] as Map<String, dynamic>?;
+        
+        final roadName = address?['road'] as String?
+            ?? address?['pedestrian'] as String?
+            ?? address?['suburb'] as String?
+            ?? data['display_name'] as String?;
+
+        setState(() {
+          _pickupAddress = roadName;
+        });
+      }
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
     _destController.dispose();
@@ -913,7 +988,7 @@ class _SearchRidePageState extends State<SearchRidePage> {
     setState(() => _loading = true);
     try {
       final list = await _api.listDriversForDestination(
-        'Destino via Mapa',
+        _destController.text,
         lat: (_pickupLatLng ?? _userLocation)?.latitude,
         lng: (_pickupLatLng ?? _userLocation)?.longitude,
         radiusM: _radiusMeters.toInt(),
@@ -931,51 +1006,106 @@ class _SearchRidePageState extends State<SearchRidePage> {
       _showMessage(context, 'Inicie sessão no perfil.');
       return;
     }
+    if (_destController.text.trim().isEmpty) {
+      _showMessage(context, 'Por favor, indique um destino.');
+      return;
+    }
+    
+    setState(() => _loading = true);
     try {
       await _api.createPassengerRequest(
-        destination: 'Destino a combinar',
-        passengerCount: 1,
+        destination: _destController.text,
+        passengerCount: _neededSeats,
         originLat: (_pickupLatLng ?? _userLocation)?.latitude,
         originLng: (_pickupLatLng ?? _userLocation)?.longitude,
       );
-      if (mounted) _showMessage(context, 'Pedido de passageiro registado.');
+      if (mounted) {
+        _showMessage(context, 'Pedido de boleia publicado na comunidade!');
+        setState(() => _neededSeats = 1);
+      }
     } catch (e) {
       if (mounted) _showMessage(context, 'Erro: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
+  Widget _label(String text) => Text(
+    text,
+    style: const TextStyle(fontSize: 14, color: kMuted, fontWeight: FontWeight.w700),
+  );
+
   @override
   Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const TopTitleBar(title: 'Procurar Boleia'),
+        
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 20, 18, 10),
+          child: SegmentedButton<int>(
+            segments: const [
+              ButtonSegment(value: 0, icon: Icon(Icons.search), label: Text('Procurar')),
+              ButtonSegment(value: 1, icon: Icon(Icons.waving_hand), label: Text('Pedir Boleia')),
+            ],
+            selected: {_tabIndex},
+            onSelectionChanged: (selection) {
+              setState(() => _tabIndex = selection.first);
+            },
+          ),
+        ),
+        const Divider(height: 1),
+
+        Expanded(
+          child: _tabIndex == 0 
+              ? _buildSearchTab() 
+              : _buildRequestTab(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchTab() {
     return SingleChildScrollView(
       child: Column(
         children: [
-          const TopTitleBar(title: 'Boleias Encontradas'),
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 8),
                 Row(
                   children: [
-                    FilledButton(
-                      onPressed: _loading ? null : _search,
-                      style: FilledButton.styleFrom(backgroundColor: kSuccess),
-                      child: Text(_loading ? '…' : 'Procurar condutores'),
-                    ),
+                    const Text('Para:', style: TextStyle(color: kMuted, fontWeight: FontWeight.w700)),
                     const SizedBox(width: 8),
-                    OutlinedButton(
-                      onPressed: _registerRequest,
-                      child: const Text('Pedir boleia'),
+                    Expanded(
+                      child: TextField(
+                        controller: _destController,
+                        decoration: InputDecoration(
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: _loading ? null : _search,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: kSuccess,
+                    minimumSize: const Size.fromHeight(48)
+                  ),
+                  icon: const Icon(Icons.search),
+                  label: Text(_loading ? 'A procurar…' : 'Procurar condutores na zona'),
                 ),
               ],
             ),
           ),
           const Divider(height: 18),
 
-          // Slider funcional
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
             child: Row(
@@ -1002,105 +1132,171 @@ class _SearchRidePageState extends State<SearchRidePage> {
             ),
           ),
 
-          // Mapa ligado ao estado
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
             child: _pickupLatLng == null
                 ? const Text(
-              'Toque no mapa para definir o ponto de pickup (ou usa o GPS automaticamente)',
-              style: TextStyle(color: kMuted, fontWeight: FontWeight.w600),
+              'A usar o GPS automaticamente. Toque no mapa para alterar.',
+              style: TextStyle(color: kMuted, fontWeight: FontWeight.w600, fontSize: 12),
             )
                 : Text(
-              'Pickup definido ✓ (${_pickupLatLng!.latitude.toStringAsFixed(4)}, ${_pickupLatLng!.longitude.toStringAsFixed(4)})',
-              style: const TextStyle(color: kSuccess, fontWeight: FontWeight.w600),
+              'Pickup alterado ✓ (${_pickupAddress ?? "${_pickupLatLng!.latitude.toStringAsFixed(4)}, ${_pickupLatLng!.longitude.toStringAsFixed(4)}"})',
+              style: const TextStyle(color: kSuccess, fontWeight: FontWeight.w600, fontSize: 12),
             ),
           ),
           const SizedBox(height: 6),
 
-// Mapa com onTap para pickup
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
             child: SizedBox(
-              height: 130,
+              height: 160,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: _ConferenceMap(
                   userLocation: _pickupLatLng ?? _userLocation,
                   radiusMeters: _radiusMeters,
-                  onTap: (latlng) => setState(() {
-                    _pickupLatLng = latlng;
-                    _search();
-                  }),
+                  onTap: (latlng) {
+                    setState(() {
+                      _pickupLatLng = latlng;
+                      _pickupAddress = 'A obter rua...';
+                    });
+                    _search(); 
+                    _getAddressFromLatLng(latlng);
+                  },
                   driverOrigins: _drivers
                       .where((d) => d['origin_lat'] != null)
                       .map((d) => LatLng(
                     (d['origin_lat'] as num).toDouble(),
                     (d['origin_lng'] as num).toDouble(),
-                  ))
-                      .toList(),
+                  )).toList(),
                 ),
               ),
             ),
           ),
-          // Lista de condutores
+          
           if (_drivers.isEmpty)
             const Padding(
-              padding: EdgeInsets.all(18),
-              child: Text('Procure condutores para o destino acima.', style: TextStyle(color: kMuted)),
+              padding: EdgeInsets.all(24),
+              child: Text('Nenhum condutor encontrado neste raio.', style: TextStyle(color: kMuted, fontWeight: FontWeight.w600)),
             )
           else
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
               itemCount: _drivers.length,
               separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (context, i) {
                 final d = _drivers[i];
-                final name = d['driver_name'] as String? ?? '?';
-                final seats = d['available_seats']?.toString() ?? '?';
                 return RideCard(
-                  name: name,
-                  car: 'Lugares livres: $seats',
+                  name: d['driver_name'] as String? ?? 'Condutor',
+                  car: 'Lugares livres: ${d['available_seats'] ?? '?'}',
                   rating: '—',
                   distance: d['destination_display'] as String? ?? '',
                   credits: '30',
                 );
               },
             ),
-
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 12, 18, 14),
-            child: FilledButton(
-              onPressed: _registerRequest,
-              style: FilledButton.styleFrom(
-                backgroundColor: kRed,
-                minimumSize: const Size.fromHeight(56),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-              child: const Text('Reservar Boleia', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
-            ),
-          ),
         ],
       ),
     );
   }
+
+  Widget _buildRequestTab() {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
+      children: [
+        _label('PARA ONDE QUERES IR?'),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _destController,
+          decoration: InputDecoration(
+            hintText: 'Ex: FEUP (Polo II)',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            prefixIcon: const Icon(Icons.flag, color: kRed),
+          ),
+        ),
+        const SizedBox(height: 20),
+        
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _label('LUGARES NECESSÁRIOS'),
+                  SeatPicker(
+                    seats: _neededSeats,
+                    onDec: () {
+                      if (_neededSeats > 1) setState(() => _neededSeats--);
+                    },
+                    onInc: () => setState(() => _neededSeats++),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 22),
+                  const Text('Dica: Pedir menos lugares aumenta a chance de match!', 
+                    style: TextStyle(color: kMuted, fontSize: 12, height: 1.2),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        
+        _label('O TEU PONTO DE PICKUP'),
+        const SizedBox(height: 6),
+        Text(
+          _pickupLatLng == null 
+            ? '📍 A usar a localização atual: $_locationLabel'
+            : '📍 Pickup: ${_pickupAddress ?? "${_pickupLatLng!.latitude.toStringAsFixed(4)}, ${_pickupLatLng!.longitude.toStringAsFixed(4)}"}',
+          style: const TextStyle(color: kSuccess, fontWeight: FontWeight.w600, fontSize: 13),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 150,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: _ConferenceMap(
+              userLocation: _pickupLatLng ?? _userLocation,
+              radiusMeters: 0, 
+              onTap: (latlng) {
+                setState(() {
+                  _pickupLatLng = latlng;
+                  _pickupAddress = 'A obter rua...';
+                });
+                _getAddressFromLatLng(latlng);
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 32),
+
+        FilledButton.icon(
+          onPressed: _loading ? null : _registerRequest,
+          style: FilledButton.styleFrom(
+            backgroundColor: kRed,
+            minimumSize: const Size.fromHeight(56),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+          icon: const Icon(Icons.campaign, color: Colors.white),
+          label: Text(
+            _loading ? 'A publicar...' : 'Publicar Pedido de Boleia', 
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)
+          ),
+        ),
+      ],
+    );
+  }
 }
-
-class ProfilePage extends StatefulWidget {
-  const ProfilePage({
-    super.key,
-    required this.onUniversityLogout,
-    required this.identity,
-  });
-
-  final Future<void> Function() onUniversityLogout;
-  final UniversityIdentity identity;
-
-  @override
-  State<ProfilePage> createState() => _ProfilePageState();
-}
-
 class _ProfilePageState extends State<ProfilePage> {
   final _api = Ride4FreeApi();
   bool _busy = false;
@@ -1450,14 +1646,17 @@ class ProfileCard extends StatelessWidget {
   final String? statusLabel;
   final String? actionText;
   final VoidCallback? onAction;
+  final String? timeAgoText; // 1. ADICIONAMOS A VARIÁVEL AQUI
 
-  const ProfileCard({super.key, 
+  const ProfileCard({
+    super.key, 
     required this.title,
     required this.subtitle,
     required this.description,
     this.statusLabel,
     this.actionText,
     this.onAction,
+    this.timeAgoText, // E AQUI
   });
 
   @override
@@ -1488,13 +1687,27 @@ class ProfileCard extends StatelessWidget {
           ],
           const SizedBox(height: 8),
           Text(description, style: const TextStyle(fontWeight: FontWeight.w600)),
-          if (actionText != null && onAction != null) ...[
-            const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: OutlinedButton(onPressed: onAction, child: Text(actionText!)),
-            ),
-          ],
+          const SizedBox(height: 10),
+          
+          // 2. A MAGIA ACONTECE AQUI (Row com SpaceBetween)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Botão na Esquerda
+              if (actionText != null && onAction != null)
+                OutlinedButton(onPressed: onAction, child: Text(actionText!))
+              else
+                const SizedBox(), // Espaço vazio se não houver botão
+
+              // Tempo na Direita (Pequeno e subtil)
+              if (timeAgoText != null && timeAgoText!.isNotEmpty)
+                Text(
+                  timeAgoText!,
+                  style: const TextStyle(color: kMuted, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+            ],
+          ),
         ],
       ),
     );
