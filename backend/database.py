@@ -1,7 +1,4 @@
-"""
-SQLite persistence for Ride4Free (local dev). Replace with Firebase/Firestore
-or Cloud SQL when moving to Firebase Hosting + backend.
-"""
+"""SQLite persistence for Ride4Free (local dev)."""
 
 from __future__ import annotations
 
@@ -135,7 +132,7 @@ def new_session_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-# --- Data access (swap implementation when moving to Firebase) ---
+# --- Data access ---
 
 
 def insert_user(email: str, password: str, name: str) -> int:

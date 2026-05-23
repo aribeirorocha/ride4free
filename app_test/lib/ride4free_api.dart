@@ -1,14 +1,14 @@
-// HTTP client for the local Ride4Free API (SQLite backend).
-// Point Ride4FreeConfig.baseUrl at your deployed API when leaving localhost
-// (e.g. Firebase + Cloud Run / Cloud Functions).
+// HTTP client for the Ride4Free API.
+// Remote URL: app_test/lib/app_config.dart (set by backend/start.sh)
 
 import 'dart:convert';
 import 'dart:io' show Platform;
 
+import 'package:app_test/app_config.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 
-/// In-memory session token (replace with secure storage + refresh for production).
+/// Bearer token for API calls (local session token from login/register).
 class Ride4FreeAuth {
   static String? token;
 }
@@ -17,10 +17,12 @@ class Ride4FreeConfig {
   Ride4FreeConfig._();
   static const String _overrideBaseUrl = String.fromEnvironment('RIDE4FREE_API_BASE_URL');
 
-  /// Android emulator: use 10.0.2.2 to reach host machine. iOS simulator / desktop / web: localhost.
   static String get baseUrl {
     if (_overrideBaseUrl.isNotEmpty) {
       return _overrideBaseUrl;
+    }
+    if (Ride4FreeAppConfig.useRemoteApi) {
+      return Ride4FreeAppConfig.apiBaseUrl;
     }
     if (kIsWeb) {
       return 'http://localhost:8000';

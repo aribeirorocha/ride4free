@@ -1,15 +1,19 @@
 import 'dart:convert';
-import 'dart:async'; 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
+import 'package:app_test/ride4free_session_sync.dart';
+
 import 'ride4free_api.dart';
 import 'session/university_session_store.dart';
 import 'sigarra/sigarra_auth_service.dart';
 import 'location_service.dart';
 
-void main() => runApp(const MyApp());
+void main() {
+  runApp(const MyApp());
+}
 
 void _showMessage(BuildContext context, String text) {
 
@@ -109,21 +113,15 @@ class _AppBootstrapperState extends State<AppBootstrapper> {
   }
 
   Future<void> _ensureRide4FreeSession(UniversityIdentity identity) async {
-    final email = '${identity.username}@up.pt';
-    final password = 'up_${identity.username}_session';
+    final email = '${identity.username}@fe.up.pt';
+    final password = 'pass_${identity.username}';
     try {
-      final login = await _api.login(email: email, password: password);
-      Ride4FreeAuth.token = login.token;
-      return;
-    } catch (_) {}
-
-    try {
-      final register = await _api.register(
+      await syncRide4FreeApiSession(
         email: email,
         password: password,
-        name: identity.displayName,
+        displayName: identity.displayName,
+        api: _api,
       );
-      Ride4FreeAuth.token = register.token;
     } catch (_) {}
   }
 
@@ -1740,6 +1738,26 @@ class _ConferenceMapState extends State<_ConferenceMap> {
     // Usamos um Stack para colocar os botões a flutuar por cima do mapa
     return Stack(
       children: [
+        TileLayer(
+          urlTemplate:
+          'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+          subdomains: const ['a', 'b', 'c', 'd'],
+          userAgentPackageName: 'com.example.conference_tool',
+        ),
+
+        // Círculo de raio à volta do passageiro
+        if (widget.userLocation != null)
+          CircleLayer(
+            circles: [
+              CircleMarker(
+                point: widget.userLocation!,
+                radius: widget.radiusMeters,
+                useRadiusInMeter: true,
+                color: kRed,
+                borderColor: kRed,
+                borderStrokeWidth: 2,
+              ),
+            ],
         // O Mapa propriamente dito
         FlutterMap(
           mapController: _mapController, // <--- O controlador é injetado aqui
