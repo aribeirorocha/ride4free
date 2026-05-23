@@ -1,4 +1,4 @@
-"""
+s"""
 Ride4Free local API — pairs with SQLite in database.py.
 Run locally: uvicorn main:app --reload --host 127.0.0.1 --port 8000
 
@@ -15,14 +15,11 @@ from fastapi.middleware.cors import CORSMiddleware # type: ignore
 from pydantic import BaseModel, EmailStr, Field # type: ignore
 
 import database as db
-import firebase_auth as fb_auth
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
-    if fb_auth.firebase_enabled():
-        fb_auth.init_firebase()
     yield
 
 app = FastAPI(title="Ride4Free API", version="0.1.0", lifespan=lifespan)
@@ -49,15 +46,6 @@ def bearer_token(authorization: str | None = None) -> str | None:
 
 
 def resolve_user_id(token: str | None) -> int | None:
-    if not token:
-        return None
-    if fb_auth.firebase_enabled():
-        try:
-            uid = fb_auth.user_id_from_firebase_token(token)
-            if uid is not None:
-                return uid
-        except Exception:
-            pass
     return db.user_id_from_token(token)
 
 

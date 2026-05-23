@@ -1,4 +1,3 @@
-import 'package:app_test/firebase/firebase_auth_service.dart';
 import 'package:app_test/ride4free_session_sync.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../sigarra/sigarra_auth_service.dart';
@@ -11,10 +10,7 @@ class UniversitySessionStore {
   static const String _kPhotoUrl = 'university_photo_url';
 
   final Ride4FreeApi _api;
-  final FirebaseAuthService? _firebaseAuth;
-  UniversitySessionStore({Ride4FreeApi? api, FirebaseAuthService? firebaseAuth})
-      : _api = api ?? Ride4FreeApi(),
-        _firebaseAuth = firebaseAuth;
+  UniversitySessionStore({Ride4FreeApi? api}) : _api = api ?? Ride4FreeApi();
 
   Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
@@ -38,7 +34,7 @@ class UniversitySessionStore {
   /// Faz a ponte entre o Sigarra e o teu Backend Local
   Future<void> markLoggedIn(UniversityIdentity identity) async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     try {
       final String userEmail = '${identity.username}@fe.up.pt';
       final String userPass = 'pass_${identity.username}';
@@ -48,10 +44,8 @@ class UniversitySessionStore {
         password: userPass,
         displayName: identity.displayName,
         api: _api,
-        firebaseAuth: _firebaseAuth,
       );
 
-      // 4. Guardar os dados locais nas SharedPreferences
       await prefs.setBool(_kLoggedIn, true);
       await prefs.setString(_kUsername, identity.username);
       await prefs.setString(_kDisplayName, identity.displayName);
@@ -60,29 +54,22 @@ class UniversitySessionStore {
       } else {
         await prefs.remove(_kPhotoUrl);
       }
-      
+
       // ignore: avoid_print
       print("Sessão sincronizada com backend local. Token ativo.");
-
     } catch (e) {
       // ignore: avoid_print
       print("Erro crítico na sincronização com o backend: $e");
-      // Opcional: podes re-lançar o erro se quiseres impedir o login caso o backend esteja offline
-      rethrow; 
+      rethrow;
     }
   }
 
-  Future<void> clear({FirebaseAuthService? firebaseAuth}) async {
+  Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kLoggedIn);
     await prefs.remove(_kUsername);
     await prefs.remove(_kDisplayName);
     await prefs.remove(_kPhotoUrl);
-
-    final auth = firebaseAuth ?? _firebaseAuth;
-    if (auth != null) {
-      await auth.signOut();
-    }
     Ride4FreeAuth.token = null;
   }
 }

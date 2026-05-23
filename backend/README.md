@@ -27,12 +27,3 @@ Leave it empty (`''`) to use `localhost` / emulator while developing on your PC.
 ```bash
 uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
-
-## Firebase Authentication
-
-See [Docs/Firebase.md](../Docs/Firebase.md). Enable on the API with:
-
-```bash
-export FIREBASE_ENABLED=1
-export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
-```
