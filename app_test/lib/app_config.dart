@@ -5,7 +5,7 @@
 class Ride4FreeAppConfig {
   Ride4FreeAppConfig._();
 
-  static const String apiBaseUrl = '';
+  static const String apiBaseUrl = 'https://earned-indie-currency-entirely.trycloudflare.com';
 
   static bool get useRemoteApi => apiBaseUrl.isNotEmpty;
 }
