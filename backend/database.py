@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS passenger_requests (
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     origin_lat REAL,
     origin_lng REAL,
-    destination_norm TEXT NOT NULL,
+    destination_norm TEXT,
     destination_display TEXT NOT NULL,
     passenger_count INTEGER NOT NULL DEFAULT 1 CHECK (passenger_count >= 1),
     status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'cancelled', 'fulfilled')),
