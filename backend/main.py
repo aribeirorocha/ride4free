@@ -1,9 +1,8 @@
-"""
+s"""
 Ride4Free local API — pairs with SQLite in database.py.
-Run: uvicorn main:app --reload --host 0.0.0.0 --port 8000
+Run locally: uvicorn main:app --reload --host 127.0.0.1 --port 8000
 
-Later: deploy API (Cloud Run / Cloud Functions) and point the Flutter app at
-that base URL; replace database.py calls with Firebase Admin or Firestore SDK.
+Public URL for phones: ./start.sh (updates app_test/lib/app_config.dart)
 """
 
 from __future__ import annotations
@@ -46,9 +45,13 @@ def bearer_token(authorization: str | None = None) -> str | None:
     return None
 
 
+def resolve_user_id(token: str | None) -> int | None:
+    return db.user_id_from_token(token)
+
+
 def require_user(authorization: str | None = Header(None)) -> int:
     token = bearer_token(authorization)
-    uid = db.user_id_from_token(token)
+    uid = resolve_user_id(token)
     if uid is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or missing session")
     return uid
