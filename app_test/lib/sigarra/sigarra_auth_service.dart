@@ -1,5 +1,33 @@
 import 'package:http/http.dart' as http;
 
+/// Dev/test login — skips Sigarra. Usernames: `tester` or `admin`, password: `test01`.
+class TesterAuth {
+  TesterAuth._();
+
+  static const String password = 'test01';
+  static const Set<String> usernames = {'tester', 'admin'};
+
+  static bool isTesterUsername(String username) =>
+      usernames.contains(username.trim().toLowerCase());
+
+  /// API credentials (separate from Sigarra; avoids clashes with @fe.up.pt accounts).
+  static ({String email, String apiPassword}) apiCredentials(String username) {
+    final user = username.trim().toLowerCase();
+    return (email: '$user@ride4free.dev', apiPassword: password);
+  }
+
+  static UniversityIdentity? tryBypass(String username, String password) {
+    final user = username.trim().toLowerCase();
+    if (password.trim() != TesterAuth.password || !usernames.contains(user)) {
+      return null;
+    }
+    return UniversityIdentity(
+      username: user,
+      displayName: user == 'admin' ? 'Admin (test)' : 'Tester',
+    );
+  }
+}
+
 class UniversityIdentity {
   UniversityIdentity({
     required this.username,
@@ -28,6 +56,9 @@ class SigarraAuthService {
     required String username,
     required String password,
   }) async {
+    final bypass = TesterAuth.tryBypass(username, password);
+    if (bypass != null) return bypass;
+
     // ALTERADO: Usa o cliente injetado (testes) ou o cliente real (app)
     final response = await (_client?.post(
       _loginUri,
