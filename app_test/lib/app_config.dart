@@ -2,10 +2,12 @@
 ///
 /// Updated automatically when you run `backend/start.sh` (paste manually if needed).
 /// Leave empty (`''`) to use localhost / emulator while developing on your PC.
+///
+/// No trailing slash, e.g. `https://xyz.trycloudflare.com` (not `...com/`).
 class Ride4FreeAppConfig {
   Ride4FreeAppConfig._();
 
-  static const String apiBaseUrl = 'https://put-climbing-bomb-violations.trycloudflare.com';
+  static const String apiBaseUrl = 'https://ultimate-space-mhz-mobility.trycloudflare.com';
 
   static bool get useRemoteApi => apiBaseUrl.isNotEmpty;
 }
