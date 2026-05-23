@@ -409,5 +409,24 @@ void main() {
       final api = Ride4FreeApi(client: mockClient);
       await api.listPassengersForDestination('FEP');
     });
+
+    test('login usa /users/login mesmo com baseUrl com barra final', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.url.path, '/users/login');
+        return http.Response(
+          jsonEncode({
+            'token': 't',
+            'user': {'id': 1, 'email': 'a@b.c', 'name': 'Test'},
+          }),
+          200,
+        );
+      });
+
+      final api = Ride4FreeApi(
+        baseUrl: 'https://example.trycloudflare.com/',
+        client: mockClient,
+      );
+      await api.login(email: 'a@b.c', password: 'secret');
+    });
   });
 }
