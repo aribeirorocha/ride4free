@@ -5,10 +5,7 @@
 class Ride4FreeAppConfig {
   Ride4FreeAppConfig._();
 
-  static const String apiBaseUrl = 'https://discussion-bloggers-orange-wallpapers.trycloudflare.com';
-
-  /// When true, use Firebase Auth ID tokens for API calls (see Docs/Firebase.md).
-  static const bool useFirebaseAuth = true;
+  static const String apiBaseUrl = 'https://broadband-suggestions-imagine-cedar.trycloudflare.com';
 
   static bool get useRemoteApi => apiBaseUrl.isNotEmpty;
 }

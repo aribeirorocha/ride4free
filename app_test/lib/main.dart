@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
-import 'package:app_test/firebase/firebase_auth_service.dart';
-import 'package:app_test/firebase/firebase_bootstrap.dart';
 import 'package:app_test/ride4free_session_sync.dart';
 
 import 'ride4free_api.dart';
@@ -13,9 +11,7 @@ import 'session/university_session_store.dart';
 import 'sigarra/sigarra_auth_service.dart';
 import 'location_service.dart';
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await initializeFirebase();
+void main() {
   runApp(const MyApp());
 }
 
@@ -70,7 +66,6 @@ class AppBootstrapper extends StatefulWidget {
 
 class _AppBootstrapperState extends State<AppBootstrapper> {
   final _sessionStore = UniversitySessionStore();
-  final _firebaseAuth = FirebaseAuthService();
   late final Ride4FreeApi _api = widget.api ?? Ride4FreeApi();
   late final SigarraAuthService _auth = widget.authService ?? SigarraAuthService();
   bool _loading = true;
@@ -108,7 +103,7 @@ class _AppBootstrapperState extends State<AppBootstrapper> {
   }
 
   Future<void> _onUniversityLogout() async {
-    await _sessionStore.clear(firebaseAuth: _firebaseAuth);
+    await _sessionStore.clear();
     Ride4FreeAuth.token = null;
     if (!mounted) return;
     setState(() {
@@ -126,7 +121,6 @@ class _AppBootstrapperState extends State<AppBootstrapper> {
         password: password,
         displayName: identity.displayName,
         api: _api,
-        firebaseAuth: _firebaseAuth,
       );
     } catch (_) {}
   }

@@ -8,7 +8,7 @@ import 'package:app_test/app_config.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 
-/// Bearer token for API calls: local session token or Firebase ID token.
+/// Bearer token for API calls (local session token from login/register).
 class Ride4FreeAuth {
   static String? token;
 }
