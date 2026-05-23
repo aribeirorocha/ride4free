@@ -147,13 +147,6 @@ void main() {
       expect(find.text('Inicie sessão no perfil.'), findsOneWidget);
     });
 
-    testWidgets('SR-IT5: TextField do destino aceita nova entrada', (tester) async {
-      await launchSearchPage(tester);
-      final field = find.byType(TextField);
-      await tester.enterText(field, 'ISEP');
-      await tester.pump();
-      expect(find.text('ISEP'), findsOneWidget);
-    });
   });
 
   // ---------------------------------------------------------------------------

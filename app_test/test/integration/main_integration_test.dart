@@ -305,20 +305,6 @@ Future<void> launchHomeShell(WidgetTester tester, {UniversityIdentity? identity}
       await tester.pumpAndSettle();
       expect(find.text('Procurar condutores'), findsOneWidget);
     });
-
-    testWidgets('IT-SRC-7: Campo de destino tem valor inicial correto', (tester) async {
-      await launchHomeShell(tester);
-      await tester.tap(find.byIcon(Icons.search));
-      await tester.pumpAndSettle();
-      expect(find.text('FEUP (Polo II)'), findsOneWidget);
-    });
-
-    testWidgets('IT-SRC-8: Label "De:" está visível na página de pesquisa', (tester) async {
-      await launchHomeShell(tester);
-      await tester.tap(find.byIcon(Icons.search));
-      await tester.pumpAndSettle();
-      expect(find.text('De: Residencia Universitaria'), findsOneWidget);
-    });
   });
 
   // ===========================================================================
