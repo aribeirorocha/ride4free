@@ -173,15 +173,16 @@ class Ride4FreeApi {
     return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
-    Future<void> createDriverOffer({
-    required String destination, 
+  Future<int> createDriverOffer({
+    required String destination,
     required int availableSeats,
-    String? departureTime, 
-    String? description, 
-    double? originLat, 
-    double? originLng, 
-    double? destinationLat, 
-    double? destinationLng
+    String? departureTime,
+    String? description,
+    String? vehicleInfo,
+    double? originLat,
+    double? originLng,
+    double? destinationLat,
+    double? destinationLng,
   }) async {
     final r = await _client.post(
       _u('/driver/offers'),
@@ -191,13 +192,15 @@ class Ride4FreeApi {
         'available_seats': availableSeats,
         'description': description,
         'departure_time': departureTime,
+        'vehicle_info': vehicleInfo,
         'origin_lat': ?originLat,
         'origin_lng': ?originLng,
         'destination_lat': ?destinationLat,
         'destination_lng': ?destinationLng,
       }),
     );
-    await _jsonOrThrow(r);
+    final m = await _jsonOrThrow(r);
+    return (m['id'] as num).toInt();
   }
 
   Future<Map<String, dynamic>> listPassengersForDestination(String destination) async {
@@ -248,6 +251,88 @@ class Ride4FreeApi {
       _u('/bookings/passenger-request'),
       headers: _headers,
       body: jsonEncode({'request_id': requestId}),
+    );
+    await _jsonOrThrow(r);
+  }
+
+  Future<int> requestJoinRide({required int offerId, int passengerCount = 1}) async {
+    final r = await _client.post(
+      _u('/rides/join-requests'),
+      headers: _headers,
+      body: jsonEncode({'offer_id': offerId, 'passenger_count': passengerCount}),
+    );
+    final m = await _jsonOrThrow(r);
+    return (m['id'] as num).toInt();
+  }
+
+  Future<List<Map<String, dynamic>>> listJoinRequestsForOffer(int offerId) async {
+    final r = await _client.get(_u('/driver/offers/$offerId/join-requests'), headers: _headers);
+    final m = await _jsonOrThrow(r);
+    final list = m['requests'] as List<dynamic>? ?? [];
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> listMyOffersWithPendingRequests() async {
+    final r = await _client.get(_u('/driver/my-offers/pending-requests'), headers: _headers);
+    final m = await _jsonOrThrow(r);
+    final list = m['offers'] as List<dynamic>? ?? [];
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  Future<Map<String, dynamic>> respondJoinRequest(int requestId, {required bool accept}) async {
+    final r = await _client.post(
+      _u('/rides/join-requests/$requestId/respond'),
+      headers: _headers,
+      body: jsonEncode({'accept': accept}),
+    );
+    return _jsonOrThrow(r);
+  }
+
+  Future<({Map<String, dynamic>? ride, Map<String, dynamic>? pendingRating})> getActiveRideState() async {
+    final r = await _client.get(_u('/rides/active'), headers: _headers);
+    final m = await _jsonOrThrow(r);
+    final rideJson = m['ride'];
+    final ratingJson = m['pending_rating'];
+    return (
+      ride: rideJson == null ? null : Map<String, dynamic>.from(rideJson as Map),
+      pendingRating: ratingJson == null ? null : Map<String, dynamic>.from(ratingJson as Map),
+    );
+  }
+
+  Future<Map<String, dynamic>> confirmInCar(int rideId) async {
+    final r = await _client.post(_u('/rides/active/$rideId/in-car'), headers: _headers);
+    final m = await _jsonOrThrow(r);
+    final ride = m['ride'];
+    if (ride is Map) return Map<String, dynamic>.from(ride);
+    return m;
+  }
+
+  Future<Map<String, dynamic>> completeRide(int rideId) async {
+    final r = await _client.post(_u('/rides/active/$rideId/complete'), headers: _headers);
+    return _jsonOrThrow(r);
+  }
+
+  Future<List<Map<String, dynamic>>> listRideMessages(int rideId) async {
+    final r = await _client.get(_u('/rides/active/$rideId/messages'), headers: _headers);
+    final m = await _jsonOrThrow(r);
+    final list = m['messages'] as List<dynamic>? ?? [];
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  Future<void> sendRideMessage(int rideId, String body) async {
+    final r = await _client.post(
+      _u('/rides/active/$rideId/messages'),
+      headers: _headers,
+      body: jsonEncode({'body': body}),
+    );
+    await _jsonOrThrow(r);
+  }
+
+  Future<void> rateRideParticipant(int rideId, int stars) async {
+    final r = await _client.post(
+      _u('/rides/active/$rideId/rate'),
+      headers: _headers,
+      body: jsonEncode({'stars': stars}),
     );
     await _jsonOrThrow(r);
   }

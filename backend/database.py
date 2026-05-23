@@ -120,12 +120,63 @@ CREATE TABLE IF NOT EXISTS ride_bookings (
     created_at TEXT NOT NULL,
     CHECK ((driver_offer_id IS NOT NULL) != (passenger_request_id IS NOT NULL))
 );
+
+CREATE TABLE IF NOT EXISTS ride_join_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    driver_offer_id INTEGER NOT NULL REFERENCES driver_offers(id) ON DELETE CASCADE,
+    passenger_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    passenger_count INTEGER NOT NULL DEFAULT 1 CHECK (passenger_count >= 1),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined', 'cancelled')),
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_join_requests_offer ON ride_join_requests(driver_offer_id, status);
+
+CREATE TABLE IF NOT EXISTS active_rides (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    driver_offer_id INTEGER NOT NULL REFERENCES driver_offers(id) ON DELETE CASCADE,
+    join_request_id INTEGER UNIQUE REFERENCES ride_join_requests(id),
+    driver_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    passenger_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT 'matched' CHECK (status IN ('matched', 'in_progress', 'completed')),
+    driver_in_car INTEGER NOT NULL DEFAULT 0,
+    passenger_in_car INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    started_at TEXT,
+    completed_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS ride_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    active_ride_id INTEGER NOT NULL REFERENCES active_rides(id) ON DELETE CASCADE,
+    sender_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    body TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS user_ratings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    active_ride_id INTEGER NOT NULL REFERENCES active_rides(id) ON DELETE CASCADE,
+    rater_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    rated_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    stars INTEGER NOT NULL CHECK (stars >= 1 AND stars <= 5),
+    created_at TEXT NOT NULL,
+    UNIQUE(active_ride_id, rater_user_id)
+);
+"""
+
+MIGRATION_SQL = """
+ALTER TABLE driver_offers ADD COLUMN vehicle_info TEXT;
 """
 
 
 def init_db() -> None:
     with get_connection() as conn:
         conn.executescript(SCHEMA)
+        try:
+            conn.executescript(MIGRATION_SQL)
+        except sqlite3.OperationalError:
+            pass
 
 
 def new_session_token() -> str:
@@ -199,10 +250,33 @@ def insert_passenger_request(user_id: int, destination: str, passenger_count: in
         return int(cur.lastrowid)
 
 
+def get_user_average_rating(user_id: int) -> float | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT AVG(stars) AS avg_stars, COUNT(*) AS cnt
+            FROM user_ratings WHERE rated_user_id = ?
+            """,
+            (user_id,),
+        ).fetchone()
+    if not row or not row["cnt"]:
+        return None
+    return round(float(row["avg_stars"]), 1)
+
+
+def _rating_fields(user_id: int) -> dict:
+    avg = get_user_average_rating(user_id)
+    return {
+        "rating_avg": avg,
+        "rating_display": f"{avg:.1f}" if avg is not None else "—",
+    }
+
+
 def insert_driver_offer(user_id: int, destination: str, available_seats: int, 
                         departure_time: str = None, description: str = None, # Novos argumentos
                         origin_lat=None, origin_lng=None, 
-                        destination_lat=None, destination_lng=None) -> int:
+                        destination_lat=None, destination_lng=None,
+                        vehicle_info: str | None = None) -> int:
     norm = normalize_destination(destination)
     now = utc_now_iso()
     status = "open" if available_seats > 0 else "full"
@@ -211,11 +285,11 @@ def insert_driver_offer(user_id: int, destination: str, available_seats: int,
             """INSERT INTO driver_offers
             (user_id, destination_norm, destination_display, available_seats, 
              departure_time, description, status, created_at, 
-             origin_lat, origin_lng, destination_lat, destination_lng)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+             origin_lat, origin_lng, destination_lat, destination_lng, vehicle_info)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (user_id, norm, destination.strip(), available_seats, 
              departure_time, description, status, now, 
-             origin_lat, origin_lng, destination_lat, destination_lng),
+             origin_lat, origin_lng, destination_lat, destination_lng, vehicle_info),
         )
         return int(cur.lastrowid)
 
@@ -481,4 +555,396 @@ def _apply_radius_filter(rows, passenger_lat, passenger_lng,
             r[lat_key], r[lng_key]
         ) <= radius_m
     ]
+
+
+# --- Ride join requests & active rides ---
+
+
+def create_join_request(driver_offer_id: int, passenger_user_id: int, passenger_count: int = 1) -> int:
+    now = utc_now_iso()
+    with get_connection() as conn:
+        offer = conn.execute(
+            "SELECT id, user_id, status, available_seats FROM driver_offers WHERE id = ?",
+            (driver_offer_id,),
+        ).fetchone()
+        if not offer:
+            raise ValueError("Driver offer not found")
+        if int(offer["user_id"]) == passenger_user_id:
+            raise ValueError("You cannot request your own ride")
+        if offer["status"] != "open" or int(offer["available_seats"]) < passenger_count:
+            raise ValueError("Driver offer is not available")
+
+        active = conn.execute(
+            """
+            SELECT id FROM active_rides
+            WHERE driver_offer_id = ? AND status IN ('matched', 'in_progress')
+            """,
+            (driver_offer_id,),
+        ).fetchone()
+        if active:
+            raise ValueError("This ride already has an active passenger")
+
+        pending = conn.execute(
+            """
+            SELECT id FROM ride_join_requests
+            WHERE driver_offer_id = ? AND passenger_user_id = ? AND status = 'pending'
+            """,
+            (driver_offer_id, passenger_user_id),
+        ).fetchone()
+        if pending:
+            raise ValueError("You already have a pending request for this ride")
+
+        cur = conn.execute(
+            """
+            INSERT INTO ride_join_requests
+            (driver_offer_id, passenger_user_id, passenger_count, status, created_at)
+            VALUES (?, ?, ?, 'pending', ?)
+            """,
+            (driver_offer_id, passenger_user_id, passenger_count, now),
+        )
+        return int(cur.lastrowid)
+
+
+def list_join_requests_for_offer(driver_offer_id: int, driver_user_id: int) -> list[dict]:
+    with get_connection() as conn:
+        offer = conn.execute(
+            "SELECT user_id FROM driver_offers WHERE id = ?", (driver_offer_id,)
+        ).fetchone()
+        if not offer:
+            raise ValueError("Driver offer not found")
+        if int(offer["user_id"]) != driver_user_id:
+            raise ValueError("Not your offer")
+
+        rows = conn.execute(
+            """
+            SELECT j.id, j.passenger_count, j.status, j.created_at,
+                   u.id AS passenger_user_id, u.name AS passenger_name, u.email AS passenger_email
+            FROM ride_join_requests j
+            JOIN users u ON u.id = j.passenger_user_id
+            WHERE j.driver_offer_id = ? AND j.status = 'pending'
+            ORDER BY j.created_at ASC
+            """,
+            (driver_offer_id,),
+        ).fetchall()
+
+    result = []
+    for r in rows:
+        d = dict(r)
+        d.update(_rating_fields(int(d["passenger_user_id"])))
+        result.append(d)
+    return result
+
+
+def list_my_driver_offers_with_pending(user_id: int) -> list[dict]:
+    with get_connection() as conn:
+        offers = conn.execute(
+            """
+            SELECT o.id, o.destination_display, o.available_seats, o.departure_time,
+                   o.description, o.vehicle_info, o.status, o.created_at
+            FROM driver_offers o
+            WHERE o.user_id = ? AND o.status = 'open'
+            ORDER BY o.created_at DESC
+            """,
+            (user_id,),
+        ).fetchall()
+
+    out = []
+    for o in offers:
+        oid = int(o["id"])
+        pending = list_join_requests_for_offer(oid, user_id)
+        if pending:
+            item = dict(o)
+            item["pending_requests"] = pending
+            item["pending_count"] = len(pending)
+            out.append(item)
+    return out
+
+
+def respond_join_request(request_id: int, driver_user_id: int, accept: bool) -> dict:
+    now = utc_now_iso()
+    with get_connection() as conn:
+        req = conn.execute(
+            """
+            SELECT j.id, j.driver_offer_id, j.passenger_user_id, j.passenger_count, j.status,
+                   o.user_id AS driver_user_id, o.available_seats, o.status AS offer_status
+            FROM ride_join_requests j
+            JOIN driver_offers o ON o.id = j.driver_offer_id
+            WHERE j.id = ?
+            """,
+            (request_id,),
+        ).fetchone()
+        if not req:
+            raise ValueError("Join request not found")
+        if int(req["driver_user_id"]) != driver_user_id:
+            raise ValueError("Not authorized")
+        if req["status"] != "pending":
+            raise ValueError("Request is no longer pending")
+
+        if not accept:
+            conn.execute(
+                "UPDATE ride_join_requests SET status = 'declined' WHERE id = ?",
+                (request_id,),
+            )
+            return {"request_id": request_id, "status": "declined"}
+
+        if req["offer_status"] != "open":
+            raise ValueError("Offer is no longer open")
+        if int(req["passenger_count"]) > int(req["available_seats"]):
+            raise ValueError("Not enough seats")
+
+        conn.execute(
+            "UPDATE ride_join_requests SET status = 'accepted' WHERE id = ?",
+            (request_id,),
+        )
+        conn.execute(
+            """
+            UPDATE ride_join_requests SET status = 'declined'
+            WHERE driver_offer_id = ? AND id != ? AND status = 'pending'
+            """,
+            (req["driver_offer_id"], request_id),
+        )
+
+        seats_left = int(req["available_seats"]) - int(req["passenger_count"])
+        new_status = "open" if seats_left > 0 else "full"
+        conn.execute(
+            "UPDATE driver_offers SET available_seats = ?, status = ? WHERE id = ?",
+            (seats_left, new_status, req["driver_offer_id"]),
+        )
+
+        cur = conn.execute(
+            """
+            INSERT INTO active_rides
+            (driver_offer_id, join_request_id, driver_user_id, passenger_user_id,
+             status, driver_in_car, passenger_in_car, created_at)
+            VALUES (?, ?, ?, ?, 'matched', 0, 0, ?)
+            """,
+            (
+                req["driver_offer_id"],
+                request_id,
+                driver_user_id,
+                req["passenger_user_id"],
+                now,
+            ),
+        )
+        ride_id = int(cur.lastrowid)
+        return {"request_id": request_id, "status": "accepted", "active_ride_id": ride_id}
+
+
+def get_active_ride_for_user(user_id: int) -> dict | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT ar.*, o.destination_display, o.departure_time, o.description AS origin_description,
+                   o.available_seats, o.vehicle_info,
+                   du.name AS driver_name, du.email AS driver_email,
+                   pu.name AS passenger_name, pu.email AS passenger_email
+            FROM active_rides ar
+            JOIN driver_offers o ON o.id = ar.driver_offer_id
+            JOIN users du ON du.id = ar.driver_user_id
+            JOIN users pu ON pu.id = ar.passenger_user_id
+            WHERE ar.status IN ('matched', 'in_progress')
+              AND (ar.driver_user_id = ? OR ar.passenger_user_id = ?)
+            ORDER BY ar.created_at DESC
+            LIMIT 1
+            """,
+            (user_id, user_id),
+        ).fetchone()
+    if not row:
+        return None
+
+    d = dict(row)
+    d["is_driver"] = int(d["driver_user_id"]) == user_id
+    d["is_passenger"] = int(d["passenger_user_id"]) == user_id
+    d.update(_rating_fields(int(d["driver_user_id"])))
+    d["driver_rating_avg"] = d.pop("rating_avg")
+    d["driver_rating_display"] = d.pop("rating_display")
+    p_rating = _rating_fields(int(d["passenger_user_id"]))
+    d["passenger_rating_avg"] = p_rating["rating_avg"]
+    d["passenger_rating_display"] = p_rating["rating_display"]
+    d["vehicle_display"] = d.get("vehicle_info") or d.get("origin_description") or "Veículo"
+    d["needs_rating"] = False
+    if d["status"] == "completed":
+        d["needs_rating"] = not _user_rated_ride(int(d["id"]), user_id)
+    return d
+
+
+def _user_rated_ride(active_ride_id: int, user_id: int) -> bool:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT id FROM user_ratings WHERE active_ride_id = ? AND rater_user_id = ?",
+            (active_ride_id, user_id),
+        ).fetchone()
+    return row is not None
+
+
+def confirm_in_car(active_ride_id: int, user_id: int) -> dict:
+    now = utc_now_iso()
+    with get_connection() as conn:
+        ride = conn.execute("SELECT * FROM active_rides WHERE id = ?", (active_ride_id,)).fetchone()
+        if not ride:
+            raise ValueError("Active ride not found")
+        if ride["status"] not in ("matched", "in_progress"):
+            raise ValueError("Ride is not active")
+
+        driver_in = bool(ride["driver_in_car"])
+        passenger_in = bool(ride["passenger_in_car"])
+
+        if int(ride["driver_user_id"]) == user_id:
+            driver_in = True
+        elif int(ride["passenger_user_id"]) == user_id:
+            passenger_in = True
+        else:
+            raise ValueError("Not a participant in this ride")
+
+        status = ride["status"]
+        started_at = ride["started_at"]
+        if driver_in and passenger_in:
+            status = "in_progress"
+            started_at = started_at or now
+
+        conn.execute(
+            """
+            UPDATE active_rides
+            SET driver_in_car = ?, passenger_in_car = ?, status = ?, started_at = ?
+            WHERE id = ?
+            """,
+            (int(driver_in), int(passenger_in), status, started_at, active_ride_id),
+        )
+    return get_active_ride_for_user(user_id) or {}
+
+
+def complete_ride(active_ride_id: int, user_id: int) -> dict:
+    now = utc_now_iso()
+    with get_connection() as conn:
+        ride = conn.execute("SELECT * FROM active_rides WHERE id = ?", (active_ride_id,)).fetchone()
+        if not ride:
+            raise ValueError("Active ride not found")
+        if int(ride["driver_user_id"]) != user_id and int(ride["passenger_user_id"]) != user_id:
+            raise ValueError("Not a participant in this ride")
+        if ride["status"] != "in_progress":
+            raise ValueError("Ride must be in progress to complete")
+
+        conn.execute(
+            "UPDATE active_rides SET status = 'completed', completed_at = ? WHERE id = ?",
+            (now, active_ride_id),
+        )
+    result = get_active_ride_for_user(user_id)
+    if result and result.get("status") == "completed":
+        result["needs_rating"] = not _user_rated_ride(active_ride_id, user_id)
+    return result or {"active_ride_id": active_ride_id, "status": "completed", "needs_rating": True}
+
+
+def add_ride_message(active_ride_id: int, sender_user_id: int, body: str) -> dict:
+    text = body.strip()
+    if not text:
+        raise ValueError("Message cannot be empty")
+    now = utc_now_iso()
+    with get_connection() as conn:
+        ride = conn.execute("SELECT * FROM active_rides WHERE id = ?", (active_ride_id,)).fetchone()
+        if not ride:
+            raise ValueError("Active ride not found")
+        if int(ride["driver_user_id"]) != sender_user_id and int(ride["passenger_user_id"]) != sender_user_id:
+            raise ValueError("Not a participant in this ride")
+        if ride["status"] not in ("matched", "in_progress"):
+            raise ValueError("Chat is only available during an active ride")
+
+        cur = conn.execute(
+            """
+            INSERT INTO ride_messages (active_ride_id, sender_user_id, body, created_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            (active_ride_id, sender_user_id, text, now),
+        )
+        msg_id = int(cur.lastrowid)
+        sender = conn.execute("SELECT name FROM users WHERE id = ?", (sender_user_id,)).fetchone()
+    return {
+        "id": msg_id,
+        "active_ride_id": active_ride_id,
+        "sender_user_id": sender_user_id,
+        "sender_name": sender["name"] if sender else "",
+        "body": text,
+        "created_at": now,
+    }
+
+
+def list_ride_messages(active_ride_id: int, user_id: int) -> list[dict]:
+    with get_connection() as conn:
+        ride = conn.execute("SELECT * FROM active_rides WHERE id = ?", (active_ride_id,)).fetchone()
+        if not ride:
+            raise ValueError("Active ride not found")
+        if int(ride["driver_user_id"]) != user_id and int(ride["passenger_user_id"]) != user_id:
+            raise ValueError("Not a participant in this ride")
+
+        rows = conn.execute(
+            """
+            SELECT m.id, m.active_ride_id, m.sender_user_id, m.body, m.created_at,
+                   u.name AS sender_name
+            FROM ride_messages m
+            JOIN users u ON u.id = m.sender_user_id
+            WHERE m.active_ride_id = ?
+            ORDER BY m.created_at ASC
+            """,
+            (active_ride_id,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def submit_rating(active_ride_id: int, rater_user_id: int, stars: int) -> dict:
+    if stars < 1 or stars > 5:
+        raise ValueError("Rating must be between 1 and 5")
+    now = utc_now_iso()
+    with get_connection() as conn:
+        ride = conn.execute("SELECT * FROM active_rides WHERE id = ?", (active_ride_id,)).fetchone()
+        if not ride:
+            raise ValueError("Active ride not found")
+        if ride["status"] != "completed":
+            raise ValueError("Can only rate completed rides")
+
+        if int(ride["driver_user_id"]) == rater_user_id:
+            rated_id = int(ride["passenger_user_id"])
+        elif int(ride["passenger_user_id"]) == rater_user_id:
+            rated_id = int(ride["driver_user_id"])
+        else:
+            raise ValueError("Not a participant in this ride")
+
+        conn.execute(
+            """
+            INSERT INTO user_ratings (active_ride_id, rater_user_id, rated_user_id, stars, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (active_ride_id, rater_user_id, rated_id, stars, now),
+        )
+    return {"active_ride_id": active_ride_id, "rated_user_id": rated_id, "stars": stars}
+
+
+def get_completed_ride_needing_rating(user_id: int) -> dict | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT ar.*, o.destination_display,
+                   du.name AS driver_name, pu.name AS passenger_name
+            FROM active_rides ar
+            JOIN driver_offers o ON o.id = ar.driver_offer_id
+            JOIN users du ON du.id = ar.driver_user_id
+            JOIN users pu ON pu.id = ar.passenger_user_id
+            WHERE ar.status = 'completed'
+              AND (ar.driver_user_id = ? OR ar.passenger_user_id = ?)
+            ORDER BY ar.completed_at DESC
+            LIMIT 1
+            """,
+            (user_id, user_id),
+        ).fetchone()
+    if not row:
+        return None
+    if _user_rated_ride(int(row["id"]), user_id):
+        return None
+    d = dict(row)
+    d["is_driver"] = int(d["driver_user_id"]) == user_id
+    if d["is_driver"]:
+        d["rate_target_name"] = d["passenger_name"]
+        d["rate_target_user_id"] = d["passenger_user_id"]
+    else:
+        d["rate_target_name"] = d["driver_name"]
+        d["rate_target_user_id"] = d["driver_user_id"]
+    return d
 

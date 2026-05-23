@@ -10,6 +10,7 @@ import 'ride4free_api.dart';
 import 'session/university_session_store.dart';
 import 'sigarra/sigarra_auth_service.dart';
 import 'location_service.dart';
+import 'active_ride_flow.dart';
 
 void main() {
   runApp(const MyApp());
@@ -113,12 +114,13 @@ class _AppBootstrapperState extends State<AppBootstrapper> {
   }
 
   Future<void> _ensureRide4FreeSession(UniversityIdentity identity) async {
-    final email = '${identity.username}@fe.up.pt';
-    final password = 'pass_${identity.username}';
+    final ({String email, String apiPassword}) creds = TesterAuth.isTesterUsername(identity.username)
+        ? TesterAuth.apiCredentials(identity.username)
+        : (email: '${identity.username}@fe.up.pt', apiPassword: 'pass_${identity.username}');
     try {
       await syncRide4FreeApiSession(
-        email: email,
-        password: password,
+        email: creds.email,
+        password: creds.apiPassword,
         displayName: identity.displayName,
         api: _api,
       );
@@ -138,9 +140,11 @@ class _AppBootstrapperState extends State<AppBootstrapper> {
     );
   }
 
-    return HomeShell(
-      onUniversityLogout: _onUniversityLogout,
-      identity: _identity!,
+    return ActiveRideCoordinator(
+      child: HomeShell(
+        onUniversityLogout: _onUniversityLogout,
+        identity: _identity!,
+      ),
     );
   }
 }
@@ -195,9 +199,12 @@ class _UniversityLoginPageState extends State<UniversityLoginPage> {
         return;
       }
       await widget.onLoginSuccess(identity);
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      setState(() => _error = 'Nao foi possivel autenticar no Sigarra.');
+      final hint = TesterAuth.isTesterUsername(username)
+          ? ' Conta teste: confirme que o backend está a correr.'
+          : '';
+      setState(() => _error = 'Nao foi possivel concluir o login.$hint ($e)');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -226,6 +233,12 @@ class _UniversityLoginPageState extends State<UniversityLoginPage> {
                     'No primeiro acesso, entre com as suas credenciais da universidade.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: kMuted),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Conta de teste: utilizador admin ou tester, password test01',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: kMuted, fontSize: 12),
                   ),
                   const SizedBox(height: 18),
                   TextField(
@@ -377,8 +390,8 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
     }
     setState(() => _loading = true);
     try {
-      await _api.bookDriverOffer(offerId);
-      if (mounted) _showMessage(context, 'Boleia reservada com sucesso.');
+      await _api.requestJoinRide(offerId: offerId);
+      if (mounted) _showMessage(context, 'Pedido enviado. O condutor irá aceitar ou recusar.');
       await _loadSection();
     } on Ride4FreeApiException catch (e) {
       if (mounted) {
@@ -509,12 +522,13 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
           final time = d['departure_time'] ?? 'Horário a definir';
           final timeStr = _timeAgo(d['created_at'] as String?);
           
+          final rating = d['rating_display'] as String? ?? '—';
           return ProfileCard(
             title: d['driver_name'] as String? ?? 'Condutor',
-            subtitle: "📍 De: $origin\n🏁 Para: $dest\n⏰ Partida: $time",
+            subtitle: "📍 De: $origin\n🏁 Para: $dest\n⏰ Partida: $time\n⭐ $rating",
             description: "Lugares disponíveis: ${d['available_seats']}",
             statusLabel: (d['booked'] as bool? ?? false) ? 'Reservado' : 'Disponível',
-            actionText: (d['booked'] as bool? ?? false) ? null : 'Reservar boleia',
+            actionText: (d['booked'] as bool? ?? false) ? null : 'Pedir boleia',
             onAction: () => _bookDriver((d['id'] as num).toInt()),
             timeAgoText: timeStr,
           );
@@ -620,8 +634,10 @@ class _OfferRidePageState extends State<OfferRidePage> {
 }
   int _seats = 3;
   final _destController = TextEditingController(text: '');
+  final _vehicleController = TextEditingController(text: 'Carro — cinzento');
   final _api = Ride4FreeApi();
   bool _busy = false;
+  int? _lastPublishedOfferId;
   LatLng? _originLatLng;
   LatLng? _destinationLatLng;
   String? _originAddress;
@@ -651,7 +667,16 @@ class _OfferRidePageState extends State<OfferRidePage> {
         final roadName = address?['road'] as String?
             ?? address?['pedestrian'] as String?
             ?? address?['suburb'] as String?
-            ?? data['display_name'] as String?;
+            ?? data['display_name'] as String?
+            ?? '${loc.latitude.toStringAsFixed(4)}, ${loc.longitude.toStringAsFixed(4)}';
+
+        setState(() {
+          if (isOrigin) {
+            _originAddress = roadName;
+          } else {
+            _destinationAddress = roadName;
+          }
+        });
       }
     } catch (_) {}
   }
@@ -659,7 +684,34 @@ class _OfferRidePageState extends State<OfferRidePage> {
   @override
   void dispose() {
     _destController.dispose();
+    _vehicleController.dispose();
     super.dispose();
+  }
+
+  Future<void> _openRideRequests() async {
+    if (_lastPublishedOfferId == null) {
+      _showMessage(context, 'Publique uma viagem primeiro.');
+      return;
+    }
+    final accepted = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => DriverRideRequestsPage(
+          offerId: _lastPublishedOfferId!,
+          destination: _destinationAddress,
+        ),
+      ),
+    );
+    if (accepted == true && mounted) {
+      final state = await _api.getActiveRideState();
+      if (state.ride != null && mounted) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            settings: const RouteSettings(name: ActiveRidePage.routeName),
+            builder: (_) => ActiveRidePage(initialRide: state.ride!),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _publish() async {
@@ -675,20 +727,22 @@ class _OfferRidePageState extends State<OfferRidePage> {
 
     setState(() => _busy = true);
     try {
-      await _api.createDriverOffer(
-        // AQUI: Usamos a morada obtida pelo Nominatim!
+      final offerId = await _api.createDriverOffer(
         destination: _destinationAddress ?? "Destino definido no mapa",
         availableSeats: _seats,
         departureTime: _timeController.text,
-        // AQUI: Usamos o campo description para guardar a morada de partida!
         description: _originAddress ?? "Partida definida no mapa",
+        vehicleInfo: _vehicleController.text.trim().isEmpty ? null : _vehicleController.text.trim(),
         originLat: _originLatLng?.latitude,
         originLng: _originLatLng?.longitude,
         destinationLat: _destinationLatLng?.latitude,
         destinationLng: _destinationLatLng?.longitude,
       );
-      
-      if (mounted) _showMessage(context, 'Viagem publicada!');
+
+      if (mounted) {
+        setState(() => _lastPublishedOfferId = offerId);
+        _showMessage(context, 'Viagem publicada! Veja os pedidos de boleia.');
+      }
     } catch (e) {
       if (mounted) _showMessage(context, 'Erro: $e');
     } finally {
@@ -705,9 +759,9 @@ class _OfferRidePageState extends State<OfferRidePage> {
     try {
       final m = await _api.listPassengersForDestination(_destController.text);
       if (!mounted) return;
-      final rc = m['request_count'] as int? ?? 0;
-      final total = m['total_passenger_slots'] as int? ?? 0;
-      final requests = (m['requests'] as List?) ?? [];
+      final rc = m['request_count'] as int? ?? m['rows']?.length ?? 0;
+      final total = m['total_passenger_slots'] as int? ?? m['total_passengers'] as int? ?? 0;
+      final requests = (m['requests'] as List?) ?? (m['rows'] as List?) ?? [];
       final lines = <String>['Pedidos: $rc', 'Total passageiros: $total', ''];
       for (final r in requests) {
         final map = r as Map<String, dynamic>;
@@ -782,13 +836,16 @@ class _OfferRidePageState extends State<OfferRidePage> {
               SizedBox(
                 height: 160,
                 child: _ConferenceMap(
-                    userLocation: _destinationLatLng,
-                    radiusMeters: 10,
-                    onTap: (latlng) {
-                    // Atualiza os condutores em redor
-                    _getAddressFromLatLng(latlng, false); // false = é o destino // Obtém a rua
+                  userLocation: _destinationLatLng,
+                  radiusMeters: 10,
+                  onTap: (latlng) {
+                    setState(() {
+                      _destinationLatLng = latlng;
+                      _destinationAddress = 'A obter rua...';
+                    });
+                    _getAddressFromLatLng(latlng, false);
                   },
-                  ),
+                ),
               ), 
               const SizedBox(height: 14),
               Row(
@@ -853,15 +910,35 @@ class _OfferRidePageState extends State<OfferRidePage> {
                 ),
                 child: Text(_busy ? 'A enviar…' : 'Publicar Viagem', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
               ),
+              const SizedBox(height: 14),
+              _label('VEÍCULO'),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _vehicleController,
+                decoration: InputDecoration(
+                  hintText: 'Ex: VW Golf cinzento · AB-12-CD',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
               const SizedBox(height: 12),
               OutlinedButton(
-                onPressed: _busy ? null : _seePassengers,
+                onPressed: _busy ? null : _openRideRequests,
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size.fromHeight(48),
                   side: const BorderSide(color: kRed, width: 2),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
-                child: const Text('Ver passageiros para este destino', style: TextStyle(fontWeight: FontWeight.w800)),
+                child: const Text('Pedidos de boleia (aceitar / recusar)', style: TextStyle(fontWeight: FontWeight.w800)),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton(
+                onPressed: _busy ? null : _seePassengers,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                  side: const BorderSide(color: kDivider, width: 1),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                child: const Text('Ver passageiros no destino', style: TextStyle(fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -1434,8 +1511,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
 class TopTitleBar extends StatelessWidget {
   final String title;
+  final VoidCallback? onBack;
   // ignore: use_key_in_widget_constructors
-  const TopTitleBar({required this.title});
+  const TopTitleBar({required this.title, this.onBack});
 
   @override
   Widget build(BuildContext context) {
@@ -1446,7 +1524,14 @@ class TopTitleBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          const Icon(Icons.arrow_back, color: Colors.white),
+          if (onBack != null)
+            IconButton(
+              onPressed: onBack,
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              padding: EdgeInsets.zero,
+            )
+          else
+            const Icon(Icons.arrow_back, color: Colors.white),
           const SizedBox(width: 12),
           Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
         ],
@@ -1821,4 +1906,5 @@ class _ConferenceMapState extends State<_ConferenceMap> {
       ],
     );
   }
+}
 }

@@ -1,6 +1,6 @@
 import 'package:app_test/ride4free_session_sync.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../sigarra/sigarra_auth_service.dart';
+import '../sigarra/sigarra_auth_service.dart' show TesterAuth, UniversityIdentity;
 import '../ride4free_api.dart';
 
 class UniversitySessionStore {
@@ -36,12 +36,13 @@ class UniversitySessionStore {
     final prefs = await SharedPreferences.getInstance();
 
     try {
-      final String userEmail = '${identity.username}@fe.up.pt';
-      final String userPass = 'pass_${identity.username}';
+      final ({String email, String apiPassword}) creds = TesterAuth.isTesterUsername(identity.username)
+          ? TesterAuth.apiCredentials(identity.username)
+          : (email: '${identity.username}@fe.up.pt', apiPassword: 'pass_${identity.username}');
 
       await syncRide4FreeApiSession(
-        email: userEmail,
-        password: userPass,
+        email: creds.email,
+        password: creds.apiPassword,
         displayName: identity.displayName,
         api: _api,
       );
