@@ -5,7 +5,7 @@
 class Ride4FreeAppConfig {
   Ride4FreeAppConfig._();
 
-  static const String apiBaseUrl = 'https://broadband-suggestions-imagine-cedar.trycloudflare.com';
+  static const String apiBaseUrl = '';
 
   static bool get useRemoteApi => apiBaseUrl.isNotEmpty;
 }
