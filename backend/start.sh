@@ -24,10 +24,18 @@ update_app_config() {
     echo "Could not find $APP_CONFIG"
     return 1
   fi
-  # Escape for sed
+  
   local escaped
   escaped=$(printf '%s' "$url" | sed 's/[&/\]/\\&/g')
-  sed -i "s|static const String apiBaseUrl = .*|static const String apiBaseUrl = '${escaped}';|" "$APP_CONFIG"
+
+  # Verifica se o sistema operativo é macOS (darwin) ou Linux
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    # Versão para macOS (BSD sed)
+    sed -i '' "s|static const String apiBaseUrl = .*|static const String apiBaseUrl = '${escaped}';|" "$APP_CONFIG"
+  else
+    # Versão para Linux (GNU sed)
+    sed -i "s|static const String apiBaseUrl = .*|static const String apiBaseUrl = '${escaped}';|" "$APP_CONFIG"
+  fi
 }
 
 cleanup() {
