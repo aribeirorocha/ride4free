@@ -17,12 +17,21 @@ class Ride4FreeConfig {
   Ride4FreeConfig._();
   static const String _overrideBaseUrl = String.fromEnvironment('RIDE4FREE_API_BASE_URL');
 
+  /// Strips trailing slashes so paths like `/users/login` do not become `//users/login`.
+  static String normalizeBaseUrl(String url) {
+    var s = url.trim();
+    while (s.endsWith('/')) {
+      s = s.substring(0, s.length - 1);
+    }
+    return s;
+  }
+
   static String get baseUrl {
     if (_overrideBaseUrl.isNotEmpty) {
-      return _overrideBaseUrl;
+      return normalizeBaseUrl(_overrideBaseUrl);
     }
     if (Ride4FreeAppConfig.useRemoteApi) {
-      return Ride4FreeAppConfig.apiBaseUrl;
+      return normalizeBaseUrl(Ride4FreeAppConfig.apiBaseUrl);
     }
     if (kIsWeb) {
       return 'http://localhost:8000';
@@ -60,8 +69,8 @@ class Ride4FreeUser {
 
 class Ride4FreeApi {
 
-  Ride4FreeApi({String? baseUrl, http.Client? client}) 
-      : _base = baseUrl ?? Ride4FreeConfig.baseUrl,
+  Ride4FreeApi({String? baseUrl, http.Client? client})
+      : _base = Ride4FreeConfig.normalizeBaseUrl(baseUrl ?? Ride4FreeConfig.baseUrl),
         _client = client ?? http.Client();
 
   final String _base;
@@ -78,8 +87,10 @@ class Ride4FreeApi {
   }
 
   Uri _u(String path, [Map<String, String>? query]) {
-    final p = path.startsWith('/') ? path : '/$path';
-    return Uri.parse('$_base$p').replace(queryParameters: query);
+    final base = Uri.parse(_base.endsWith('/') ? _base : '$_base/');
+    final relative = path.startsWith('/') ? path.substring(1) : path;
+    final uri = base.resolve(relative);
+    return query != null ? uri.replace(queryParameters: query) : uri;
   }
 
   Future<Map<String, dynamic>> _jsonOrThrow(http.Response r) async {

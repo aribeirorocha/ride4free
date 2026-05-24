@@ -5,7 +5,7 @@
 class Ride4FreeAppConfig {
   Ride4FreeAppConfig._();
 
-  static const String apiBaseUrl = 'https://put-climbing-bomb-violations.trycloudflare.com';
+  static const String apiBaseUrl = 'https://quilt-pads-space-extent.trycloudflare.com/';
 
   static bool get useRemoteApi => apiBaseUrl.isNotEmpty;
 }
