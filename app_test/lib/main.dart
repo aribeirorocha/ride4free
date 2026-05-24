@@ -644,7 +644,7 @@ class _OfferRidePageState extends State<OfferRidePage> {
 }
   int _seats = 3;
   final _destController = TextEditingController(text: '');
-  final _vehicleController = TextEditingController(text: 'Carro — cinzento');
+  final _vehicleController = TextEditingController(); 
   final _api = Ride4FreeApi();
   bool _busy = false;
   int? _lastPublishedOfferId;
@@ -694,7 +694,6 @@ class _OfferRidePageState extends State<OfferRidePage> {
   @override
   void dispose() {
     _destController.dispose();
-    _vehicleController.dispose();
     super.dispose();
   }
 
@@ -747,6 +746,7 @@ class _OfferRidePageState extends State<OfferRidePage> {
         originLng: _originLatLng?.longitude,
         destinationLat: _destinationLatLng?.latitude,
         destinationLng: _destinationLatLng?.longitude,
+        
       );
 
       if (mounted) {
@@ -795,155 +795,184 @@ class _OfferRidePageState extends State<OfferRidePage> {
   @override
   Widget build(BuildContext context) {
     final canPublish = _seats > 0 && !_busy;
+    
     return Column(
       children: [
         const TopTitleBar(title: 'Oferecer Boleia'),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+            padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
             children: [
-              _label('PONTO DE PARTIDA'),
-              const SizedBox(height: 6),
-              if (_originLatLng == null)
-                const Text(
-                  'Toque no mapa para definir o ponto de partida',
-                  style: TextStyle(color: kMuted, fontWeight: FontWeight.w600),
-                )
-              else
-                Text(
-                  'Partida definida ✓ (${_originAddress ?? "${_originLatLng!.latitude.toStringAsFixed(4)}, ${_originLatLng!.longitude.toStringAsFixed(4)}"})',
-                  style: const TextStyle(color: kSuccess, fontWeight: FontWeight.w600),
-                ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 160,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: _ConferenceMap(
-                    userLocation: _originLatLng,
-                    radiusMeters: 10,
-                    onTap: (latlng) {
-                      setState(() {
-                        _originLatLng = latlng;
-                        _originAddress = 'A obter rua...'; // Dá feedback instantâneo
-                      });
-                      _getAddressFromLatLng(latlng, true); // Pede o nome à API
-                    },
-                  ),
+              
+              // --- BLOCO 1: TRAJETO (MAPAS) ---
+              _sectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.trip_origin, size: 18, color: kRed),
+                        const SizedBox(width: 8),
+                        Expanded(child: _label('Ponto de Partida')),
+                      ],
+                    ),
+                    _addressStatus(_originLatLng != null, _originAddress),
+                    const SizedBox(height: 10),
+                    _mapBox(
+                      child: _ConferenceMap(
+                        userLocation: _originLatLng,
+                        radiusMeters: 10,
+                        onTap: (latlng) {
+                          setState(() {
+                            _originLatLng = latlng;
+                            _originAddress = 'A obter rua...';
+                          });
+                          _getAddressFromLatLng(latlng, true);
+                        },
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Divider(height: 1),
+                    ),
+                    Row(
+                      children: [
+                        Icon(Icons.location_on, size: 18, color: kSuccess),
+                        const SizedBox(width: 8),
+                        Expanded(child: _label('Ponto de Chegada')),
+                      ],
+                    ),
+                    _addressStatus(_destinationLatLng != null, _destinationAddress),
+                    const SizedBox(height: 10),
+                    _mapBox(
+                      child: _ConferenceMap(
+                        userLocation: _destinationLatLng,
+                        radiusMeters: 10,
+                        onTap: (latlng) {
+                          setState(() {
+                            _destinationLatLng = latlng;
+                            _destinationAddress = 'A obter rua...';
+                          });
+                          _getAddressFromLatLng(latlng, false);
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              _label('PONTO DE CHEGADA'),
-              const SizedBox(height: 6),
-              if (_destinationLatLng == null)
-                const Text('Toque no mapa para definir o ponto de chegada',
-                    style: TextStyle(color: kMuted, fontWeight: FontWeight.w600))
-              else
-                Text(
-                  'Chegada definida ✓ (${_destinationAddress ?? "${_destinationLatLng!.latitude.toStringAsFixed(4)}, ${_destinationLatLng!.longitude.toStringAsFixed(4)}"})',
-                  style: const TextStyle(color: kSuccess, fontWeight: FontWeight.w600),
-                ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 160,
-                child: _ConferenceMap(
-                  userLocation: _destinationLatLng,
-                  radiusMeters: 10,
-                  onTap: (latlng) {
-                    setState(() {
-                      _destinationLatLng = latlng;
-                      _destinationAddress = 'A obter rua...';
-                    });
-                    _getAddressFromLatLng(latlng, false);
-                  },
-                ),
-              ), 
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                 Expanded(
+
+              const SizedBox(height: 20),
+
+              // --- BLOCO 2: DETALHES (HORA E LUGARES) ---
+              _sectionCard(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _label('HORA'),
+                          _label('Hora'),
                           TextField(
-                            key: const Key('destination_field'), 
                             controller: _timeController,
                             keyboardType: TextInputType.datetime,
                             decoration: InputDecoration(
                               hintText: 'HH:MM',
-                              errorText: _timeError, // Mostra o erro aqui em baixo a vermelho
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              errorText: _timeError,
+                              prefixIcon: Icon(Icons.access_time, color: kRed, size: 20),
+                              filled: true,
+                              fillColor: const Color(0xFFF8F8F8),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
                             ),
-                            onChanged: (value) {
-                              setState(() {
-                                if (value.isEmpty) {
-                                  _timeError = 'Obrigatório';
-                                } else if (!_isValidTime(value)) {
-                                  _timeError = 'Formato inválido';
-                                } else {
-                                  _timeError = null; // Tudo OK!
-                                }
-                              });
-                            },
+                            style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
                         ],
                       ),
                     ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _label('LUGARES'),
-                        SeatPicker(
-                          seats: _seats,
-                          onDec: () {
-                            if (_seats > 0) setState(() => _seats--);
-                          },
-                          onInc: () => setState(() => _seats++),
-                        ),
-                      ],
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _label('Lugares'),
+                          SeatPicker(
+                            seats: _seats,
+                            onDec: () { if (_seats > 0) setState(() => _seats--); },
+                            onInc: () => setState(() => _seats++),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 26),
-              RewardPanel(valid: canPublish, rewardText: '+${_seats * 10} Créditos'),
+
               const SizedBox(height: 20),
-              FilledButton(
-                onPressed: canPublish ? _publish : null,
-                style: FilledButton.styleFrom(
-                  backgroundColor: canPublish ? kRed : const Color(0xFFD5D5D5),
-                  minimumSize: const Size.fromHeight(56),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+
+              // --- BLOCO 3: VEÍCULO ---
+              _sectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _label('Teu Veículo'),
+                    TextField(
+                      controller: _vehicleController,
+                      decoration: InputDecoration(
+                        hintText: 'Ex: Renault Clio Preto',
+                        prefixIcon: Icon(Icons.directions_car, color: kRed, size: 20),
+                        filled: true,
+                        fillColor: const Color(0xFFF8F8F8),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ],
                 ),
-                child: Text(_busy ? 'A enviar…' : 'Publicar Viagem', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
               ),
-              const SizedBox(height: 14),
-              _label('VEÍCULO'),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _vehicleController,
-                decoration: InputDecoration(
-                  hintText: 'Ex: VW Golf cinzento · AB-12-CD',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+
+              const SizedBox(height: 24),
+
+              // --- BLOCO FINAL: RECOMPENSA E BOTÃO ---
+              RewardPanel(valid: canPublish, rewardText: '+${_seats * 10} Créditos'),
+              const SizedBox(height: 24),
+              
+              Container(
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: kRed.withOpacity(0.2),
+                      blurRadius: 15,
+                      offset: const Offset(0, 8),
+                    )
+                  ]
+                ),
+                child: FilledButton(
+                  onPressed: canPublish ? _publish : null,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: kRed,
+                    minimumSize: const Size.fromHeight(60), // Mais alto e tátil
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: _busy 
+                    ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
+                    : const Text(
+                        'Publicar Viagem', 
+                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white)
+                      ),
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Os pedidos de boleia estão no separador Pedidos.',
-                style: TextStyle(color: kMuted, fontSize: 12, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton(
-                onPressed: _busy ? null : _seePassengers,
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
-                  side: const BorderSide(color: kDivider, width: 1),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              const SizedBox(height: 16),
+              const Center(
+                child: Text(
+                  'Podes gerir os teus pedidos na aba "Pedidos".',
+                  style: TextStyle(color: kMuted, fontSize: 13, fontWeight: FontWeight.w500),
                 ),
-                child: const Text('Ver passageiros no destino', style: TextStyle(fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -952,12 +981,66 @@ class _OfferRidePageState extends State<OfferRidePage> {
     );
   }
 
+  // --- HELPERS VISUAIS (Adicionar estes métodos abaixo do build) ---
 
-  Widget _label(String text) => Text(
-    text,
-    style: const TextStyle(fontSize: 14, color: kMuted, fontWeight: FontWeight.w700),
+  Widget _sectionCard({required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.withOpacity(0.15), width: 1.5),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _addressStatus(bool defined, String? address) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, top: 2),
+      child: Text(
+        defined ? (address ?? "Localização definida") : "Toca no mapa para definir...",
+        style: TextStyle(
+          color: defined ? Colors.black87 : kMuted,
+          fontWeight: defined ? FontWeight.w700 : FontWeight.w500,
+          fontSize: 13,
+        ),
+      ),
+    );
+  }
+
+  Widget _mapBox({required Widget child}) {
+    return Container(
+      height: 140,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(13),
+        child: child,
+      ),
+    );
+  }
+  }
+
+
+  Widget _label(String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 8, left: 4),
+    child: Text(
+      text.toUpperCase(),
+      style: const TextStyle(
+        fontSize: 11, 
+        color: kMuted, 
+        fontWeight: FontWeight.w800, 
+        letterSpacing: 0.8
+      ),
+    ),
   );
-}
+
 
 class SearchRidePage extends StatefulWidget {
   const SearchRidePage({super.key});
@@ -980,10 +1063,9 @@ class ProfilePage extends StatefulWidget {
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
-}
-class _SearchRidePageState extends State<SearchRidePage> {
+}class _SearchRidePageState extends State<SearchRidePage> {
   final _originController = TextEditingController();
-  final _destController = TextEditingController(text: 'FEUP (Polo II)');
+  final _destController = TextEditingController();
   final _timeController = TextEditingController();
   final _api = Ride4FreeApi();
   List<Map<String, dynamic>> _drivers = [];
@@ -1087,7 +1169,6 @@ class _SearchRidePageState extends State<SearchRidePage> {
     }
   }
 
-
   Future<void> _reserveDriver(Map<String, dynamic> d) async {
     if (Ride4FreeAuth.token == null) {
       _showMessage(context, 'Inicie sessão no perfil.');
@@ -1159,10 +1240,63 @@ class _SearchRidePageState extends State<SearchRidePage> {
     }
   }
 
-  Widget _label(String text) => Text(
-    text,
-    style: const TextStyle(fontSize: 14, color: kMuted, fontWeight: FontWeight.w700),
+  // --- HELPERS VISUAIS PREMIUM ---
+  Widget _label(String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 8, left: 4),
+    child: Text(
+      text.toUpperCase(),
+      style: const TextStyle(
+        fontSize: 11, 
+        color: kMuted, 
+        fontWeight: FontWeight.w800, 
+        letterSpacing: 0.8
+      ),
+    ),
   );
+
+  Widget _sectionCard({required Widget child}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.withOpacity(0.15), width: 1.5),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _addressStatus(bool defined, String? address, String fallback) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, top: 2, bottom: 8),
+      child: Text(
+        defined ? (address ?? "Localização definida") : fallback,
+        style: TextStyle(
+          color: defined ? Colors.black87 : kMuted,
+          fontWeight: defined ? FontWeight.w700 : FontWeight.w500,
+          fontSize: 13,
+        ),
+      ),
+    );
+  }
+
+  Widget _mapBox({required Widget child}) {
+    return Container(
+      height: 150,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(13),
+        child: child,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1194,93 +1328,79 @@ class _SearchRidePageState extends State<SearchRidePage> {
     );
   }
 
+  // --- ABA 1: PROCURAR CONDUTORES ---
   Widget _buildSearchTab() {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    const Text('Para:', style: TextStyle(color: kMuted, fontWeight: FontWeight.w700)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: _destController,
-                        decoration: InputDecoration(
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: _loading ? null : _search,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: kSuccess,
-                    minimumSize: const Size.fromHeight(48)
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 30),
+      children: [
+        
+        // BLOCO 1: DESTINO
+        _sectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _label('Para onde queres ir?'),
+              TextField(
+                controller: _destController,
+                decoration: InputDecoration(
+                  hintText: 'Ex: FEUP (Polo II)',
+                  prefixIcon: const Icon(Icons.flag, color: kRed, size: 20),
+                  filled: true,
+                  fillColor: const Color(0xFFF8F8F8),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
                   ),
-                  icon: const Icon(Icons.search),
-                  label: Text(_loading ? 'A procurar…' : 'Procurar condutores na zona'),
                 ),
-              ],
-            ),
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: _loading ? null : _search,
+                style: FilledButton.styleFrom(
+                  backgroundColor: kSuccess,
+                  minimumSize: const Size.fromHeight(52),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: const Icon(Icons.search),
+                label: Text(
+                  _loading ? 'A procurar…' : 'Procurar condutores',
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)
+                ),
+              ),
+            ],
           ),
-          const Divider(height: 18),
+        ),
 
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18),
-            child: Row(
-              children: [
-                const Text('Raio de Tolerancia', style: TextStyle(fontWeight: FontWeight.w700)),
-                const Spacer(),
-                Text('${_radiusMeters.toInt()}m', style: const TextStyle(color: kRed, fontWeight: FontWeight.w700)),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 6, 18, 10),
-            child: Slider(
-              value: _radiusMeters,
-              min: 100,
-              max: 2000,
-              divisions: 19,
-              label: '${_radiusMeters.toInt()}m',
-              onChanged: (v) => setState(() => _radiusMeters = v),
-              onChangeEnd: (v) {
-                setState(() => _radiusMeters = v);
-                if (_drivers.isNotEmpty) _search();
-              },
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18),
-            child: _pickupLatLng == null
-                ? const Text(
-              'A usar o GPS automaticamente. Toque no mapa para alterar.',
-              style: TextStyle(color: kMuted, fontWeight: FontWeight.w600, fontSize: 12),
-            )
-                : Text(
-              'Pickup alterado ✓ (${_pickupAddress ?? "${_pickupLatLng!.latitude.toStringAsFixed(4)}, ${_pickupLatLng!.longitude.toStringAsFixed(4)}"})',
-              style: const TextStyle(color: kSuccess, fontWeight: FontWeight.w600, fontSize: 12),
-            ),
-          ),
-          const SizedBox(height: 6),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18),
-            child: SizedBox(
-              height: 160,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
+        // BLOCO 2: MAPA E RAIO
+        _sectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _label('Raio de Pesquisa'),
+                  Text('${_radiusMeters.toInt()}m', style: const TextStyle(color: kRed, fontWeight: FontWeight.w800)),
+                ],
+              ),
+              Slider(
+                value: _radiusMeters,
+                min: 100,
+                max: 2000,
+                divisions: 19,
+                activeColor: kRed,
+                inactiveColor: kRed.withOpacity(0.2),
+                onChanged: (v) => setState(() => _radiusMeters = v),
+                onChangeEnd: (v) {
+                  setState(() => _radiusMeters = v);
+                  if (_drivers.isNotEmpty) _search();
+                },
+              ),
+              const Divider(height: 24, color: kDivider),
+              _label('O teu ponto de partida'),
+              _addressStatus(_pickupLatLng != null, _pickupAddress, 'A usar o GPS. Toca no mapa para alterar.'),
+              _mapBox(
                 child: _ConferenceMap(
                   userLocation: _pickupLatLng ?? _userLocation,
                   radiusMeters: _radiusMeters,
@@ -1300,157 +1420,182 @@ class _SearchRidePageState extends State<SearchRidePage> {
                   )).toList(),
                 ),
               ),
+            ],
+          ),
+        ),
+
+        // LISTA DE RESULTADOS
+        if (_drivers.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: Text(
+                'Nenhum condutor encontrado neste raio.', 
+                style: TextStyle(color: kMuted, fontWeight: FontWeight.w600)
+              )
+            ),
+          )
+        else ...[
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 12),
+            child: Text(
+              'Boleias Encontradas'.toUpperCase(),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: kMuted, letterSpacing: 0.5)
             ),
           ),
-          
-          if (_drivers.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(24),
-              child: Text('Nenhum condutor encontrado neste raio.', style: TextStyle(color: kMuted, fontWeight: FontWeight.w600)),
-            )
-          else ...[
-            const Padding(
-              padding: EdgeInsets.fromLTRB(18, 8, 18, 0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Boleias Encontradas',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-              ),
-            ),
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
-              itemCount: _drivers.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 10),
-              itemBuilder: (context, i) {
-                final d = _drivers[i];
-                return RideCard(
-                  name: d['driver_name'] as String? ?? 'Condutor',
-                  car: 'Lugares livres: ${d['available_seats'] ?? '?'}',
-                  rating: d['rating_display'] as String? ?? '—',
-                  distance: d['destination_display'] as String? ?? '',
-                  credits: '−5',
-                  onReserve: _loading ? null : () => _reserveDriver(d),
-                );
-              },
-            ),
-          ],
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _drivers.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
+            itemBuilder: (context, i) {
+              final d = _drivers[i];
+              return RideCard(
+                name: d['driver_name'] as String? ?? 'Condutor',
+                car: 'Lugares livres: ${d['available_seats'] ?? '?'}',
+                rating: d['rating_display'] as String? ?? '—',
+                distance: d['destination_display'] as String? ?? '',
+                credits: '−5',
+                onReserve: _loading ? null : () => _reserveDriver(d),
+              );
+            },
+          ),
         ],
-      ),
+      ],
     );
   }
 
+  // --- ABA 2: PEDIR BOLEIA ---
   Widget _buildRequestTab() {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 30),
       children: [
-        _label('ORIGEM'),
-        const SizedBox(height: 6),
-        TextField(
-          controller: _originController,
-          decoration: InputDecoration(
-            hintText: 'Ex: Rua de Cedofeita',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            prefixIcon: const Icon(Icons.trip_origin, color: kRed),
-          ),
-        ),
-        const SizedBox(height: 16),
-        _label('PARA ONDE QUERES IR?'),
-        const SizedBox(height: 6),
-        TextField(
-          controller: _destController,
-          decoration: InputDecoration(
-            hintText: 'Ex: FEUP (Polo II)',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            prefixIcon: const Icon(Icons.flag, color: kRed),
-          ),
-        ),
-        const SizedBox(height: 16),
-        _label('DATA / HORA'),
-        const SizedBox(height: 6),
-        TextField(
-          controller: _timeController,
-          decoration: InputDecoration(
-            hintText: 'HH:MM ou 2026-05-23 18:30',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            prefixIcon: const Icon(Icons.schedule, color: kRed),
-          ),
-        ),
-        const SizedBox(height: 20),
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _label('LUGARES NECESSÁRIOS'),
-                  SeatPicker(
-                    seats: _neededSeats,
-                    onDec: () {
-                      if (_neededSeats > 1) setState(() => _neededSeats--);
-                    },
-                    onInc: () => setState(() => _neededSeats++),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 22),
-                  const Text('Dica: Pedir menos lugares aumenta a chance de match!', 
-                    style: TextStyle(color: kMuted, fontSize: 12, height: 1.2),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
         
-        _label('O TEU PONTO DE PICKUP'),
-        const SizedBox(height: 6),
-        Text(
-          _pickupLatLng == null 
-            ? '📍 A usar a localização atual: $_locationLabel'
-            : '📍 Pickup: ${_pickupAddress ?? "${_pickupLatLng!.latitude.toStringAsFixed(4)}, ${_pickupLatLng!.longitude.toStringAsFixed(4)}"}',
-          style: const TextStyle(color: kSuccess, fontWeight: FontWeight.w600, fontSize: 13),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 150,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: _ConferenceMap(
-              userLocation: _pickupLatLng ?? _userLocation,
-              radiusMeters: 0, 
-              onTap: (latlng) {
-                setState(() {
-                  _pickupLatLng = latlng;
-                  _pickupAddress = 'A obter rua...';
-                });
-                _getAddressFromLatLng(latlng);
-              },
-            ),
+        // BLOCO 1: TRAJETO
+        _sectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _label('Origem'),
+              TextField(
+                controller: _originController,
+                decoration: InputDecoration(
+                  hintText: 'Ex: Rua de Cedofeita',
+                  prefixIcon: const Icon(Icons.trip_origin, color: kRed, size: 20),
+                  filled: true,
+                  fillColor: const Color(0xFFF8F8F8),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 16),
+              _label('Destino'),
+              TextField(
+                controller: _destController,
+                decoration: InputDecoration(
+                  hintText: 'Ex: FEUP (Polo II)',
+                  prefixIcon: const Icon(Icons.flag, color: kSuccess, size: 20),
+                  filled: true,
+                  fillColor: const Color(0xFFF8F8F8),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 32),
 
-        FilledButton.icon(
-          onPressed: _loading ? null : _registerRequest,
-          style: FilledButton.styleFrom(
-            backgroundColor: kRed,
-            minimumSize: const Size.fromHeight(56),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        // BLOCO 2: DATA E LUGARES
+        _sectionCard(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _label('Data / Hora'),
+                    TextField(
+                      controller: _timeController,
+                      decoration: InputDecoration(
+                        hintText: 'HH:MM',
+                        prefixIcon: const Icon(Icons.schedule, color: kRed, size: 20),
+                        filled: true,
+                        fillColor: const Color(0xFFF8F8F8),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _label('Lugares'),
+                    SeatPicker(
+                      seats: _neededSeats,
+                      onDec: () {
+                        if (_neededSeats > 1) setState(() => _neededSeats--);
+                      },
+                      onInc: () => setState(() => _neededSeats++),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          icon: const Icon(Icons.campaign, color: Colors.white),
-          label: Text(
-            _loading ? 'A publicar...' : 'Pedir Boleia', 
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)
+        ),
+
+        // BLOCO 3: MAPA DE PICKUP
+        _sectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _label('O teu ponto de pickup'),
+              _addressStatus(_pickupLatLng != null, _pickupAddress, '📍 A usar: $_locationLabel'),
+              _mapBox(
+                child: _ConferenceMap(
+                  userLocation: _pickupLatLng ?? _userLocation,
+                  radiusMeters: 0, 
+                  onTap: (latlng) {
+                    setState(() {
+                      _pickupLatLng = latlng;
+                      _pickupAddress = 'A obter rua...';
+                    });
+                    _getAddressFromLatLng(latlng);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // BOTÃO PUBLICAR
+        Container(
+          decoration: BoxDecoration(
+            boxShadow: [
+              BoxShadow(color: kRed.withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 8))
+            ]
+          ),
+          child: FilledButton.icon(
+            onPressed: _loading ? null : _registerRequest,
+            style: FilledButton.styleFrom(
+              backgroundColor: kRed,
+              minimumSize: const Size.fromHeight(60), // Tamanho Premium
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            icon: const Icon(Icons.campaign, color: Colors.white),
+            label: Text(
+              _loading ? 'A publicar...' : 'Pedir Boleia', 
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white)
+            ),
           ),
         ),
       ],
@@ -1553,9 +1698,47 @@ class _ProfilePageState extends State<ProfilePage> {
     } finally {
       await widget.onUniversityLogout();
       if (mounted) {
-        _showMessage(context, 'Sessao universitaria terminada.');
+        _showMessage(context, 'Sessão universitária terminada.');
       }
     }
+  }
+
+  // --- HELPERS VISUAIS PREMIUM ---
+
+  Widget _label(String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 8, left: 4),
+    child: Text(
+      text.toUpperCase(),
+      style: const TextStyle(fontSize: 11, color: kMuted, fontWeight: FontWeight.w800, letterSpacing: 0.8),
+    ),
+  );
+
+  Widget _sectionCard({required Widget child, EdgeInsetsGeometry? padding}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: padding ?? const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.withOpacity(0.15), width: 1.5),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _statItem(String icon, String value, String label) {
+    return Column(
+      children: [
+        Text(icon, style: const TextStyle(fontSize: 24)),
+        const SizedBox(height: 6),
+        Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.black87)),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(fontSize: 12, color: kMuted, fontWeight: FontWeight.w600)),
+      ],
+    );
   }
 
   @override
@@ -1564,133 +1747,165 @@ class _ProfilePageState extends State<ProfilePage> {
       children: [
         const TopTitleBar(title: 'Perfil'),
         Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
-            children: [
-              if (_loadingProfile)
-                const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              else ...[
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    radius: 24,
-                    backgroundImage: widget.identity.photoUrl == null
-                        ? null
-                        : NetworkImage(widget.identity.photoUrl!),
-                    child: widget.identity.photoUrl == null ? const Icon(Icons.person) : null,
-                  ),
-                  title: Text(
-                    widget.identity.displayName,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  subtitle: Text(
-                    'UP: ${widget.identity.username} · ⭐ ${_profile?['rating_display'] ?? '—'}',
-                    style: const TextStyle(color: kMuted),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: kDivider),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Veículo', style: TextStyle(fontWeight: FontWeight.w800)),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _vehicleController,
-                        decoration: InputDecoration(
-                          hintText: 'Ex: VW Golf cinzento · AB-12-CD',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      FilledButton(
-                        onPressed: _busy ? null : _saveVehicle,
-                        style: FilledButton.styleFrom(backgroundColor: kRed),
-                        child: const Text('Guardar veículo'),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: kRed, width: 2),
-                    color: const Color(0xFFFFF8F8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Créditos', style: TextStyle(color: kMuted, fontWeight: FontWeight.w700)),
-                      Text(
-                        '$_creditsBalance',
-                        style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: kRed),
-                      ),
-                      const Text(
-                        'Ganhas +10 ao concluir viagem · Gastas 5 ao reservar',
-                        style: TextStyle(color: kMuted, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                if (_transactions.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  const Text('Histórico de créditos', style: TextStyle(fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 8),
-                  for (final t in _transactions.take(15))
-                    ListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(t['description'] as String? ?? ''),
-                      subtitle: Text(t['created_at'] as String? ?? ''),
-                      trailing: Text(
-                        '${(t['amount_delta'] as num) > 0 ? '+' : ''}${t['amount_delta']}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: (t['amount_delta'] as num) >= 0 ? kSuccess : kRed,
-                        ),
+          child: _loadingProfile
+              ? const Center(child: CircularProgressIndicator(color: kRed))
+              : ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
+                  children: [
+                    
+                    // --- 1. HEADER (Estilo Instagram) ---
+                    Center(
+                      child: Column(
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: kRed.withOpacity(0.2), width: 4),
+                            ),
+                            child: CircleAvatar(
+                              radius: 46,
+                              backgroundColor: kRed.withOpacity(0.1),
+                              backgroundImage: widget.identity.photoUrl != null
+                                  ? NetworkImage(widget.identity.photoUrl!)
+                                  : null,
+                              child: widget.identity.photoUrl == null
+                                  ? const Icon(Icons.person, size: 40, color: kRed)
+                                  : null,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            widget.identity.displayName,
+                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.black87, letterSpacing: -0.5),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${widget.identity.username} · Universidade do Porto',
+                            style: const TextStyle(fontSize: 14, color: kMuted, fontWeight: FontWeight.w600),
+                          ),
+                        ],
                       ),
                     ),
-                ],
-                if (_reviews.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  const Text('Avaliações recebidas', style: TextStyle(fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 8),
-                  for (final r in _reviews.take(10))
-                    Card(
-                      child: ListTile(
-                        title: Text(r['rater_name'] as String? ?? 'Utilizador'),
-                        subtitle: Text('${r['created_at'] ?? ''}'),
-                        trailing: StarDisplay(stars: (r['stars'] as num?)?.toInt() ?? 0),
+
+                    // --- 2. CAIXA DE ESTATÍSTICAS RÁPIDAS ---
+                    Container(
+                      margin: const EdgeInsets.symmetric(vertical: 24),
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(color: Colors.grey.withOpacity(0.15), width: 1.5),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _statItem('⭐', _profile?['rating_display']?.toString() ?? '—', 'Avaliação'),
+                          Container(width: 1.5, height: 40, color: Colors.grey.withOpacity(0.15)),
+                          _statItem('🪙', '$_creditsBalance', 'Créditos'),
+                        ],
                       ),
                     ),
-                ],
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: _busy ? null : _logoutUniversity,
-                  icon: const Icon(Icons.logout),
-                  label: const Text('Terminar sessão universitária'),
+
+                    // --- 4. HISTÓRICO DE CRÉDITOS (Estilo Lista Uber) ---
+                    if (_transactions.isNotEmpty) ...[
+                      _label('Histórico de Créditos'),
+                      _sectionCard(
+                        padding: EdgeInsets.zero,
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _transactions.length > 15 ? 15 : _transactions.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1, color: kDivider),
+                          itemBuilder: (context, i) {
+                            final t = _transactions[i];
+                            final amt = (t['amount_delta'] as num?) ?? 0;
+                            final isPos = amt >= 0;
+                            
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                              leading: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: isPos ? kSuccess.withOpacity(0.12) : kRed.withOpacity(0.12),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  isPos ? Icons.arrow_downward : Icons.arrow_upward,
+                                  color: isPos ? kSuccess : kRed,
+                                  size: 18,
+                                ),
+                              ),
+                              title: Text(t['description'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.black87)),
+                              subtitle: Text(t['created_at'] as String? ?? '', style: const TextStyle(color: kMuted, fontSize: 12, fontWeight: FontWeight.w500)),
+                              trailing: Text(
+                                '${isPos ? '+' : ''}$amt',
+                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: isPos ? kSuccess : kRed),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+
+                    // --- 5. AVALIAÇÕES RECEBIDAS (Estilo Uber) ---
+                    if (_reviews.isNotEmpty) ...[
+                      _label('Avaliações Recebidas'),
+                      _sectionCard(
+                        padding: EdgeInsets.zero,
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _reviews.length > 10 ? 10 : _reviews.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1, color: kDivider),
+                          itemBuilder: (context, i) {
+                            final r = _reviews[i];
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        r['rater_name'] as String? ?? 'Utilizador', 
+                                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Colors.black87)
+                                      ),
+                                      StarDisplay(stars: (r['stars'] as num?)?.toInt() ?? 0, size: 16),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text('${r['created_at'] ?? ''}', style: const TextStyle(color: kMuted, fontSize: 12, fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+
+                    // --- 6. BOTÃO DE LOGOUT ---
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: _busy ? null : _logoutUniversity,
+                      icon: const Icon(Icons.logout, color: kRed),
+                      label: const Text('Terminar Sessão', style: TextStyle(color: kRed, fontWeight: FontWeight.w800, fontSize: 15)),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        side: const BorderSide(color: kRed, width: 1.5),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ],
-          ),
         ),
       ],
     );
   }
 }
-
 class TopTitleBar extends StatelessWidget {
   final String title;
   final VoidCallback? onBack;
@@ -1704,24 +1919,31 @@ class TopTitleBar extends StatelessWidget {
       width: double.infinity,
       color: kRed,
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
+      child: Stack(
+        alignment: Alignment.center, // Garante que tudo o que está dentro do Stack tende a centrar
         children: [
+          // 1. O Título fica no centro exato do ecrã
+          Text(
+            title, 
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18),
+            textAlign: TextAlign.center,
+          ),
+          
+          // 2. Se houver botão de voltar, ele é encostado à esquerda de forma independente
           if (onBack != null)
-            IconButton(
-              onPressed: onBack,
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              padding: EdgeInsets.zero,
-            )
-          else
-            const Icon(Icons.arrow_back, color: Colors.white),
-          const SizedBox(width: 12),
-          Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: IconButton(
+                onPressed: onBack,
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                padding: EdgeInsets.zero,
+              ),
+            ),
         ],
       ),
     );
   }
 }
-
 class InputLike extends StatelessWidget {
   final String text;
   // ignore: use_key_in_widget_constructors
@@ -1930,7 +2152,7 @@ class ProfileCard extends StatelessWidget {
   final String? statusLabel;
   final String? actionText;
   final VoidCallback? onAction;
-  final String? timeAgoText; // 1. ADICIONAMOS A VARIÁVEL AQUI
+  final String? timeAgoText;
 
   const ProfileCard({
     super.key, 
@@ -1940,64 +2162,147 @@ class ProfileCard extends StatelessWidget {
     this.statusLabel,
     this.actionText,
     this.onAction,
-    this.timeAgoText, // E AQUI
+    this.timeAgoText,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Lógica visual simples para ver se está disponível ou não
+    final isAvailable = statusLabel?.contains('Dispon') == true || 
+                        statusLabel?.contains('aguardar') == true;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFFFCFFFB),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: kDivider, width: 1.5),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22), // Cantos bem redondos
+        border: Border.all(color: Colors.grey.withOpacity(0.15), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03), // Sombra super suave
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 2),
-          Text(subtitle, style: const TextStyle(color: kDarkText, fontWeight: FontWeight.w600)),
-          if (statusLabel != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              statusLabel!,
-              style: TextStyle(
-                color: statusLabel!.startsWith('Disponivel') ? kSuccess : kSuccess,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-          const SizedBox(height: 8),
-          Text(description, style: const TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 10),
-          
-          // 2. A MAGIA ACONTECE AQUI (Row com SpaceBetween)
+          // --- HEADER: Avatar, Nome, Status e Tempo ---
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Botão na Esquerda
-              if (actionText != null && onAction != null)
-                OutlinedButton(onPressed: onAction, child: Text(actionText!))
-              else
-                const SizedBox(), // Espaço vazio se não houver botão
-
-              // Tempo na Direita (Pequeno e subtil)
+              Container(
+                height: 48,
+                width: 48,
+                decoration: BoxDecoration(
+                  color: kRed.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.person, color: kRed, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title, 
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.black87),
+                    ),
+                    const SizedBox(height: 6),
+                    if (statusLabel != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isAvailable ? kSuccess.withOpacity(0.15) : Colors.grey.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          statusLabel!,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.3,
+                            color: isAvailable ? kSuccess : Colors.grey[700],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
               if (timeAgoText != null && timeAgoText!.isNotEmpty)
                 Text(
                   timeAgoText!,
-                  style: const TextStyle(color: kMuted, fontSize: 12, fontWeight: FontWeight.w600),
+                  style: const TextStyle(color: kMuted, fontSize: 12, fontWeight: FontWeight.w700),
                 ),
             ],
           ),
+          
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 14),
+            child: Divider(height: 1, color: kDivider),
+          ),
+          
+          // --- BODY: Moradas e Horários ---
+          Text(
+            subtitle, 
+            style: const TextStyle(
+              color: Colors.black87, 
+              fontWeight: FontWeight.w600, 
+              fontSize: 14, 
+              height: 1.5, // Maior espaçamento entre as linhas da morada
+            ),
+          ),
+          const SizedBox(height: 14),
+          
+          // --- ZONA DE INFORMAÇÃO EXTRA (Lugares) ---
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F8F8),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, size: 18, color: kMuted),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    description, 
+                    style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black87, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // --- FOOTER: Botão de Ação ---
+          if (actionText != null && onAction != null) ...[
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: onAction,
+                style: FilledButton.styleFrom(
+                  backgroundColor: kRed,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
+                ),
+                child: Text(
+                  actionText!, 
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 }
-
 class _ConferenceMap extends StatefulWidget {
   final LatLng? userLocation;
   final double radiusMeters;

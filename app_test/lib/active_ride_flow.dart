@@ -352,6 +352,7 @@ class _ActiveRidePageState extends State<ActiveRidePage> {
     final vehicle = _ride['vehicle_display'] as String? ?? 'Veículo';
     final seats = _ride['available_seats']?.toString() ?? '?';
 
+    final canChat = _inProgress || _status == 'matched';
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -365,7 +366,8 @@ class _ActiveRidePageState extends State<ActiveRidePage> {
                   const SizedBox(height: 16),
                   if (_isPassenger) ...[
                     _infoCard('Condutor', driverName, '⭐ $driverRating'),
-                    _infoCard('Veículo', vehicle, '🪑 $seats lugares na oferta'),
+                    _infoCard('Veículo', vehicle, ''),
+                    _infoCard('Lugares','🪑 $seats lugares','')
                   ] else ...[
                     _infoCard('Passageiro', passengerName, '⭐ $passengerRating'),
                   ],
@@ -376,7 +378,7 @@ class _ActiveRidePageState extends State<ActiveRidePage> {
                     FilledButton(
                       onPressed: _busy ? null : _confirmInCar,
                       style: FilledButton.styleFrom(backgroundColor: kRed, minimumSize: const Size.fromHeight(52)),
-                      child: Text(_isDriver ? 'Passageiro no carro' : 'Estou no carro'),
+                      child: Text(_isDriver ? 'Passageiro no carro' : 'Iniciar viagem'),
                     ),
                   if (_myInCar && !_otherInCar)
                     const Padding(
@@ -392,55 +394,6 @@ class _ActiveRidePageState extends State<ActiveRidePage> {
                       style: FilledButton.styleFrom(backgroundColor: kSuccess, minimumSize: const Size.fromHeight(48)),
                       child: const Text('Terminar viagem'),
                     ),
-                    const SizedBox(height: 20),
-                    const Text('Chat', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 8),
-                    Container(
-                      constraints: const BoxConstraints(minHeight: 120, maxHeight: 220),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFFE8E8E8)),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(10),
-                        itemCount: _messages.length,
-                        itemBuilder: (context, i) {
-                          final m = _messages[i];
-                          final mine = false; // could compare sender id if available
-                          return Align(
-                            alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 6),
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF5F5F5),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                '${m['sender_name']}: ${m['body']}',
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _chatController,
-                            decoration: InputDecoration(
-                              hintText: 'Mensagem…',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            onSubmitted: (_) => _sendMessage(),
-                          ),
-                        ),
-                        IconButton(onPressed: _sendMessage, icon: const Icon(Icons.send, color: kRed)),
-                      ],
-                    ),
                   ],
                 ],
               ),
@@ -448,20 +401,109 @@ class _ActiveRidePageState extends State<ActiveRidePage> {
           ],
         ),
       ),
+      
+      // A BOLA FLUTUANTE DO CHAT ENTRA AQUI
+      floatingActionButton: canChat
+          ? FloatingActionButton(
+              backgroundColor: kRed,
+              shape: const CircleBorder(),
+              elevation: 4,
+              child: const Icon(Icons.chat_bubble_outline, color: Colors.white),
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => _ActiveRideChatSheet(
+                    rideId: _rideId,
+                    api: _api,
+                  ),
+                );
+              },
+            )
+          : null, // Se a viagem já terminou, o botão desaparece
     );
   }
 
   Widget _infoCard(String label, String title, String subtitle) {
-    return Card(
-      child: ListTile(
-        title: Text(label, style: const TextStyle(color: kMuted, fontSize: 12, fontWeight: FontWeight.w700)),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-            Text(subtitle, style: const TextStyle(color: kMuted)),
-          ],
-        ),
+    // 1. Escolher um ícone automaticamente com base na palavra (Condutor, Veículo, etc.)
+    IconData getIcon() {
+      final l = label.toLowerCase();
+      if (l.contains('condutor')) return Icons.person_pin;
+      if (l.contains('passageiro')) return Icons.person;
+      if (l.contains('veículo')) return Icons.directions_car;
+      if (l.contains('lugares')) return Icons.chair_alt;
+      return Icons.info_outline;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12), // Espaço entre cartões
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.withOpacity(0.2), width: 1), // Borda fina
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02), // Sombra super leve
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // 2. O Ícone Circular Profissional
+          Container(
+            height: 48,
+            width: 48,
+            decoration: BoxDecoration(
+              color: kRed.withOpacity(0.1), // Fundo transparente vermelho
+              shape: BoxShape.circle,
+            ),
+            child: Icon(getIcon(), color: kRed, size: 24),
+          ),
+          const SizedBox(width: 16),
+          
+          // 3. Os Textos
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label.toUpperCase(),
+                  style: const TextStyle(
+                    color: kMuted, 
+                    fontSize: 11, 
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5, // Dá um ar mais sofisticado
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  title, 
+                  style: const TextStyle(
+                    fontSize: 16, 
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black87,
+                  ),
+                ),
+                // Só mostra o subtítulo se ele existir
+                if (subtitle.trim().isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle, 
+                    style: const TextStyle(
+                      color: kMuted, 
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -490,6 +532,253 @@ class _ActiveRidePageState extends State<ActiveRidePage> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(text, style: TextStyle(color: color, fontWeight: FontWeight.w800)),
+    );
+  }
+}
+
+class _ActiveRideChatSheet extends StatefulWidget {
+  const _ActiveRideChatSheet({required this.rideId, required this.api});
+
+  final int rideId;
+  final Ride4FreeApi api;
+
+  @override
+  State<_ActiveRideChatSheet> createState() => _ActiveRideChatSheetState();
+}
+
+class _ActiveRideChatSheetState extends State<_ActiveRideChatSheet> {
+  final _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  List<Map<String, dynamic>> _messages = [];
+  Timer? _timer;
+  int? _myId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMyId();
+    _refresh();
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) => _refresh());
+  }
+
+  Future<void> _loadMyId() async {
+    try {
+      final user = await widget.api.me();
+      if (mounted) setState(() => _myId = user.id);
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _refresh() async {
+    try {
+      // ⚠️ Chama a API da Viagem Ativa (não a dos pedidos!)
+      final msgs = await widget.api.listRideMessages(widget.rideId);
+      if (mounted) {
+        final wasAtBottom = _scrollController.hasClients && 
+            _scrollController.position.pixels == _scrollController.position.maxScrollExtent;
+        
+        setState(() => _messages = msgs);
+
+        if (wasAtBottom) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+        }
+      }
+    } catch (_) {}
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  Future<void> _send() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    _controller.clear();
+    try {
+      // ⚠️ Envia a mensagem para a Viagem Ativa
+      await widget.api.sendRideMessage(widget.rideId, text);
+      await _refresh();
+      _scrollToBottom();
+    } catch (e) {
+      if (mounted) showRideMessage(context, 'Erro ao enviar mensagem.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.65,
+        maxChildSize: 0.95,
+        minChildSize: 0.4,
+        builder: (_, scroll) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Chat da Viagem',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+                    ),
+                    const Divider(height: 20),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: _messages.isEmpty
+                    ? const Center(
+                        child: Text('Diz olá! Começa a conversa.', 
+                        style: TextStyle(color: kMuted, fontWeight: FontWeight.w500)))
+                    : ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        itemCount: _messages.length,
+                        itemBuilder: (_, i) {
+                          final m = _messages[i];
+                          final bool isMe = _myId != null && m['sender_user_id'] == _myId;
+                          
+                          return Align(
+                            alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(vertical: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              constraints: BoxConstraints(
+                                maxWidth: MediaQuery.of(context).size.width * 0.75,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isMe ? kRed : const Color(0xFFF1F1F1),
+                                borderRadius: BorderRadius.only(
+                                  topLeft: const Radius.circular(16),
+                                  topRight: const Radius.circular(16),
+                                  bottomLeft: Radius.circular(isMe ? 16 : 0),
+                                  bottomRight: Radius.circular(isMe ? 0 : 16),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    blurRadius: 2,
+                                    offset: const Offset(0, 1),
+                                  )
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (!isMe)
+                                    Text(
+                                      m['sender_name'] ?? 'Utilizador',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black.withOpacity(0.5),
+                                      ),
+                                    ),
+                                  Text(
+                                    m['body'] ?? '',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: isMe ? Colors.white : Colors.black87,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, -2),
+                    )
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F5F5),
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: TextField(
+                          controller: _controller,
+                          decoration: const InputDecoration(
+                            hintText: 'Escreve uma mensagem...',
+                            border: InputBorder.none,
+                            hintStyle: TextStyle(color: Colors.grey, fontSize: 15),
+                          ),
+                          onSubmitted: (_) => _send(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: _send,
+                      child: Container(
+                        height: 48,
+                        width: 48,
+                        decoration: BoxDecoration(
+                          color: kRed,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: kRed.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            )
+                          ],
+                        ),
+                        child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
