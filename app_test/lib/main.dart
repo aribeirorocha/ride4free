@@ -10,6 +10,9 @@ import 'ride4free_api.dart';
 import 'session/university_session_store.dart';
 import 'sigarra/sigarra_auth_service.dart';
 import 'location_service.dart';
+import 'active_ride_flow.dart';
+import 'pedidos_page.dart';
+import 'rating_widgets.dart';
 
 void main() {
   runApp(const MyApp());
@@ -113,12 +116,13 @@ class _AppBootstrapperState extends State<AppBootstrapper> {
   }
 
   Future<void> _ensureRide4FreeSession(UniversityIdentity identity) async {
-    final email = '${identity.username}@fe.up.pt';
-    final password = 'pass_${identity.username}';
+    final ({String email, String apiPassword}) creds = TesterAuth.isTesterUsername(identity.username)
+        ? TesterAuth.apiCredentials(identity.username)
+        : (email: '${identity.username}@fe.up.pt', apiPassword: 'pass_${identity.username}');
     try {
       await syncRide4FreeApiSession(
-        email: email,
-        password: password,
+        email: creds.email,
+        password: creds.apiPassword,
         displayName: identity.displayName,
         api: _api,
       );
@@ -138,9 +142,11 @@ class _AppBootstrapperState extends State<AppBootstrapper> {
     );
   }
 
-    return HomeShell(
-      onUniversityLogout: _onUniversityLogout,
-      identity: _identity!,
+    return ActiveRideCoordinator(
+      child: HomeShell(
+        onUniversityLogout: _onUniversityLogout,
+        identity: _identity!,
+      ),
     );
   }
 }
@@ -195,9 +201,12 @@ class _UniversityLoginPageState extends State<UniversityLoginPage> {
         return;
       }
       await widget.onLoginSuccess(identity);
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      setState(() => _error = 'Nao foi possivel autenticar no Sigarra.');
+      final hint = TesterAuth.isTesterUsername(username)
+          ? ' Conta teste: confirme que o backend está a correr.'
+          : '';
+      setState(() => _error = 'Nao foi possivel concluir o login.$hint ($e)');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -226,6 +235,12 @@ class _UniversityLoginPageState extends State<UniversityLoginPage> {
                     'No primeiro acesso, entre com as suas credenciais da universidade.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: kMuted),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Conta de teste: utilizador admin ou tester, password test01',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: kMuted, fontSize: 12),
                   ),
                   const SizedBox(height: 18),
                   TextField(
@@ -299,7 +314,9 @@ class _HomeShellState extends State<HomeShell> {
             const CommunityBoardPage(),
             const SearchRidePage(),
             const OfferRidePage(),
+            const PedidosPage(),
             ProfilePage(
+              isActive: _index == 4,
               onUniversityLogout: widget.onUniversityLogout,
               identity: widget.identity,
             ),
@@ -311,10 +328,11 @@ class _HomeShellState extends State<HomeShell> {
         selectedIndex: _index,
         onDestinationSelected: (value) => setState(() => _index = value),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.groups), label: ''),
-          NavigationDestination(icon: Icon(Icons.search), label: ''),
-          NavigationDestination(icon: Icon(Icons.directions_car), label: ''),
-          NavigationDestination(icon: Icon(Icons.person), label: ''),
+          NavigationDestination(icon: Icon(Icons.groups), label: 'Comunidade'),
+          NavigationDestination(icon: Icon(Icons.search), label: 'Procurar'),
+          NavigationDestination(icon: Icon(Icons.directions_car), label: 'Oferecer'),
+          NavigationDestination(icon: Icon(Icons.inbox), label: 'Pedidos'),
+          NavigationDestination(icon: Icon(Icons.person), label: 'Perfil'),
         ],
       ),
     );
@@ -377,8 +395,13 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
     }
     setState(() => _loading = true);
     try {
-      await _api.bookDriverOffer(offerId);
-      if (mounted) _showMessage(context, 'Boleia reservada com sucesso.');
+      final result = await _api.requestJoinRide(offerId: offerId);
+      if (mounted) {
+        _showMessage(
+          context,
+          'Pedido enviado (−5 créditos). Saldo: ${result.creditsBalance} créditos.',
+        );
+      }
       await _loadSection();
     } on Ride4FreeApiException catch (e) {
       if (mounted) {
@@ -509,12 +532,13 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
           final time = d['departure_time'] ?? 'Horário a definir';
           final timeStr = _timeAgo(d['created_at'] as String?);
           
+          final rating = d['rating_display'] as String? ?? '—';
           return ProfileCard(
             title: d['driver_name'] as String? ?? 'Condutor',
-            subtitle: "📍 De: $origin\n🏁 Para: $dest\n⏰ Partida: $time",
+            subtitle: "📍 De: $origin\n🏁 Para: $dest\n⏰ Partida: $time\n⭐ $rating",
             description: "Lugares disponíveis: ${d['available_seats']}",
             statusLabel: (d['booked'] as bool? ?? false) ? 'Reservado' : 'Disponível',
-            actionText: (d['booked'] as bool? ?? false) ? null : 'Reservar boleia',
+            actionText: (d['booked'] as bool? ?? false) ? null : 'Pedir boleia',
             onAction: () => _bookDriver((d['id'] as num).toInt()),
             timeAgoText: timeStr,
           );
@@ -620,8 +644,10 @@ class _OfferRidePageState extends State<OfferRidePage> {
 }
   int _seats = 3;
   final _destController = TextEditingController(text: '');
+  final _vehicleController = TextEditingController(text: 'Carro — cinzento');
   final _api = Ride4FreeApi();
   bool _busy = false;
+  int? _lastPublishedOfferId;
   LatLng? _originLatLng;
   LatLng? _destinationLatLng;
   String? _originAddress;
@@ -651,7 +677,16 @@ class _OfferRidePageState extends State<OfferRidePage> {
         final roadName = address?['road'] as String?
             ?? address?['pedestrian'] as String?
             ?? address?['suburb'] as String?
-            ?? data['display_name'] as String?;
+            ?? data['display_name'] as String?
+            ?? '${loc.latitude.toStringAsFixed(4)}, ${loc.longitude.toStringAsFixed(4)}';
+
+        setState(() {
+          if (isOrigin) {
+            _originAddress = roadName;
+          } else {
+            _destinationAddress = roadName;
+          }
+        });
       }
     } catch (_) {}
   }
@@ -659,7 +694,34 @@ class _OfferRidePageState extends State<OfferRidePage> {
   @override
   void dispose() {
     _destController.dispose();
+    _vehicleController.dispose();
     super.dispose();
+  }
+
+  Future<void> _openRideRequests() async {
+    if (_lastPublishedOfferId == null) {
+      _showMessage(context, 'Publique uma viagem primeiro.');
+      return;
+    }
+    final accepted = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => DriverRideRequestsPage(
+          offerId: _lastPublishedOfferId!,
+          destination: _destinationAddress,
+        ),
+      ),
+    );
+    if (accepted == true && mounted) {
+      final state = await _api.getActiveRideState();
+      if (state.ride != null && mounted) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            settings: const RouteSettings(name: ActiveRidePage.routeName),
+            builder: (_) => ActiveRidePage(initialRide: state.ride!),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _publish() async {
@@ -675,20 +737,22 @@ class _OfferRidePageState extends State<OfferRidePage> {
 
     setState(() => _busy = true);
     try {
-      await _api.createDriverOffer(
-        // AQUI: Usamos a morada obtida pelo Nominatim!
+      final offerId = await _api.createDriverOffer(
         destination: _destinationAddress ?? "Destino definido no mapa",
         availableSeats: _seats,
         departureTime: _timeController.text,
-        // AQUI: Usamos o campo description para guardar a morada de partida!
         description: _originAddress ?? "Partida definida no mapa",
+        vehicleInfo: _vehicleController.text.trim().isEmpty ? null : _vehicleController.text.trim(),
         originLat: _originLatLng?.latitude,
         originLng: _originLatLng?.longitude,
         destinationLat: _destinationLatLng?.latitude,
         destinationLng: _destinationLatLng?.longitude,
       );
-      
-      if (mounted) _showMessage(context, 'Viagem publicada!');
+
+      if (mounted) {
+        setState(() => _lastPublishedOfferId = offerId);
+        _showMessage(context, 'Viagem publicada! Veja os pedidos de boleia.');
+      }
     } catch (e) {
       if (mounted) _showMessage(context, 'Erro: $e');
     } finally {
@@ -705,9 +769,9 @@ class _OfferRidePageState extends State<OfferRidePage> {
     try {
       final m = await _api.listPassengersForDestination(_destController.text);
       if (!mounted) return;
-      final rc = m['request_count'] as int? ?? 0;
-      final total = m['total_passenger_slots'] as int? ?? 0;
-      final requests = (m['requests'] as List?) ?? [];
+      final rc = m['request_count'] as int? ?? m['rows']?.length ?? 0;
+      final total = m['total_passenger_slots'] as int? ?? m['total_passengers'] as int? ?? 0;
+      final requests = (m['requests'] as List?) ?? (m['rows'] as List?) ?? [];
       final lines = <String>['Pedidos: $rc', 'Total passageiros: $total', ''];
       for (final r in requests) {
         final map = r as Map<String, dynamic>;
@@ -782,13 +846,16 @@ class _OfferRidePageState extends State<OfferRidePage> {
               SizedBox(
                 height: 160,
                 child: _ConferenceMap(
-                    userLocation: _destinationLatLng,
-                    radiusMeters: 10,
-                    onTap: (latlng) {
-                    // Atualiza os condutores em redor
-                    _getAddressFromLatLng(latlng, false); // false = é o destino // Obtém a rua
+                  userLocation: _destinationLatLng,
+                  radiusMeters: 10,
+                  onTap: (latlng) {
+                    setState(() {
+                      _destinationLatLng = latlng;
+                      _destinationAddress = 'A obter rua...';
+                    });
+                    _getAddressFromLatLng(latlng, false);
                   },
-                  ),
+                ),
               ), 
               const SizedBox(height: 14),
               Row(
@@ -853,15 +920,30 @@ class _OfferRidePageState extends State<OfferRidePage> {
                 ),
                 child: Text(_busy ? 'A enviar…' : 'Publicar Viagem', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
+              _label('VEÍCULO'),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _vehicleController,
+                decoration: InputDecoration(
+                  hintText: 'Ex: VW Golf cinzento · AB-12-CD',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Os pedidos de boleia estão no separador Pedidos.',
+                style: TextStyle(color: kMuted, fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
               OutlinedButton(
                 onPressed: _busy ? null : _seePassengers,
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size.fromHeight(48),
-                  side: const BorderSide(color: kRed, width: 2),
+                  side: const BorderSide(color: kDivider, width: 1),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
-                child: const Text('Ver passageiros para este destino', style: TextStyle(fontWeight: FontWeight.w800)),
+                child: const Text('Ver passageiros no destino', style: TextStyle(fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -887,10 +969,12 @@ class SearchRidePage extends StatefulWidget {
 class ProfilePage extends StatefulWidget {
   const ProfilePage({
     super.key,
+    this.isActive = false,
     required this.onUniversityLogout,
     required this.identity,
   });
 
+  final bool isActive;
   final Future<void> Function() onUniversityLogout;
   final UniversityIdentity identity;
 
@@ -898,7 +982,9 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 class _SearchRidePageState extends State<SearchRidePage> {
+  final _originController = TextEditingController();
   final _destController = TextEditingController(text: 'FEUP (Polo II)');
+  final _timeController = TextEditingController();
   final _api = Ride4FreeApi();
   List<Map<String, dynamic>> _drivers = [];
   bool _loading = false;
@@ -974,7 +1060,9 @@ class _SearchRidePageState extends State<SearchRidePage> {
 
   @override
   void dispose() {
+    _originController.dispose();
     _destController.dispose();
+    _timeController.dispose();
     super.dispose();
   }
 
@@ -999,6 +1087,44 @@ class _SearchRidePageState extends State<SearchRidePage> {
     }
   }
 
+
+  Future<void> _reserveDriver(Map<String, dynamic> d) async {
+    if (Ride4FreeAuth.token == null) {
+      _showMessage(context, 'Inicie sessão no perfil.');
+      return;
+    }
+    final offerId = d['id'];
+    if (offerId == null) {
+      _showMessage(context, 'Oferta inválida.');
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final origin = _originController.text.trim().isNotEmpty
+          ? _originController.text.trim()
+          : (_pickupAddress ?? _locationLabel);
+      final result = await _api.requestJoinRide(
+        offerId: (offerId as num).toInt(),
+        passengerCount: _neededSeats,
+        originDisplay: origin,
+        destinationDisplay: _destController.text.trim(),
+        departureTime: _timeController.text.trim().isEmpty ? null : _timeController.text.trim(),
+      );
+      if (mounted) {
+        _showMessage(
+          context,
+          'Pedido enviado (−5 créditos). Saldo: ${result.creditsBalance}. Ver Pedidos para conversar.',
+        );
+      }
+    } on Ride4FreeApiException catch (e) {
+      if (mounted) _showMessage(context, e.body);
+    } catch (e) {
+      if (mounted) _showMessage(context, 'Erro: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   Future<void> _registerRequest() async {
     if (Ride4FreeAuth.token == null) {
       _showMessage(context, 'Inicie sessão no perfil.');
@@ -1011,14 +1137,19 @@ class _SearchRidePageState extends State<SearchRidePage> {
     
     setState(() => _loading = true);
     try {
+      final origin = _originController.text.trim().isNotEmpty
+          ? _originController.text.trim()
+          : (_pickupAddress ?? _locationLabel);
       await _api.createPassengerRequest(
         destination: _destController.text,
         passengerCount: _neededSeats,
         originLat: (_pickupLatLng ?? _userLocation)?.latitude,
         originLng: (_pickupLatLng ?? _userLocation)?.longitude,
+        originDisplay: origin,
+        departureTime: _timeController.text.trim().isEmpty ? null : _timeController.text.trim(),
       );
       if (mounted) {
-        _showMessage(context, 'Pedido de boleia publicado na comunidade!');
+        _showMessage(context, 'Pedido publicado! Consulta o separador Pedidos.');
         setState(() => _neededSeats = 1);
       }
     } catch (e) {
@@ -1177,7 +1308,15 @@ class _SearchRidePageState extends State<SearchRidePage> {
               padding: EdgeInsets.all(24),
               child: Text('Nenhum condutor encontrado neste raio.', style: TextStyle(color: kMuted, fontWeight: FontWeight.w600)),
             )
-          else
+          else ...[
+            const Padding(
+              padding: EdgeInsets.fromLTRB(18, 8, 18, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Boleias Encontradas',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              ),
+            ),
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -1189,12 +1328,14 @@ class _SearchRidePageState extends State<SearchRidePage> {
                 return RideCard(
                   name: d['driver_name'] as String? ?? 'Condutor',
                   car: 'Lugares livres: ${d['available_seats'] ?? '?'}',
-                  rating: '—',
+                  rating: d['rating_display'] as String? ?? '—',
                   distance: d['destination_display'] as String? ?? '',
-                  credits: '30',
+                  credits: '−5',
+                  onReserve: _loading ? null : () => _reserveDriver(d),
                 );
               },
             ),
+          ],
         ],
       ),
     );
@@ -1204,6 +1345,17 @@ class _SearchRidePageState extends State<SearchRidePage> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
       children: [
+        _label('ORIGEM'),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _originController,
+          decoration: InputDecoration(
+            hintText: 'Ex: Rua de Cedofeita',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            prefixIcon: const Icon(Icons.trip_origin, color: kRed),
+          ),
+        ),
+        const SizedBox(height: 16),
         _label('PARA ONDE QUERES IR?'),
         const SizedBox(height: 6),
         TextField(
@@ -1215,8 +1367,18 @@ class _SearchRidePageState extends State<SearchRidePage> {
             prefixIcon: const Icon(Icons.flag, color: kRed),
           ),
         ),
+        const SizedBox(height: 16),
+        _label('DATA / HORA'),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _timeController,
+          decoration: InputDecoration(
+            hintText: 'HH:MM ou 2026-05-23 18:30',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            prefixIcon: const Icon(Icons.schedule, color: kRed),
+          ),
+        ),
         const SizedBox(height: 20),
-        
         Row(
           children: [
             Expanded(
@@ -1287,7 +1449,7 @@ class _SearchRidePageState extends State<SearchRidePage> {
           ),
           icon: const Icon(Icons.campaign, color: Colors.white),
           label: Text(
-            _loading ? 'A publicar...' : 'Publicar Pedido de Boleia', 
+            _loading ? 'A publicar...' : 'Pedir Boleia', 
             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)
           ),
         ),
@@ -1297,7 +1459,79 @@ class _SearchRidePageState extends State<SearchRidePage> {
 }
 class _ProfilePageState extends State<ProfilePage> {
   final _api = Ride4FreeApi();
+  final _vehicleController = TextEditingController();
   bool _busy = false;
+  bool _loadingProfile = true;
+  Map<String, dynamic>? _profile;
+  List<Map<String, dynamic>> _reviews = [];
+  List<Map<String, dynamic>> _transactions = [];
+  int _creditsBalance = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  @override
+  void didUpdateWidget(ProfilePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      _loadProfile();
+    }
+  }
+
+  @override
+  void dispose() {
+    _vehicleController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadProfile() async {
+    if (Ride4FreeAuth.token == null) {
+      if (mounted) setState(() => _loadingProfile = false);
+      return;
+    }
+    setState(() => _loadingProfile = true);
+    try {
+      final profile = await _api.getUserProfile();
+      var balance = (profile['credits_balance'] as num?)?.toInt() ?? 0;
+      var transactions = <Map<String, dynamic>>[];
+      try {
+        final credits = await _api.getCredits();
+        balance = credits.balance;
+        transactions = credits.transactions;
+      } catch (_) {}
+      final reviews = await _api.getUserReviews(profile['id'] as int);
+      if (!mounted) return;
+      _vehicleController.text = profile['vehicle_info'] as String? ?? '';
+      setState(() {
+        _profile = profile;
+        _creditsBalance = balance;
+        _transactions = transactions;
+        _reviews = reviews;
+      });
+    } catch (e) {
+      if (mounted) _showMessage(context, 'Erro ao carregar perfil: $e');
+    } finally {
+      if (mounted) setState(() => _loadingProfile = false);
+    }
+  }
+
+  Future<void> _saveVehicle() async {
+    final v = _vehicleController.text.trim();
+    if (v.isEmpty) return;
+    setState(() => _busy = true);
+    try {
+      await _api.updateVehicleInfo(v);
+      if (mounted) _showMessage(context, 'Veículo guardado.');
+      await _loadProfile();
+    } catch (e) {
+      if (mounted) _showMessage(context, '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   Future<void> _logout() async {
     setState(() => _busy = true);
@@ -1333,97 +1567,122 @@ class _ProfilePageState extends State<ProfilePage> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
             children: [
-              Text('API: ${Ride4FreeConfig.baseUrl}', style: const TextStyle(fontSize: 12, color: kMuted)),
-              const SizedBox(height: 8),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: CircleAvatar(
-                  radius: 24,
-                  backgroundImage: widget.identity.photoUrl == null
-                      ? null
-                      : NetworkImage(widget.identity.photoUrl!),
-                  child: widget.identity.photoUrl == null
-                      ? const Icon(Icons.person)
-                      : null,
-                ),
-                title: Text(
-                  widget.identity.displayName,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-                subtitle: Text(
-                  'UP: ${widget.identity.username}',
-                  style: const TextStyle(color: kMuted),
-                ),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: _busy ? null : _logoutUniversity,
-                icon: const Icon(Icons.logout),
-                label: const Text('Terminar sessão universitária'),
-              ),
-              /* 
-              const SizedBox(height: 10),
-              const SizedBox(height: 16),
-              const Divider(),
-              const Row(
-                children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: Color(0xFF2232FC),
-                    child: Text('MA', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+              if (_loadingProfile)
+                const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else ...[
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    radius: 24,
+                    backgroundImage: widget.identity.photoUrl == null
+                        ? null
+                        : NetworkImage(widget.identity.photoUrl!),
+                    child: widget.identity.photoUrl == null ? const Icon(Icons.person) : null,
                   ),
-                  SizedBox(width: 12),
-                  Column(
+                  title: Text(
+                    widget.identity.displayName,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  subtitle: Text(
+                    'UP: ${widget.identity.username} · ⭐ ${_profile?['rating_display'] ?? '—'}',
+                    style: const TextStyle(color: kMuted),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: kDivider),
+                  ),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Miguel Antunes', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-                      Text('Excelente passageiro', style: TextStyle(color: kMuted, fontWeight: FontWeight.w600)),
+                      const Text('Veículo', style: TextStyle(fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _vehicleController,
+                        decoration: InputDecoration(
+                          hintText: 'Ex: VW Golf cinzento · AB-12-CD',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      FilledButton(
+                        onPressed: _busy ? null : _saveVehicle,
+                        style: FilledButton.styleFrom(backgroundColor: kRed),
+                        child: const Text('Guardar veículo'),
+                      ),
                     ],
                   ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: kRed, width: 2),
+                    color: const Color(0xFFFFF8F8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Créditos', style: TextStyle(color: kMuted, fontWeight: FontWeight.w700)),
+                      Text(
+                        '$_creditsBalance',
+                        style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: kRed),
+                      ),
+                      const Text(
+                        'Ganhas +10 ao concluir viagem · Gastas 5 ao reservar',
+                        style: TextStyle(color: kMuted, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_transactions.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text('Histórico de créditos', style: TextStyle(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 8),
+                  for (final t in _transactions.take(15))
+                    ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(t['description'] as String? ?? ''),
+                      subtitle: Text(t['created_at'] as String? ?? ''),
+                      trailing: Text(
+                        '${(t['amount_delta'] as num) > 0 ? '+' : ''}${t['amount_delta']}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: (t['amount_delta'] as num) >= 0 ? kSuccess : kRed,
+                        ),
+                      ),
+                    ),
                 ],
-              ),
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 12),
-              const Center(child: Text('★★★★★', style: TextStyle(fontSize: 44, color: Color(0xFFF3BC41), letterSpacing: 2))),
-              const SizedBox(height: 16),
-              const TickRow(text: 'Chegou a horas'),
-              const TickRow(text: 'Nao sujou o carro'),
-              const TickRow(text: 'Foi respeitador'),
-              const TickRow(text: 'Boa conversa'),
-              const SizedBox(height: 18),
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: kSuccess, width: 2),
-                  color: const Color(0xFFF8FFF7),
+                if (_reviews.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text('Avaliações recebidas', style: TextStyle(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 8),
+                  for (final r in _reviews.take(10))
+                    Card(
+                      child: ListTile(
+                        title: Text(r['rater_name'] as String? ?? 'Utilizador'),
+                        subtitle: Text('${r['created_at'] ?? ''}'),
+                        trailing: StarDisplay(stars: (r['stars'] as num?)?.toInt() ?? 0),
+                      ),
+                    ),
+                ],
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _logoutUniversity,
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Terminar sessão universitária'),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                child: const Column(
-                  children: [
-                    Text('RECOMPENSA TOTAL', style: TextStyle(color: kSuccess, fontWeight: FontWeight.w800)),
-                    SizedBox(height: 4),
-                    Text('+50 Pontos', style: TextStyle(color: Color(0xFF22412A), fontWeight: FontWeight.w900, fontSize: 34)),
-                    SizedBox(height: 4),
-                    Text('Bonus de conduta perfeita aplicado!', style: TextStyle(color: kMuted, fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () {},
-                style: FilledButton.styleFrom(
-                  backgroundColor: kRed,
-                  minimumSize: const Size.fromHeight(56),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                child: const Text('Submeter Avaliacao', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
-              ),
-              const SizedBox(height: 18),
-              const Text('RATE PROFILES', style: TextStyle(color: kRed, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
-              const SizedBox(height: 10),
-              const ProfileRatingButton(),
-              */
+              ],
             ],
           ),
         ),
@@ -1434,8 +1693,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
 class TopTitleBar extends StatelessWidget {
   final String title;
+  final VoidCallback? onBack;
   // ignore: use_key_in_widget_constructors
-  const TopTitleBar({required this.title});
+  const TopTitleBar({required this.title, this.onBack});
 
   @override
   Widget build(BuildContext context) {
@@ -1446,7 +1706,14 @@ class TopTitleBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          const Icon(Icons.arrow_back, color: Colors.white),
+          if (onBack != null)
+            IconButton(
+              onPressed: onBack,
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              padding: EdgeInsets.zero,
+            )
+          else
+            const Icon(Icons.arrow_back, color: Colors.white),
           const SizedBox(width: 12),
           Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
         ],
@@ -1575,9 +1842,17 @@ class RideCard extends StatelessWidget {
   final String rating;
   final String distance;
   final String credits;
+  final VoidCallback? onReserve;
 
-  // ignore: use_key_in_widget_constructors
-  const RideCard({required this.name, required this.car, required this.rating, required this.distance, required this.credits});
+  const RideCard({
+    super.key,
+    required this.name,
+    required this.car,
+    required this.rating,
+    required this.distance,
+    required this.credits,
+    this.onReserve,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1607,8 +1882,19 @@ class RideCard extends StatelessWidget {
           const SizedBox(width: 12),
           Column(
             children: [
-              Text(credits, style: const TextStyle(color: kRed, fontWeight: FontWeight.w800, fontSize: 30)),
-              const Text('Créditos', style: TextStyle(color: kMuted, fontWeight: FontWeight.w700)),
+              Text(credits, style: const TextStyle(color: kRed, fontWeight: FontWeight.w800, fontSize: 28)),
+              const Text('Custo', style: TextStyle(color: kMuted, fontWeight: FontWeight.w700)),
+              if (onReserve != null) ...[
+                const SizedBox(height: 8),
+                FilledButton(
+                  onPressed: onReserve,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: kRed,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  child: const Text('Reservar Boleia', style: TextStyle(fontWeight: FontWeight.w800)),
+                ),
+              ],
             ],
           ),
         ],
@@ -1738,29 +2024,8 @@ class _ConferenceMapState extends State<_ConferenceMap> {
     // Usamos um Stack para colocar os botões a flutuar por cima do mapa
     return Stack(
       children: [
-        TileLayer(
-          urlTemplate:
-          'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-          subdomains: const ['a', 'b', 'c', 'd'],
-          userAgentPackageName: 'com.example.conference_tool',
-        ),
-
-        // Círculo de raio à volta do passageiro
-        if (widget.userLocation != null)
-          CircleLayer(
-            circles: [
-              CircleMarker(
-                point: widget.userLocation!,
-                radius: widget.radiusMeters,
-                useRadiusInMeter: true,
-                color: kRed,
-                borderColor: kRed,
-                borderStrokeWidth: 2,
-              ),
-            ],
-        // O Mapa propriamente dito
         FlutterMap(
-          mapController: _mapController, // <--- O controlador é injetado aqui
+          mapController: _mapController,
           options: MapOptions(
             initialCenter: widget.userLocation ?? const LatLng(41.1780, -8.5980),
             initialZoom: 15.0,
@@ -1772,7 +2037,6 @@ class _ConferenceMapState extends State<_ConferenceMap> {
               subdomains: const ['a', 'b', 'c', 'd'],
               userAgentPackageName: 'com.example.conference_tool',
             ),
-            
             if (widget.userLocation != null)
               CircleLayer(
                 circles: [
@@ -1780,13 +2044,12 @@ class _ConferenceMapState extends State<_ConferenceMap> {
                     point: widget.userLocation!,
                     radius: widget.radiusMeters,
                     useRadiusInMeter: true,
-                    color: kRed.withOpacity(0.1), // Círculo transparente
+                    color: kRed.withOpacity(0.1),
                     borderColor: kRed,
                     borderStrokeWidth: 2,
                   ),
                 ],
               ),
-
             MarkerLayer(
               markers: [
                 if (widget.userLocation != null)
@@ -1797,7 +2060,7 @@ class _ConferenceMapState extends State<_ConferenceMap> {
                     child: const Icon(Icons.my_location, color: kRed, size: 36),
                   ),
                 ...widget.driverOrigins.map(
-                      (loc) => Marker(
+                  (loc) => Marker(
                     point: loc,
                     width: 36,
                     height: 36,
