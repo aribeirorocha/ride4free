@@ -1907,4 +1907,3 @@ class _ConferenceMapState extends State<_ConferenceMap> {
     );
   }
 }
-}
