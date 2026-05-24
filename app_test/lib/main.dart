@@ -298,11 +298,15 @@ class HomeShell extends StatefulWidget {
   final UniversityIdentity identity;
 
   @override
-  State<HomeShell> createState() => _HomeShellState();
+  State<HomeShell> createState() => HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class HomeShellState extends State<HomeShell> {
   int _index = 0;
+
+  void goToHomeTab() {
+    if (_index != 0) setState(() => _index = 0);
+  }
 
   @override
   Widget build(BuildContext context) {
