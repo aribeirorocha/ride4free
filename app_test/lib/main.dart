@@ -11,6 +11,8 @@ import 'session/university_session_store.dart';
 import 'sigarra/sigarra_auth_service.dart';
 import 'location_service.dart';
 import 'active_ride_flow.dart';
+import 'pedidos_page.dart';
+import 'rating_widgets.dart';
 
 void main() {
   runApp(const MyApp());
@@ -312,7 +314,9 @@ class _HomeShellState extends State<HomeShell> {
             const CommunityBoardPage(),
             const SearchRidePage(),
             const OfferRidePage(),
+            const PedidosPage(),
             ProfilePage(
+              isActive: _index == 4,
               onUniversityLogout: widget.onUniversityLogout,
               identity: widget.identity,
             ),
@@ -324,10 +328,11 @@ class _HomeShellState extends State<HomeShell> {
         selectedIndex: _index,
         onDestinationSelected: (value) => setState(() => _index = value),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.groups), label: ''),
-          NavigationDestination(icon: Icon(Icons.search), label: ''),
-          NavigationDestination(icon: Icon(Icons.directions_car), label: ''),
-          NavigationDestination(icon: Icon(Icons.person), label: ''),
+          NavigationDestination(icon: Icon(Icons.groups), label: 'Comunidade'),
+          NavigationDestination(icon: Icon(Icons.search), label: 'Procurar'),
+          NavigationDestination(icon: Icon(Icons.directions_car), label: 'Oferecer'),
+          NavigationDestination(icon: Icon(Icons.inbox), label: 'Pedidos'),
+          NavigationDestination(icon: Icon(Icons.person), label: 'Perfil'),
         ],
       ),
     );
@@ -390,8 +395,13 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
     }
     setState(() => _loading = true);
     try {
-      await _api.requestJoinRide(offerId: offerId);
-      if (mounted) _showMessage(context, 'Pedido enviado. O condutor irá aceitar ou recusar.');
+      final result = await _api.requestJoinRide(offerId: offerId);
+      if (mounted) {
+        _showMessage(
+          context,
+          'Pedido enviado (−5 créditos). Saldo: ${result.creditsBalance} créditos.',
+        );
+      }
       await _loadSection();
     } on Ride4FreeApiException catch (e) {
       if (mounted) {
@@ -920,15 +930,10 @@ class _OfferRidePageState extends State<OfferRidePage> {
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: _busy ? null : _openRideRequests,
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
-                  side: const BorderSide(color: kRed, width: 2),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                child: const Text('Pedidos de boleia (aceitar / recusar)', style: TextStyle(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 8),
+              const Text(
+                'Os pedidos de boleia estão no separador Pedidos.',
+                style: TextStyle(color: kMuted, fontSize: 12, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 8),
               OutlinedButton(
@@ -964,10 +969,12 @@ class SearchRidePage extends StatefulWidget {
 class ProfilePage extends StatefulWidget {
   const ProfilePage({
     super.key,
+    this.isActive = false,
     required this.onUniversityLogout,
     required this.identity,
   });
 
+  final bool isActive;
   final Future<void> Function() onUniversityLogout;
   final UniversityIdentity identity;
 
@@ -975,7 +982,9 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 class _SearchRidePageState extends State<SearchRidePage> {
+  final _originController = TextEditingController();
   final _destController = TextEditingController(text: 'FEUP (Polo II)');
+  final _timeController = TextEditingController();
   final _api = Ride4FreeApi();
   List<Map<String, dynamic>> _drivers = [];
   bool _loading = false;
@@ -1051,7 +1060,9 @@ class _SearchRidePageState extends State<SearchRidePage> {
 
   @override
   void dispose() {
+    _originController.dispose();
     _destController.dispose();
+    _timeController.dispose();
     super.dispose();
   }
 
@@ -1076,6 +1087,44 @@ class _SearchRidePageState extends State<SearchRidePage> {
     }
   }
 
+
+  Future<void> _reserveDriver(Map<String, dynamic> d) async {
+    if (Ride4FreeAuth.token == null) {
+      _showMessage(context, 'Inicie sessão no perfil.');
+      return;
+    }
+    final offerId = d['id'];
+    if (offerId == null) {
+      _showMessage(context, 'Oferta inválida.');
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final origin = _originController.text.trim().isNotEmpty
+          ? _originController.text.trim()
+          : (_pickupAddress ?? _locationLabel);
+      final result = await _api.requestJoinRide(
+        offerId: (offerId as num).toInt(),
+        passengerCount: _neededSeats,
+        originDisplay: origin,
+        destinationDisplay: _destController.text.trim(),
+        departureTime: _timeController.text.trim().isEmpty ? null : _timeController.text.trim(),
+      );
+      if (mounted) {
+        _showMessage(
+          context,
+          'Pedido enviado (−5 créditos). Saldo: ${result.creditsBalance}. Ver Pedidos para conversar.',
+        );
+      }
+    } on Ride4FreeApiException catch (e) {
+      if (mounted) _showMessage(context, e.body);
+    } catch (e) {
+      if (mounted) _showMessage(context, 'Erro: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   Future<void> _registerRequest() async {
     if (Ride4FreeAuth.token == null) {
       _showMessage(context, 'Inicie sessão no perfil.');
@@ -1088,14 +1137,19 @@ class _SearchRidePageState extends State<SearchRidePage> {
     
     setState(() => _loading = true);
     try {
+      final origin = _originController.text.trim().isNotEmpty
+          ? _originController.text.trim()
+          : (_pickupAddress ?? _locationLabel);
       await _api.createPassengerRequest(
         destination: _destController.text,
         passengerCount: _neededSeats,
         originLat: (_pickupLatLng ?? _userLocation)?.latitude,
         originLng: (_pickupLatLng ?? _userLocation)?.longitude,
+        originDisplay: origin,
+        departureTime: _timeController.text.trim().isEmpty ? null : _timeController.text.trim(),
       );
       if (mounted) {
-        _showMessage(context, 'Pedido de boleia publicado na comunidade!');
+        _showMessage(context, 'Pedido publicado! Consulta o separador Pedidos.');
         setState(() => _neededSeats = 1);
       }
     } catch (e) {
@@ -1254,7 +1308,15 @@ class _SearchRidePageState extends State<SearchRidePage> {
               padding: EdgeInsets.all(24),
               child: Text('Nenhum condutor encontrado neste raio.', style: TextStyle(color: kMuted, fontWeight: FontWeight.w600)),
             )
-          else
+          else ...[
+            const Padding(
+              padding: EdgeInsets.fromLTRB(18, 8, 18, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Boleias Encontradas',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              ),
+            ),
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -1266,12 +1328,14 @@ class _SearchRidePageState extends State<SearchRidePage> {
                 return RideCard(
                   name: d['driver_name'] as String? ?? 'Condutor',
                   car: 'Lugares livres: ${d['available_seats'] ?? '?'}',
-                  rating: '—',
+                  rating: d['rating_display'] as String? ?? '—',
                   distance: d['destination_display'] as String? ?? '',
-                  credits: '30',
+                  credits: '−5',
+                  onReserve: _loading ? null : () => _reserveDriver(d),
                 );
               },
             ),
+          ],
         ],
       ),
     );
@@ -1281,6 +1345,17 @@ class _SearchRidePageState extends State<SearchRidePage> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
       children: [
+        _label('ORIGEM'),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _originController,
+          decoration: InputDecoration(
+            hintText: 'Ex: Rua de Cedofeita',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            prefixIcon: const Icon(Icons.trip_origin, color: kRed),
+          ),
+        ),
+        const SizedBox(height: 16),
         _label('PARA ONDE QUERES IR?'),
         const SizedBox(height: 6),
         TextField(
@@ -1292,8 +1367,18 @@ class _SearchRidePageState extends State<SearchRidePage> {
             prefixIcon: const Icon(Icons.flag, color: kRed),
           ),
         ),
+        const SizedBox(height: 16),
+        _label('DATA / HORA'),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _timeController,
+          decoration: InputDecoration(
+            hintText: 'HH:MM ou 2026-05-23 18:30',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            prefixIcon: const Icon(Icons.schedule, color: kRed),
+          ),
+        ),
         const SizedBox(height: 20),
-        
         Row(
           children: [
             Expanded(
@@ -1364,7 +1449,7 @@ class _SearchRidePageState extends State<SearchRidePage> {
           ),
           icon: const Icon(Icons.campaign, color: Colors.white),
           label: Text(
-            _loading ? 'A publicar...' : 'Publicar Pedido de Boleia', 
+            _loading ? 'A publicar...' : 'Pedir Boleia', 
             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)
           ),
         ),
@@ -1374,7 +1459,79 @@ class _SearchRidePageState extends State<SearchRidePage> {
 }
 class _ProfilePageState extends State<ProfilePage> {
   final _api = Ride4FreeApi();
+  final _vehicleController = TextEditingController();
   bool _busy = false;
+  bool _loadingProfile = true;
+  Map<String, dynamic>? _profile;
+  List<Map<String, dynamic>> _reviews = [];
+  List<Map<String, dynamic>> _transactions = [];
+  int _creditsBalance = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  @override
+  void didUpdateWidget(ProfilePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      _loadProfile();
+    }
+  }
+
+  @override
+  void dispose() {
+    _vehicleController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadProfile() async {
+    if (Ride4FreeAuth.token == null) {
+      if (mounted) setState(() => _loadingProfile = false);
+      return;
+    }
+    setState(() => _loadingProfile = true);
+    try {
+      final profile = await _api.getUserProfile();
+      var balance = (profile['credits_balance'] as num?)?.toInt() ?? 0;
+      var transactions = <Map<String, dynamic>>[];
+      try {
+        final credits = await _api.getCredits();
+        balance = credits.balance;
+        transactions = credits.transactions;
+      } catch (_) {}
+      final reviews = await _api.getUserReviews(profile['id'] as int);
+      if (!mounted) return;
+      _vehicleController.text = profile['vehicle_info'] as String? ?? '';
+      setState(() {
+        _profile = profile;
+        _creditsBalance = balance;
+        _transactions = transactions;
+        _reviews = reviews;
+      });
+    } catch (e) {
+      if (mounted) _showMessage(context, 'Erro ao carregar perfil: $e');
+    } finally {
+      if (mounted) setState(() => _loadingProfile = false);
+    }
+  }
+
+  Future<void> _saveVehicle() async {
+    final v = _vehicleController.text.trim();
+    if (v.isEmpty) return;
+    setState(() => _busy = true);
+    try {
+      await _api.updateVehicleInfo(v);
+      if (mounted) _showMessage(context, 'Veículo guardado.');
+      await _loadProfile();
+    } catch (e) {
+      if (mounted) _showMessage(context, '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   Future<void> _logout() async {
     setState(() => _busy = true);
@@ -1410,97 +1567,122 @@ class _ProfilePageState extends State<ProfilePage> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
             children: [
-              Text('API: ${Ride4FreeConfig.baseUrl}', style: const TextStyle(fontSize: 12, color: kMuted)),
-              const SizedBox(height: 8),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: CircleAvatar(
-                  radius: 24,
-                  backgroundImage: widget.identity.photoUrl == null
-                      ? null
-                      : NetworkImage(widget.identity.photoUrl!),
-                  child: widget.identity.photoUrl == null
-                      ? const Icon(Icons.person)
-                      : null,
-                ),
-                title: Text(
-                  widget.identity.displayName,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-                subtitle: Text(
-                  'UP: ${widget.identity.username}',
-                  style: const TextStyle(color: kMuted),
-                ),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: _busy ? null : _logoutUniversity,
-                icon: const Icon(Icons.logout),
-                label: const Text('Terminar sessão universitária'),
-              ),
-              /* 
-              const SizedBox(height: 10),
-              const SizedBox(height: 16),
-              const Divider(),
-              const Row(
-                children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: Color(0xFF2232FC),
-                    child: Text('MA', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+              if (_loadingProfile)
+                const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else ...[
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    radius: 24,
+                    backgroundImage: widget.identity.photoUrl == null
+                        ? null
+                        : NetworkImage(widget.identity.photoUrl!),
+                    child: widget.identity.photoUrl == null ? const Icon(Icons.person) : null,
                   ),
-                  SizedBox(width: 12),
-                  Column(
+                  title: Text(
+                    widget.identity.displayName,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  subtitle: Text(
+                    'UP: ${widget.identity.username} · ⭐ ${_profile?['rating_display'] ?? '—'}',
+                    style: const TextStyle(color: kMuted),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: kDivider),
+                  ),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Miguel Antunes', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-                      Text('Excelente passageiro', style: TextStyle(color: kMuted, fontWeight: FontWeight.w600)),
+                      const Text('Veículo', style: TextStyle(fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _vehicleController,
+                        decoration: InputDecoration(
+                          hintText: 'Ex: VW Golf cinzento · AB-12-CD',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      FilledButton(
+                        onPressed: _busy ? null : _saveVehicle,
+                        style: FilledButton.styleFrom(backgroundColor: kRed),
+                        child: const Text('Guardar veículo'),
+                      ),
                     ],
                   ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: kRed, width: 2),
+                    color: const Color(0xFFFFF8F8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Créditos', style: TextStyle(color: kMuted, fontWeight: FontWeight.w700)),
+                      Text(
+                        '$_creditsBalance',
+                        style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: kRed),
+                      ),
+                      const Text(
+                        'Ganhas +10 ao concluir viagem · Gastas 5 ao reservar',
+                        style: TextStyle(color: kMuted, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_transactions.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text('Histórico de créditos', style: TextStyle(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 8),
+                  for (final t in _transactions.take(15))
+                    ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(t['description'] as String? ?? ''),
+                      subtitle: Text(t['created_at'] as String? ?? ''),
+                      trailing: Text(
+                        '${(t['amount_delta'] as num) > 0 ? '+' : ''}${t['amount_delta']}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: (t['amount_delta'] as num) >= 0 ? kSuccess : kRed,
+                        ),
+                      ),
+                    ),
                 ],
-              ),
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 12),
-              const Center(child: Text('★★★★★', style: TextStyle(fontSize: 44, color: Color(0xFFF3BC41), letterSpacing: 2))),
-              const SizedBox(height: 16),
-              const TickRow(text: 'Chegou a horas'),
-              const TickRow(text: 'Nao sujou o carro'),
-              const TickRow(text: 'Foi respeitador'),
-              const TickRow(text: 'Boa conversa'),
-              const SizedBox(height: 18),
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: kSuccess, width: 2),
-                  color: const Color(0xFFF8FFF7),
+                if (_reviews.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text('Avaliações recebidas', style: TextStyle(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 8),
+                  for (final r in _reviews.take(10))
+                    Card(
+                      child: ListTile(
+                        title: Text(r['rater_name'] as String? ?? 'Utilizador'),
+                        subtitle: Text('${r['created_at'] ?? ''}'),
+                        trailing: StarDisplay(stars: (r['stars'] as num?)?.toInt() ?? 0),
+                      ),
+                    ),
+                ],
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _logoutUniversity,
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Terminar sessão universitária'),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                child: const Column(
-                  children: [
-                    Text('RECOMPENSA TOTAL', style: TextStyle(color: kSuccess, fontWeight: FontWeight.w800)),
-                    SizedBox(height: 4),
-                    Text('+50 Pontos', style: TextStyle(color: Color(0xFF22412A), fontWeight: FontWeight.w900, fontSize: 34)),
-                    SizedBox(height: 4),
-                    Text('Bonus de conduta perfeita aplicado!', style: TextStyle(color: kMuted, fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () {},
-                style: FilledButton.styleFrom(
-                  backgroundColor: kRed,
-                  minimumSize: const Size.fromHeight(56),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                child: const Text('Submeter Avaliacao', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
-              ),
-              const SizedBox(height: 18),
-              const Text('RATE PROFILES', style: TextStyle(color: kRed, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
-              const SizedBox(height: 10),
-              const ProfileRatingButton(),
-              */
+              ],
             ],
           ),
         ),
@@ -1660,9 +1842,17 @@ class RideCard extends StatelessWidget {
   final String rating;
   final String distance;
   final String credits;
+  final VoidCallback? onReserve;
 
-  // ignore: use_key_in_widget_constructors
-  const RideCard({required this.name, required this.car, required this.rating, required this.distance, required this.credits});
+  const RideCard({
+    super.key,
+    required this.name,
+    required this.car,
+    required this.rating,
+    required this.distance,
+    required this.credits,
+    this.onReserve,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1692,8 +1882,19 @@ class RideCard extends StatelessWidget {
           const SizedBox(width: 12),
           Column(
             children: [
-              Text(credits, style: const TextStyle(color: kRed, fontWeight: FontWeight.w800, fontSize: 30)),
-              const Text('Créditos', style: TextStyle(color: kMuted, fontWeight: FontWeight.w700)),
+              Text(credits, style: const TextStyle(color: kRed, fontWeight: FontWeight.w800, fontSize: 28)),
+              const Text('Custo', style: TextStyle(color: kMuted, fontWeight: FontWeight.w700)),
+              if (onReserve != null) ...[
+                const SizedBox(height: 8),
+                FilledButton(
+                  onPressed: onReserve,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: kRed,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  child: const Text('Reservar Boleia', style: TextStyle(fontWeight: FontWeight.w800)),
+                ),
+              ],
             ],
           ),
         ],

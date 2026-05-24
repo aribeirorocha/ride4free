@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import 'main.dart' show kMuted, kRed, kSuccess, TopTitleBar;
+import 'rating_widgets.dart';
 import 'ride4free_api.dart';
 
 void showRideMessage(BuildContext context, String text) {
@@ -28,6 +29,7 @@ class _ActiveRideCoordinatorState extends State<ActiveRideCoordinator> {
   final _api = Ride4FreeApi();
   Timer? _timer;
   bool _checking = false;
+  bool _showingRating = false;
   int? _dismissedRideId;
 
   @override
@@ -50,10 +52,15 @@ class _ActiveRideCoordinatorState extends State<ActiveRideCoordinator> {
       final state = await _api.getActiveRideState();
       if (!mounted) return;
 
-      if (state.pendingRating != null) {
+      if (state.pendingRating != null && !_showingRating) {
         final rideId = (state.pendingRating!['id'] as num).toInt();
         final name = state.pendingRating!['rate_target_name'] as String? ?? 'utilizador';
-        await _showRatingDialog(rideId: rideId, targetName: name);
+        _showingRating = true;
+        try {
+          await _showRatingDialog(rideId: rideId, targetName: name);
+        } finally {
+          _showingRating = false;
+        }
       } else if (state.ride != null) {
         final rideId = (state.ride!['id'] as num).toInt();
         final top = ModalRoute.of(context);
@@ -74,50 +81,13 @@ class _ActiveRideCoordinatorState extends State<ActiveRideCoordinator> {
 
   Future<void> _showRatingDialog({required int rideId, required String targetName}) async {
     if (!mounted) return;
-    var stars = 5;
-    final submitted = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialog) => AlertDialog(
-          title: const Text('Avaliar viagem'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Como foi a experiência com $targetName?'),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (i) {
-                  final filled = i < stars;
-                  return IconButton(
-                    onPressed: () => setDialog(() => stars = i + 1),
-                    icon: Icon(filled ? Icons.star : Icons.star_border, color: kRed, size: 32),
-                  );
-                }),
-              ),
-            ],
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () async {
-                try {
-                  await _api.rateRideParticipant(rideId, stars);
-                  if (ctx.mounted) Navigator.pop(ctx, true);
-                } catch (e) {
-                  if (ctx.mounted) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('$e')));
-                  }
-                }
-              },
-              child: const Text('Enviar avaliação'),
-            ),
-          ],
-        ),
-      ),
+    final submitted = await showStructuredRatingDialog(
+      context,
+      rideId: rideId,
+      targetName: targetName,
+      api: _api,
     );
-    if (submitted == true && mounted) {
+    if (submitted && mounted) {
       showRideMessage(context, 'Obrigado pela avaliação!');
     }
   }
@@ -165,10 +135,6 @@ class _DriverRideRequestsPageState extends State<DriverRideRequestsPage> {
       await _api.respondJoinRequest(requestId, accept: accept);
       if (!mounted) return;
       showRideMessage(context, accept ? 'Passageiro aceite.' : 'Pedido recusado.');
-      if (accept) {
-        Navigator.of(context).pop(true);
-        return;
-      }
       await _load();
     } on Ride4FreeApiException catch (e) {
       if (!mounted) return;
@@ -271,6 +237,7 @@ class _ActiveRidePageState extends State<ActiveRidePage> {
   List<Map<String, dynamic>> _messages = [];
   Timer? _timer;
   bool _busy = false;
+  bool _showingRating = false;
 
   int get _rideId => (_ride['id'] as num).toInt();
   bool get _isDriver => _ride['is_driver'] as bool? ?? false;
@@ -309,13 +276,18 @@ class _ActiveRidePageState extends State<ActiveRidePage> {
         final msgs = await _api.listRideMessages(_rideId);
         if (mounted) setState(() => _messages = msgs);
       }
-      if (state.pendingRating != null && mounted) {
+      if (state.pendingRating != null && mounted && !_showingRating) {
         final pr = state.pendingRating!;
-        await _promptRating(
-          rideId: (pr['id'] as num).toInt(),
-          name: pr['rate_target_name'] as String? ?? 'utilizador',
-        );
-        if (mounted) Navigator.pop(context);
+        _showingRating = true;
+        try {
+          await _promptRating(
+            rideId: (pr['id'] as num).toInt(),
+            name: pr['rate_target_name'] as String? ?? 'utilizador',
+          );
+          if (mounted) Navigator.pop(context);
+        } finally {
+          _showingRating = false;
+        }
       }
     } catch (_) {
       if (!silent && mounted) showRideMessage(context, 'Erro ao atualizar viagem.');
@@ -323,39 +295,11 @@ class _ActiveRidePageState extends State<ActiveRidePage> {
   }
 
   Future<void> _promptRating({required int rideId, required String name}) async {
-    var stars = 5;
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialog) => AlertDialog(
-          title: const Text('Avaliar viagem'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Avalie $name'),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (i) {
-                  return IconButton(
-                    onPressed: () => setDialog(() => stars = i + 1),
-                    icon: Icon(i < stars ? Icons.star : Icons.star_border, color: kRed),
-                  );
-                }),
-              ),
-            ],
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () async {
-                await _api.rateRideParticipant(rideId, stars);
-                if (ctx.mounted) Navigator.pop(ctx);
-              },
-              child: const Text('Enviar'),
-            ),
-          ],
-        ),
-      ),
+    await showStructuredRatingDialog(
+      context,
+      rideId: rideId,
+      targetName: name,
+      api: _api,
     );
   }
 
