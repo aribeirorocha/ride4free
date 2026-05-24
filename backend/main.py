@@ -1,4 +1,4 @@
-"""
+s"""
 Ride4Free local API — pairs with SQLite in database.py.
 Run locally: uvicorn main:app --reload --host 127.0.0.1 --port 8000
 
