@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'active_ride_flow.dart' show showRideMessage;
-import 'main.dart' show kMuted, kRed, kSuccess, TopTitleBar;
+import 'main.dart' show kMuted, kRed, kSuccess,kDivider, TopTitleBar;
 import 'ride4free_api.dart';
 
 /// Ecrã dedicado: Pedidos de boleia (passageiro / condutor).
@@ -62,7 +62,7 @@ class _PedidosPageState extends State<PedidosPage> with SingleTickerProviderStat
       case 'pending':
         return 'Pendente';
       case 'awaiting_passenger':
-        return 'À espera da tua confirmação';
+        return 'À espera de confirmação';
       case 'confirmed':
         return 'Confirmado';
       case 'declined':
@@ -138,7 +138,7 @@ class _PedidosPageState extends State<PedidosPage> with SingleTickerProviderStat
     );
   }
 
-  Widget _list(List<Map<String, dynamic>> items, {required bool isDriver}) {
+ Widget _list(List<Map<String, dynamic>> items, {required bool isDriver}) {
     if (items.isEmpty) {
       return Center(
         child: Text(
@@ -152,7 +152,7 @@ class _PedidosPageState extends State<PedidosPage> with SingleTickerProviderStat
       child: ListView.separated(
         padding: const EdgeInsets.all(18),
         itemCount: items.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        separatorBuilder: (_, __) => const SizedBox(height: 16),
         itemBuilder: (context, i) {
           final r = items[i];
           final id = (r['id'] as num).toInt();
@@ -165,74 +165,219 @@ class _PedidosPageState extends State<PedidosPage> with SingleTickerProviderStat
               : (r['driver_name'] as String? ?? 'Condutor');
           final needsConfirm = r['needs_passenger_confirmation'] == true;
 
-          return Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-                  Text(dest, style: const TextStyle(color: kMuted, fontWeight: FontWeight.w600)),
-                  if (origin != null && origin.isNotEmpty)
-                    Text('Origem: $origin', style: const TextStyle(fontSize: 12, color: kMuted)),
-                  if (dep != null && dep.isNotEmpty)
-                    Text('Partida: $dep', style: const TextStyle(fontSize: 12, color: kMuted)),
-                  const SizedBox(height: 6),
-                  Text(_statusLabel(status),
-                      style: TextStyle(
-                        color: status == 'confirmed' ? kSuccess : kRed,
-                        fontWeight: FontWeight.w700,
-                      )),
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
+          // Lógica de Cores Premium para a Pílula de Estado
+          Color statusBgColor = Colors.grey.withOpacity(0.15);
+          Color statusTextColor = Colors.grey[700]!;
+          if (status == 'confirmed') {
+            statusBgColor = kSuccess.withOpacity(0.15);
+            statusTextColor = kSuccess;
+          } else if (status == 'declined' || status == 'cancelled' || status == 'expired') {
+            statusBgColor = kRed.withOpacity(0.15);
+            statusTextColor = kRed;
+          } else if (status == 'awaiting_passenger') {
+            statusBgColor = Colors.amber.withOpacity(0.15);
+            statusTextColor = Colors.amber[800]!;
+          }
+
+          return Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: Colors.grey.withOpacity(0.15), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // --- HEADER: Avatar, Nome e Estado ---
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      height: 48,
+                      width: 48,
+                      decoration: BoxDecoration(color: kRed.withOpacity(0.1), shape: BoxShape.circle),
+                      child: const Icon(Icons.person, color: kRed, size: 24),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.black87),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            isDriver ? 'Pedido de passageiro' : 'O teu pedido',
+                            style: const TextStyle(color: kMuted, fontSize: 12, fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Pílula de Estado
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(color: statusBgColor, borderRadius: BorderRadius.circular(8)),
+                      child: Text(
+                        _statusLabel(status).toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                          color: statusTextColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 14),
+                  child: Divider(height: 1, color: kDivider),
+                ),
+
+                // --- BODY: Destino Principal ---
+                const Text(
+                  'DESTINO',
+                  style: TextStyle(color: kMuted, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  dest,
+                  style: const TextStyle(fontSize: 15, color: Colors.black87, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 14),
+
+                // --- ZONA DE INFORMAÇÃO EXTRA (Caixa Cinzenta Igual à Comunidade) ---
+                if ((origin != null && origin.isNotEmpty) || (dep != null && dep.isNotEmpty))
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F8F8),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      children: [
+                        if (origin != null && origin.isNotEmpty)
+                          Row(
+                            children: [
+                              const Icon(Icons.my_location, size: 16, color: kMuted),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  origin,
+                                  style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black87, fontSize: 13),
+                                ),
+                              ),
+                            ],
+                          ),
+                        if (origin != null && origin.isNotEmpty && dep != null && dep.isNotEmpty)
+                          const SizedBox(height: 8), // Espaço entre origem e hora
+                        if (dep != null && dep.isNotEmpty)
+                          Row(
+                            children: [
+                              const Icon(Icons.access_time, size: 16, color: kMuted),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Partida: $dep',
+                                  style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black87, fontSize: 13),
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
+
+                const SizedBox(height: 18),
+
+                // --- FOOTER: Botões de Ação ---
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
                     onPressed: () => _openChat(id),
                     icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                    label: const Text('Conversar'),
+                    label: const Text('Conversar', style: TextStyle(fontWeight: FontWeight.w800)),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      side: const BorderSide(color: kDivider, width: 1.5), // Borda elegante
+                    ),
                   ),
-                  if (isDriver && status == 'pending') ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => _driverRespond(id, false),
-                            child: const Text('Recusar'),
+                ),
+                
+                if (isDriver && status == 'pending') ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => _driverRespond(id, false),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            side: const BorderSide(color: kDivider, width: 1.5),
                           ),
+                          child: const Text('Recusar', style: TextStyle(fontWeight: FontWeight.w800)),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: FilledButton(
-                            style: FilledButton.styleFrom(backgroundColor: kRed),
-                            onPressed: () => _driverRespond(id, true),
-                            child: const Text('Aceitar'),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: kRed,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           ),
+                          onPressed: () => _driverRespond(id, true),
+                          child: const Text('Aceitar', style: TextStyle(fontWeight: FontWeight.w800)),
                         ),
-                      ],
-                    ),
-                  ],
-                  if (!isDriver && needsConfirm) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => _passengerRespond(id, false),
-                            child: const Text('Recusar'),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: FilledButton(
-                            style: FilledButton.styleFrom(backgroundColor: kSuccess),
-                            onPressed: () => _passengerRespond(id, true),
-                            child: const Text('Confirmar lugar'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ],
-              ),
+                
+                if (!isDriver && needsConfirm) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => _passengerRespond(id, false),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            side: const BorderSide(color: kDivider, width: 1.5),
+                          ),
+                          child: const Text('Recusar', style: TextStyle(fontWeight: FontWeight.w800)),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: kSuccess,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          onPressed: () => _passengerRespond(id, true),
+                          child: const Text('Confirmar', style: TextStyle(fontWeight: FontWeight.w800)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
             ),
           );
         },
@@ -253,28 +398,59 @@ class _JoinRequestChatSheet extends StatefulWidget {
 
 class _JoinRequestChatSheetState extends State<_JoinRequestChatSheet> {
   final _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   List<Map<String, dynamic>> _messages = [];
   Timer? _timer;
+  int? _myId;
 
   @override
   void initState() {
     super.initState();
+    _loadMyId();
     _refresh();
     _timer = Timer.periodic(const Duration(seconds: 3), (_) => _refresh());
+  }
+
+  Future<void> _loadMyId() async {
+    try {
+      final user = await widget.api.me();
+      if (mounted) setState(() => _myId = user.id);
+    } catch (_) {}
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     _controller.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
   Future<void> _refresh() async {
     try {
       final msgs = await widget.api.listJoinRequestMessages(widget.requestId);
-      if (mounted) setState(() => _messages = msgs);
+      if (mounted) {
+        final wasAtBottom = _scrollController.hasClients && 
+            _scrollController.position.pixels == _scrollController.position.maxScrollExtent;
+        
+        setState(() => _messages = msgs);
+
+        // Auto-scroll para baixo se houver novas mensagens
+        if (wasAtBottom) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+        }
+      }
     } catch (_) {}
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   Future<void> _send() async {
@@ -284,6 +460,7 @@ class _JoinRequestChatSheetState extends State<_JoinRequestChatSheet> {
     try {
       await widget.api.sendJoinRequestMessage(widget.requestId, text);
       await _refresh();
+      _scrollToBottom();
     } catch (e) {
       if (mounted) showRideMessage(context, 'Erro ao enviar mensagem.');
     }
@@ -291,51 +468,164 @@ class _JoinRequestChatSheetState extends State<_JoinRequestChatSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    
     return Padding(
-      padding: EdgeInsets.only(bottom: bottom),
+      padding: EdgeInsets.only(bottom: bottomInset),
       child: DraggableScrollableSheet(
         expand: false,
-        initialChildSize: 0.55,
-        maxChildSize: 0.9,
-        minChildSize: 0.35,
-        builder: (_, scroll) => Material(
+        initialChildSize: 0.65,
+        maxChildSize: 0.95,
+        minChildSize: 0.4,
+        builder: (_, scroll) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
           child: Column(
             children: [
-              const Padding(
-                padding: EdgeInsets.all(14),
-                child: Text('Chat do pedido',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  controller: scroll,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  itemCount: _messages.length,
-                  itemBuilder: (_, i) {
-                    final m = _messages[i];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Text('${m['sender_name']}: ${m['body']}'),
-                    );
-                  },
+              // --- HEADER & DRAG HANDLE ---
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Mensagens do Pedido',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+                    ),
+                    const Divider(height: 20),
+                  ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(12),
+
+              // --- LISTA DE MENSAGENS ---
+              Expanded(
+                child: _messages.isEmpty
+                    ? Center(
+                        child: Text('Diz olá! Começa a conversa.', 
+                        style: TextStyle(color: kMuted, fontWeight: FontWeight.w500)))
+                    : ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        itemCount: _messages.length,
+                        itemBuilder: (_, i) {
+                          final m = _messages[i];
+                          final bool isMe = _myId != null && m['sender_user_id'] == _myId;
+                          
+                          return Align(
+                            alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(vertical: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              constraints: BoxConstraints(
+                                maxWidth: MediaQuery.of(context).size.width * 0.75,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isMe ? kRed : const Color(0xFFF1F1F1),
+                                borderRadius: BorderRadius.only(
+                                  topLeft: const Radius.circular(16),
+                                  topRight: const Radius.circular(16),
+                                  bottomLeft: Radius.circular(isMe ? 16 : 0),
+                                  bottomRight: Radius.circular(isMe ? 0 : 16),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    blurRadius: 2,
+                                    offset: const Offset(0, 1),
+                                  )
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (!isMe)
+                                    Text(
+                                      m['sender_name'] ?? 'Utilizador',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black.withOpacity(0.5),
+                                      ),
+                                    ),
+                                  Text(
+                                    m['body'] ?? '',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: isMe ? Colors.white : Colors.black87,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+
+              // --- CAMPO DE INPUT (UBER STYLE) ---
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, -2),
+                    )
+                  ],
+                ),
                 child: Row(
                   children: [
                     Expanded(
-                      child: TextField(
-                        controller: _controller,
-                        decoration: const InputDecoration(
-                          hintText: 'Mensagem…',
-                          border: OutlineInputBorder(),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F5F5),
+                          borderRadius: BorderRadius.circular(30),
                         ),
-                        onSubmitted: (_) => _send(),
+                        child: TextField(
+                          controller: _controller,
+                          decoration: const InputDecoration(
+                            hintText: 'Escreve uma mensagem...',
+                            border: InputBorder.none,
+                            hintStyle: TextStyle(color: Colors.grey, fontSize: 15),
+                          ),
+                          onSubmitted: (_) => _send(),
+                        ),
                       ),
                     ),
-                    IconButton(onPressed: _send, icon: const Icon(Icons.send, color: kRed)),
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: _send,
+                      child: Container(
+                        height: 48,
+                        width: 48,
+                        decoration: BoxDecoration(
+                          color: kRed,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: kRed.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            )
+                          ],
+                        ),
+                        child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                      ),
+                    ),
                   ],
                 ),
               ),

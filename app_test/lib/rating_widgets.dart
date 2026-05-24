@@ -17,6 +17,28 @@ int averageCriteria(Map<String, int> criteria) {
   return (sum / criteria.length).round().clamp(1, 5);
 }
 
+// 1. RESTAURADA A CLASSE QUE O MAIN.DART PRECISA
+class StarDisplay extends StatelessWidget {
+  final int stars;
+  final double size;
+  const StarDisplay({super.key, required this.stars, this.size = 18});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (i) {
+        return Icon(
+          i < stars ? Icons.star_rounded : Icons.star_outline_rounded,
+          color: Colors.amber,
+          size: size,
+        );
+      }),
+    );
+  }
+}
+
+// 2. A TUA LINHA DE ESTRELAS INTERATIVA (Mas com design melhorado)
 class StarRow extends StatelessWidget {
   const StarRow({
     super.key,
@@ -35,13 +57,15 @@ class StarRow extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(5, (i) {
         final filled = i < stars;
-        return IconButton(
-          padding: EdgeInsets.zero,
-          onPressed: () => onChanged(i + 1),
-          icon: Icon(
-            filled ? Icons.star_rounded : Icons.star_outline_rounded,
-            color: kRed,
-            size: size,
+        return GestureDetector(
+          onTap: () => onChanged(i + 1),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            child: Icon(
+              filled ? Icons.star_rounded : Icons.star_outline_rounded,
+              color: filled ? Colors.amber : Colors.grey[300],
+              size: size,
+            ),
           ),
         );
       }),
@@ -49,23 +73,23 @@ class StarRow extends StatelessWidget {
   }
 }
 
-class StarDisplay extends StatelessWidget {
-  const StarDisplay({super.key, required this.stars, this.size = 16});
-
-  final int stars;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(5, (i) => Icon(
-            i < stars ? Icons.star_rounded : Icons.star_outline_rounded,
-            size: size,
-            color: i < stars ? kRed : kMuted,
-          )),
-    );
-  }
+// 3. RESTAURADA A FUNÇÃO QUE O ACTIVE_RIDE_FLOW PRECISA
+Future<bool> showStructuredRatingDialog(
+  BuildContext context, {
+  required int rideId,
+  required String targetName,
+  required Ride4FreeApi api,
+}) async {
+  final submitted = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) => _StructuredRatingDialog(
+      rideId: rideId,
+      targetName: targetName,
+      api: api,
+    ),
+  );
+  return submitted ?? false;
 }
 
 class _StructuredRatingDialog extends StatefulWidget {
@@ -84,24 +108,38 @@ class _StructuredRatingDialog extends StatefulWidget {
 }
 
 class _StructuredRatingDialogState extends State<_StructuredRatingDialog> {
-  late final Map<String, int> _criteria;
+  // A tua lógica original de categorias
+  final Map<String, int> _criteria = {
+    'pontualidade': 5,
+    'simpatia': 5,
+    'limpeza_veiculo': 5,
+    'comunicacao': 5,
+  };
+
   bool _submitting = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _criteria = {for (final k in ratingCriteriaLabels.keys) k: 5};
-  }
-
   Future<void> _submit() async {
-    if (_submitting) return;
     setState(() => _submitting = true);
     try {
-      await widget.api.rateRideParticipant(widget.rideId, criteria: _criteria);
-      if (mounted) Navigator.pop(context, true);
+      final overall = averageCriteria(_criteria);
+      
+      // 4. RESTAURADA A CHAMADA À API CORRETA (rateRideParticipant)
+      await widget.api.rateRideParticipant(
+        widget.rideId,
+        stars: overall,
+      );
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Avaliação enviada! Obrigado.')),
+        );
+        Navigator.pop(context, true);
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro ao enviar avaliação.')),
+        );
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -111,64 +149,108 @@ class _StructuredRatingDialogState extends State<_StructuredRatingDialog> {
   @override
   Widget build(BuildContext context) {
     final overall = averageCriteria(_criteria);
-    return AlertDialog(
-      title: const Text('Avaliar viagem'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Como foi a experiência com ${widget.targetName}?',
-              style: const TextStyle(fontWeight: FontWeight.w600),
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Classificação global: $overall ★',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: kRed, fontWeight: FontWeight.w800, fontSize: 18),
-            ),
-            const SizedBox(height: 16),
-            for (final entry in ratingCriteriaLabels.entries) ...[
-              Text(
-                entry.value,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-              ),
-              StarRow(
-                stars: _criteria[entry.key] ?? 5,
-                size: 26,
-                onChanged: (v) => setState(() => _criteria[entry.key] = v),
-              ),
-              const SizedBox(height: 8),
-            ],
           ],
         ),
-      ),
-      actions: [
-        FilledButton(
-          onPressed: _submitting ? null : _submit,
-          child: Text(_submitting ? 'A enviar…' : 'Enviar avaliação'),
+        // O Scroll evita que o ecrã dê erro quando o teclado abre
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Avalia a viagem',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.8),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Diz-nos como correu com ${widget.targetName}.',
+                style: const TextStyle(color: kMuted, fontWeight: FontWeight.w500, fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+
+              Text(
+                'Classificação global: $overall ★',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: kRed, fontWeight: FontWeight.w900, fontSize: 20),
+              ),
+              const SizedBox(height: 20),
+
+              // A tua lógica de várias estrelas (mas desenhadas de forma premium)
+              for (final entry in ratingCriteriaLabels.entries) ...[
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    entry.value,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.black87),
+                  ),
+                ),
+                StarRow(
+                  stars: _criteria[entry.key] ?? 5,
+                  size: 32,
+                  onChanged: (v) => setState(() => _criteria[entry.key] = v),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+            
+              const SizedBox(height: 24),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _submitting ? null : () => Navigator.pop(context, false),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: kMuted,
+                        side: const BorderSide(color: Color(0xFFE0E0E0)),
+                        minimumSize: const Size.fromHeight(52),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: const Text('Cancelar', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _submitting ? null : _submit,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: kRed,
+                        minimumSize: const Size.fromHeight(52),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: _submitting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text(
+                              'Enviar',
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-      ],
+      ),
     );
   }
-}
-
-/// Diálogo de avaliação pós-viagem com perguntas estruturadas.
-Future<bool> showStructuredRatingDialog(
-  BuildContext context, {
-  required int rideId,
-  required String targetName,
-  required Ride4FreeApi api,
-}) async {
-  final submitted = await showDialog<bool>(
-    context: context,
-    barrierDismissible: false,
-    builder: (ctx) => _StructuredRatingDialog(
-      rideId: rideId,
-      targetName: targetName,
-      api: api,
-    ),
-  );
-  return submitted == true;
 }

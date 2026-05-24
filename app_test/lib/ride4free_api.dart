@@ -433,7 +433,7 @@ class Ride4FreeApi {
   Future<void> rateRideParticipant(
     int rideId, {
     int? stars,
-    Map<String, int>? criteria,
+    Map<String, int>? criteria, String? comment,
   }) async {
     final r = await _client.post(
       _u('/rides/active/$rideId/rate'),

@@ -105,7 +105,8 @@ CREATE TABLE IF NOT EXISTS driver_offers (
     destination_display TEXT NOT NULL,
     available_seats INTEGER NOT NULL CHECK (available_seats >= 0),
     departure_time TEXT, 
-    description TEXT,    
+    description TEXT,
+    vehicle_info TEXT,    
     status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'full', 'cancelled')),
     created_at TEXT NOT NULL
 );
@@ -467,7 +468,7 @@ def insert_driver_offer(user_id: int, destination: str, available_seats: int,
                         departure_time: str = None, description: str = None, # Novos argumentos
                         origin_lat=None, origin_lng=None, 
                         destination_lat=None, destination_lng=None,
-                        vehicle_info: str | None = None) -> int:
+                        vehicle_info: str = None) -> int:
     norm = normalize_destination(destination)
     now = utc_now_iso()
     status = "open" if available_seats > 0 else "full"
@@ -1029,7 +1030,8 @@ def get_active_ride_for_user(user_id: int) -> dict | None:
         row = conn.execute(
             """
             SELECT ar.*, o.destination_display, o.departure_time, o.description AS origin_description,
-                   o.available_seats, o.vehicle_info,
+                    o.vehicle_info AS vehicle_display,
+                    o.available_seats,
                    du.name AS driver_name, du.email AS driver_email,
                    pu.name AS passenger_name, pu.email AS passenger_email
             FROM active_rides ar
@@ -1055,7 +1057,7 @@ def get_active_ride_for_user(user_id: int) -> dict | None:
     p_rating = _rating_fields(int(d["passenger_user_id"]))
     d["passenger_rating_avg"] = p_rating["rating_avg"]
     d["passenger_rating_display"] = p_rating["rating_display"]
-    d["vehicle_display"] = d.get("vehicle_info") or d.get("origin_description") or "Veículo"
+    d["vehicle_display"] = d.get("vehicle_display") or d.get("origin_description") or "Veículo"
     d["needs_rating"] = False
     if d["status"] == "completed":
         d["needs_rating"] = not _user_rated_ride(int(d["id"]), user_id)
