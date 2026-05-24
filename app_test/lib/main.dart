@@ -1738,29 +1738,9 @@ class _ConferenceMapState extends State<_ConferenceMap> {
     // Usamos um Stack para colocar os botões a flutuar por cima do mapa
     return Stack(
       children: [
-        TileLayer(
-          urlTemplate:
-          'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-          subdomains: const ['a', 'b', 'c', 'd'],
-          userAgentPackageName: 'com.example.conference_tool',
-        ),
-
-        // Círculo de raio à volta do passageiro
-        if (widget.userLocation != null)
-          CircleLayer(
-            circles: [
-              CircleMarker(
-                point: widget.userLocation!,
-                radius: widget.radiusMeters,
-                useRadiusInMeter: true,
-                color: kRed,
-                borderColor: kRed,
-                borderStrokeWidth: 2,
-              ),
-            ],
         // O Mapa propriamente dito
         FlutterMap(
-          mapController: _mapController, // <--- O controlador é injetado aqui
+          mapController: _mapController, 
           options: MapOptions(
             initialCenter: widget.userLocation ?? const LatLng(41.1780, -8.5980),
             initialZoom: 15.0,
@@ -1818,7 +1798,7 @@ class _ConferenceMapState extends State<_ConferenceMap> {
             children: [
               // Botão Zoom In (+)
               FloatingActionButton.small(
-                heroTag: null, // heroTag null evita erros se houver dois mapas no ecrã
+                heroTag: null, 
                 backgroundColor: kCard,
                 onPressed: () {
                   final currentZoom = _mapController.camera.zoom;
