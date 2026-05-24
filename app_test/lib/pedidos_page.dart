@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -46,10 +48,12 @@ class _PedidosPageState extends State<PedidosPage> with SingleTickerProviderStat
     try {
       final p = await _api.listMyPassengerJoinRequests();
       final d = await _api.listDriverIncomingJoinRequests();
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _passenger = p;
         _driver = d;
       });
+      }
     } catch (e) {
       if (mounted && !silent) showRideMessage(context, 'Erro ao carregar pedidos: $e');
     } finally {
@@ -152,7 +156,7 @@ class _PedidosPageState extends State<PedidosPage> with SingleTickerProviderStat
       child: ListView.separated(
         padding: const EdgeInsets.all(18),
         itemCount: items.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 16),
+        separatorBuilder: (_, _) => const SizedBox(height: 16),
         itemBuilder: (context, i) {
           final r = items[i];
           final id = (r['id'] as num).toInt();

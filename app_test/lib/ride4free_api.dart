@@ -1,6 +1,8 @@
 // HTTP client for the Ride4Free API.
 // Remote URL: app_test/lib/app_config.dart (set by backend/start.sh)
 
+// ignore_for_file: use_null_aware_elements
+
 import 'dart:convert';
 import 'dart:io' show Platform;
 
