@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
-import 'main.dart' show kMuted, kRed, kSuccess, TopTitleBar;
+import 'main.dart' show HomeShellState, kMuted, kRed, kSuccess, TopTitleBar;
 import 'rating_widgets.dart';
 import 'ride4free_api.dart';
 
@@ -13,6 +13,12 @@ void showRideMessage(BuildContext context, String text) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
     }
   });
+}
+
+/// Pops ride screens and selects the Comunidade (home) tab.
+void navigateToHomeAfterRide(BuildContext context) {
+  Navigator.of(context).popUntil((route) => route.isFirst);
+  context.findAncestorStateOfType<HomeShellState>()?.goToHomeTab();
 }
 
 /// Polls active ride state and opens the ride window when needed.
@@ -88,6 +94,7 @@ class _ActiveRideCoordinatorState extends State<ActiveRideCoordinator> {
       api: _api,
     );
     if (submitted && mounted) {
+      navigateToHomeAfterRide(context);
       showRideMessage(context, 'Obrigado pela avaliação!');
     }
   }
@@ -280,11 +287,14 @@ class _ActiveRidePageState extends State<ActiveRidePage> {
         final pr = state.pendingRating!;
         _showingRating = true;
         try {
-          await _promptRating(
+          final submitted = await _promptRating(
             rideId: (pr['id'] as num).toInt(),
             name: pr['rate_target_name'] as String? ?? 'utilizador',
           );
-          if (mounted) Navigator.pop(context);
+          if (submitted && mounted) {
+            navigateToHomeAfterRide(context);
+            showRideMessage(context, 'Obrigado pela avaliação!');
+          }
         } finally {
           _showingRating = false;
         }
@@ -294,8 +304,8 @@ class _ActiveRidePageState extends State<ActiveRidePage> {
     }
   }
 
-  Future<void> _promptRating({required int rideId, required String name}) async {
-    await showStructuredRatingDialog(
+  Future<bool> _promptRating({required int rideId, required String name}) async {
+    return showStructuredRatingDialog(
       context,
       rideId: rideId,
       targetName: name,
