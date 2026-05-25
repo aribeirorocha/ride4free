@@ -1400,12 +1400,24 @@ def _join_request_row_to_dict(r: sqlite3.Row, viewer_id: int) -> dict:
     return d
 
 
+def _last_message_sql() -> str:
+    return """
+        (SELECT body FROM join_request_messages
+         WHERE join_request_id = j.id ORDER BY created_at DESC LIMIT 1) AS last_message_body,
+        (SELECT created_at FROM join_request_messages
+         WHERE join_request_id = j.id ORDER BY created_at DESC LIMIT 1) AS last_message_at,
+        (SELECT sender_user_id FROM join_request_messages
+         WHERE join_request_id = j.id ORDER BY created_at DESC LIMIT 1) AS last_message_sender_id
+    """
+
+
 def list_passenger_join_requests(passenger_user_id: int) -> list[dict]:
     with get_connection() as conn:
         rows = conn.execute(
-            """
+            f"""
             SELECT j.*, o.destination_display AS offer_destination,
-                   du.name AS driver_name, du.id AS driver_user_id
+                   du.name AS driver_name, du.id AS driver_user_id,
+                   {_last_message_sql()}
             FROM ride_join_requests j
             JOIN driver_offers o ON o.id = j.driver_offer_id
             JOIN users du ON du.id = o.user_id
@@ -1426,10 +1438,11 @@ def list_passenger_join_requests(passenger_user_id: int) -> list[dict]:
 def list_driver_incoming_join_requests(driver_user_id: int) -> list[dict]:
     with get_connection() as conn:
         rows = conn.execute(
-            """
+            f"""
             SELECT j.*, o.destination_display AS offer_destination,
                    o.departure_time AS offer_departure_time,
-                   pu.name AS passenger_name, pu.id AS passenger_user_id
+                   pu.name AS passenger_name, pu.id AS passenger_user_id,
+                   {_last_message_sql()}
             FROM ride_join_requests j
             JOIN driver_offers o ON o.id = j.driver_offer_id
             JOIN users pu ON pu.id = j.passenger_user_id

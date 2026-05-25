@@ -2,6 +2,9 @@
     <!-- FINE_LOCATION Uses GPS and it's precise / COARSE_LOCATION Uses WiFi and it's not so precise-->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <application
         android:label="Ride4Free"
         android:name="${applicationName}"
