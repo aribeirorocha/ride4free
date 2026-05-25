@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Start API + Cloudflare quick tunnel. Updates app_test/lib/app_config.dart with the new URL.
+# Start API + Cloudflare quick tunnel. Updates Ride4Free/lib/app_config.dart with the new URL.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-APP_CONFIG="${ROOT}/../app_test/lib/app_config.dart"
+APP_CONFIG="${ROOT}/../Ride4Free/lib/app_config.dart"
 HOST="127.0.0.1"
 PORT="8000"
 API_URL="http://${HOST}:${PORT}"
@@ -71,7 +71,7 @@ done
 
 if [[ -z "$PUBLIC_URL" ]]; then
   echo "Tunnel URL not found yet. Check $LOG"
-  echo "When you see the URL, set it in app_test/lib/app_config.dart → apiBaseUrl"
+  echo "When you see the URL, set it in Ride4Free/lib/app_config.dart → apiBaseUrl"
   wait "$TUNNEL_PID"
   exit 0
 fi
@@ -82,7 +82,7 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  API:    ${API_URL}  (local)"
 echo "  Public: ${PUBLIC_URL}"
-echo "  Updated: app_test/lib/app_config.dart"
+echo "  Updated: Ride4Free/lib/app_config.dart"
 echo ""
 echo "  Phones: hot-restart / rebuild the Flutter app"
 echo "  Docs:   ${PUBLIC_URL}/docs"
