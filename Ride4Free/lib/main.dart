@@ -1386,7 +1386,7 @@ class ProfilePage extends StatefulWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _label('Raio de Pesquisa'),
+                  _label('Raio de Tolerancia'),
                   Text('${_radiusMeters.toInt()}m', style: const TextStyle(color: kRed, fontWeight: FontWeight.w800)),
                 ],
               ),
