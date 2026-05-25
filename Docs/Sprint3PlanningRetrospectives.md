@@ -14,7 +14,8 @@ O grande marco arquitetural desta Sprint foi a **migração do ambiente de desen
 **Evidência Visual do Scrumboard (Início da Sprint):**
 *O nosso planeamento inicial, mostrando as tarefas decompostas para a US6, os épicos de UI/UX refinement e as tasks de infraestrutura do servidor.*
 
-`[INSERIR IMAGEM DO SCRUMBOARD NO INÍCIO DA SPRINT AQUI]`
+<img width="2940" height="1390" alt="image" src="https://github.com/user-attachments/assets/26ade138-d2f6-4a4c-ac4e-fcba87b418cd" />
+
 
 **Dinâmica de Comunicação e Rastreabilidade:**
 Para esta Sprint final, a nossa gestão de projeto atingiu a sua maturidade máxima. Centralizámos a rastreabilidade de *bugs* estruturais (especialmente *flaky tests* e falhas de CORS/rede) em **GitHub Issues** altamente descritivas. O nosso grupo de comunicação interno transcendeu os meros "pontos de situação"; foi a nossa "sala de guerra" para *pair programming* assíncrono. Discutimos exaustivamente detalhes de implementação, delineámos soluções para bloqueios de *Mocking* e coordenámos os arranques do servidor remoto, mantendo a equipa perfeitamente sincronizada face aos desafios de infraestrutura.
