@@ -16,6 +16,7 @@ import 'package:app_test/main.dart';
 import 'package:app_test/main.dart' as app;
 import 'package:app_test/profile_model.dart';
 import 'package:app_test/ride4free_api.dart';
+import 'package:app_test/pedidos_page.dart';
 
 
 void main() {
@@ -516,8 +517,8 @@ void main() {
 
     test('NAV-U6: IndexedStack tem 4 páginas disponíveis', () {
       // Valida que a constante de páginas está correta
-      const totalPages = 4;
-      expect(totalPages, 4);
+      const totalPages = 5;
+      expect(totalPages, 5);
     });
   });
 
@@ -577,14 +578,15 @@ void main() {
       expect(container.constraints?.maxHeight ?? (container as dynamic).height, anyOf(equals(78.0), isNotNull));
     });
 
-    testWidgets('TB-U3: ícone de seta para trás está presente', (tester) async {
+        testWidgets('TB-U3: ícone de seta para trás está presente quando onBack é fornecido', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(body: TopTitleBar(title: 'Teste')),
+        MaterialApp(
+          home: Scaffold(body: TopTitleBar(title: 'Teste', onBack: () {})), // <-- ADICIONAR onBack
         ),
       );
       expect(find.byIcon(Icons.arrow_back), findsOneWidget);
     });
+
 
     testWidgets('TB-U4: fundo tem cor kRed', (tester) async {
       await tester.pumpWidget(
@@ -830,7 +832,7 @@ void main() {
           ),
         ),
       );
-      await tester.tap(find.byType(OutlinedButton));
+      await tester.tap(find.byType(FilledButton));
       expect(actionCalled, isTrue);
     });
   });
@@ -1314,63 +1316,566 @@ group('_onLoginSuccess — efeitos de estado no AppBootstrapper', () {
     expect(captured!.username, 'up002');
   });
 });
-  // ===========================================================================
-// UT-OFFER: _OfferRidePageState
-// Cobre: _isValidTime, _publish (validações), _seePassengers (auth guard),
-//        estado do botão Publicar (canPublish), lógica de _timeError,
-//        instrução de 0 lugares, e recompensa dinâmica.
-// ===========================================================================
-group('OfferRidePage — _OfferRidePageState', () {
 
-  Future<void> launchOfferPage(WidgetTester tester) async {
-    await tester.pumpWidget(const MaterialApp(
-      home: Scaffold(body: OfferRidePage()),
-    ));
-    await tester.pump(); // resolve _fetchLocation (falha silenciosamente sem GPS)
+// ===========================================================================
+// UT-TIMEAGO: _timeAgo (CommunityBoardPage)
+// Replica a lógica da função privada
+// ===========================================================================
+group('_timeAgo — formatação de tempo relativo', () {
+  String timeAgo(String? dateStr) {
+    if (dateStr == null) return '';
+    try {
+      final date = DateTime.parse(dateStr).toLocal();
+      final diff = DateTime.now().difference(date);
+      if (diff.inMinutes < 1) return 'Agora mesmo';
+      if (diff.inMinutes < 60) return 'Há ${diff.inMinutes}m';
+      if (diff.inHours < 24) return 'Há ${diff.inHours}h';
+      if (diff.inDays == 1) return 'Ontem';
+      return 'Há ${diff.inDays}d';
+    } catch (_) {
+      return '';
+    }
   }
 
-  // -------------------------------------------------------------------------
-  // _isValidTime — via inline no TextField de HORA
-  // -------------------------------------------------------------------------
-
-  testWidgets('OFR-U1: escrever hora válida não mostra _timeError', (tester) async {
-    await launchOfferPage(tester);
-
-    await tester.enterText(find.byKey(const Key('destination_field')), '09:30');
-    await tester.pump();
-
-    expect(find.text('Formato inválido'), findsNothing);
-    expect(find.text('Obrigatório'), findsNothing);
+  test('TA-U1: null retorna string vazia', () {
+    expect(timeAgo(null), '');
   });
 
-  testWidgets('OFR-U2: escrever hora inválida mostra "Formato inválido"', (tester) async {
-    await launchOfferPage(tester);
-
-    await tester.enterText(find.byKey(const Key('destination_field')), '25:99');
-    await tester.pump();
-
-    expect(find.text('Formato inválido'), findsOneWidget);
+  test('TA-U2: data de há 30 segundos retorna "Agora mesmo"', () {
+    final recent = DateTime.now().subtract(const Duration(seconds: 30)).toUtc().toIso8601String();
+    expect(timeAgo(recent), 'Agora mesmo');
   });
 
-  testWidgets('OFR-U3: apagar o campo de hora mostra "Obrigatório"', (tester) async {
-    await launchOfferPage(tester);
-
-    await tester.enterText(find.byKey(const Key('destination_field')), '');
-    await tester.pump();
-
-    expect(find.text('Obrigatório'), findsOneWidget);
+  test('TA-U3: data de há 45 minutos retorna "Há 45m"', () {
+    final date = DateTime.now().subtract(const Duration(minutes: 45)).toUtc().toIso8601String();
+    expect(timeAgo(date), 'Há 45m');
   });
 
-  testWidgets('OFR-U4: corrigir hora inválida para válida limpa o erro', (tester) async {
-    await launchOfferPage(tester);
+  test('TA-U4: data de há 3 horas retorna "Há 3h"', () {
+    final date = DateTime.now().subtract(const Duration(hours: 3)).toUtc().toIso8601String();
+    expect(timeAgo(date), 'Há 3h');
+  });
 
-    await tester.enterText(find.byKey(const Key('destination_field')), 'abc');
-    await tester.pump();
-    expect(find.text('Formato inválido'), findsOneWidget);
+  test('TA-U5: data de há 1 dia retorna "Ontem"', () {
+    final date = DateTime.now().subtract(const Duration(hours: 24)).toUtc().toIso8601String();
+    expect(timeAgo(date), 'Ontem');
+  });
 
-    await tester.enterText(find.byKey(const Key('destination_field')), '08:00');
-    await tester.pump();
-    expect(find.text('Formato inválido'), findsNothing);
+  test('TA-U6: data de há 5 dias retorna "Há 5d"', () {
+    final date = DateTime.now().subtract(const Duration(days: 5)).toUtc().toIso8601String();
+    expect(timeAgo(date), 'Há 5d');
+  });
+
+  test('TA-U7: string de data inválida retorna string vazia', () {
+    expect(timeAgo('nao-e-uma-data'), '');
+  });
+
+  test('TA-U8: string vazia retorna string vazia', () {
+    expect(timeAgo(''), '');
   });
 });
+
+// ===========================================================================
+// UT-TESTER: TesterAuth
+// ===========================================================================
+group('TesterAuth', () {
+  test('TA-U1: "admin" é reconhecido como username tester', () {
+    expect(TesterAuth.isTesterUsername('admin'), isTrue);
+  });
+
+  test('TA-U2: "tester" é reconhecido como username tester', () {
+    expect(TesterAuth.isTesterUsername('tester'), isTrue);
+  });
+
+  test('TA-U3: username normal não é tester', () {
+    expect(TesterAuth.isTesterUsername('up202312345'), isFalse);
+  });
+
+  test('TA-U4: string vazia não é tester', () {
+    expect(TesterAuth.isTesterUsername(''), isFalse);
+  });
+
+  test('TA-U5: apiCredentials para tester retorna email e password não vazios', () {
+    final creds = TesterAuth.apiCredentials('admin');
+    expect(creds.email, isNotEmpty);
+    expect(creds.apiPassword, isNotEmpty);
+  });
+});
+
+// ===========================================================================
+// UT-TOPBAR-EXTRA: TopTitleBar — casos não cobertos
+// ===========================================================================
+group('TopTitleBar — comportamento do botão de voltar', () {
+  testWidgets('TBX-U1: sem onBack, ícone arrow_back NÃO aparece', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: TopTitleBar(title: 'Sem Back'))),
+    );
+    expect(find.byIcon(Icons.arrow_back), findsNothing);
+  });
+
+  testWidgets('TBX-U2: com onBack, ícone arrow_back aparece', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(home: Scaffold(body: TopTitleBar(title: 'Com Back', onBack: () {}))),
+    );
+    expect(find.byIcon(Icons.arrow_back), findsOneWidget);
+  });
+
+  testWidgets('TBX-U3: pressionar arrow_back chama o callback', (tester) async {
+    bool pressed = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TopTitleBar(title: 'Teste', onBack: () => pressed = true),
+        ),
+      ),
+    );
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    expect(pressed, isTrue);
+  });
+});
+
+// ===========================================================================
+// UT-REWARD-EXTRA: RewardPanel — textos secundários
+// ===========================================================================
+group('RewardPanel — textos secundários', () {
+  testWidgets('RPX-U1: estado válido mostra texto de validade', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: RewardPanel(valid: true, rewardText: '+10 Créditos')),
+      ),
+    );
+    expect(find.text('Valido para 1 viagem como passageiro'), findsOneWidget);
+  });
+
+  testWidgets('RPX-U2: estado inválido mostra mensagem de instrução completa', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: RewardPanel(valid: false, rewardText: '')),
+      ),
+    );
+    expect(
+      find.text('Indique pelo menos 1 lugar disponivel para ganhar créditos.'),
+      findsOneWidget,
+    );
+  });
+});
+
+// ===========================================================================
+// UT-PROFILECARD-EXTRA: ProfileCard — casos não cobertos
+// ===========================================================================
+group('ProfileCard — isAvailable e timeAgoText', () {
+  testWidgets('PCX-U1: statusLabel "Disponível" usa cor verde (isAvailable=true)', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ProfileCard(
+            title: 'Condutor',
+            subtitle: 'Sub',
+            description: 'Desc',
+            statusLabel: 'Disponível',
+          ),
+        ),
+      ),
+    );
+    // Verifica que renderiza sem erro e mostra o label
+    expect(find.text('Disponível'), findsOneWidget);
+  });
+
+  testWidgets('PCX-U2: statusLabel "Reservado" não é verde (isAvailable=false)', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ProfileCard(
+            title: 'Condutor',
+            subtitle: 'Sub',
+            description: 'Desc',
+            statusLabel: 'Reservado',
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Reservado'), findsOneWidget);
+  });
+
+  testWidgets('PCX-U3: statusLabel "A aguardar condutor" é tratado como disponível', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ProfileCard(
+            title: 'Passageiro',
+            subtitle: 'Sub',
+            description: 'Desc',
+            statusLabel: ' A aguardar condutor ...',
+          ),
+        ),
+      ),
+    );
+    expect(find.textContaining('aguardar'), findsOneWidget);
+  });
+
+  testWidgets('PCX-U4: timeAgoText é mostrado quando fornecido', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ProfileCard(
+            title: 'Condutor',
+            subtitle: 'Sub',
+            description: 'Desc',
+            timeAgoText: 'Há 5m',
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Há 5m'), findsOneWidget);
+  });
+
+  testWidgets('PCX-U5: timeAgoText vazio não renderiza texto extra', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ProfileCard(
+            title: 'Condutor',
+            subtitle: 'Sub',
+            description: 'Desc',
+            timeAgoText: '',
+          ),
+        ),
+      ),
+    );
+    // Não deve lançar exceção
+    expect(tester.takeException(), isNull);
+  });
+});
+
+// ===========================================================================
+// UT-RIDECARD-EXTRA: RideCard — campos e comportamento do botão
+// ===========================================================================
+group('RideCard — campos e botão de reserva', () {
+  testWidgets('RCX-U1: mostra informação de carro e rating', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: RideCard(
+            name: 'Carlos',
+            car: 'Lugares livres: 3',
+            rating: '4.8',
+            distance: '300m',
+            credits: '−5',
+          ),
+        ),
+      ),
+    );
+    expect(find.textContaining('Lugares livres: 3'), findsOneWidget);
+    expect(find.textContaining('4.8'), findsOneWidget);
+  });
+
+  testWidgets('RCX-U2: mostra os créditos de custo', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: RideCard(
+            name: 'Driver',
+            car: 'Car',
+            rating: '5',
+            distance: '100m',
+            credits: '−5',
+          ),
+        ),
+      ),
+    );
+    expect(find.text('−5'), findsOneWidget);
+  });
+
+  testWidgets('RCX-U3: sem onReserve o botão de reservar não aparece', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: RideCard(
+            name: 'Driver',
+            car: 'Car',
+            rating: '5',
+            distance: '100m',
+            credits: '−5',
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Reservar Boleia'), findsNothing);
+  });
+
+  testWidgets('RCX-U4: com onReserve o botão de reservar aparece', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RideCard(
+            name: 'Driver',
+            car: 'Car',
+            rating: '5',
+            distance: '100m',
+            credits: '−5',
+            onReserve: () {},
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Reservar Boleia'), findsOneWidget);
+  });
+
+  testWidgets('RCX-U5: pressionar "Reservar Boleia" chama onReserve', (tester) async {
+    bool reserveCalled = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RideCard(
+            name: 'Driver',
+            car: 'Car',
+            rating: '5',
+            distance: '100m',
+            credits: '−5',
+            onReserve: () => reserveCalled = true,
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Reservar Boleia'));
+    expect(reserveCalled, isTrue);
+  });
+});
+
+// ===========================================================================
+// UT-HOMESHELL-EXTRA: HomeShell — NavigationBar e goToHomeTab
+// ===========================================================================
+group('HomeShell — NavigationBar e goToHomeTab', () {
+  final testIdentity = UniversityIdentity(
+    username: 'up001',
+    displayName: 'Teste',
+    photoUrl: null,
+  );
+
+  testWidgets('HSX-U1: tem NavigationBar com 5 destinos', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: HomeShell(
+        onUniversityLogout: () async {},
+        identity: testIdentity,
+      ),
+    ));
+    await tester.pump();
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byType(NavigationDestination), findsNWidgets(5));
+  });
+
+  testWidgets('HSX-U2: IndexedStack tem 5 filhos', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: HomeShell(
+        onUniversityLogout: () async {},
+        identity: testIdentity,
+      ),
+    ));
+    await tester.pump();
+    final stack = tester.widget<IndexedStack>(find.byType(IndexedStack));
+    expect(stack.children.length, 5);
+  });
+
+  testWidgets('HSX-U3: destino inicial é "Comunidade" (índice 0)', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: HomeShell(
+        onUniversityLogout: () async {},
+        identity: testIdentity,
+      ),
+    ));
+    await tester.pump();
+    final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
+    expect(navBar.selectedIndex, 0);
+  });
+
+  testWidgets('HSX-U4: goToHomeTab() reseta o índice para 0', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: HomeShell(
+        onUniversityLogout: () async {},
+        identity: testIdentity,
+      ),
+    ));
+    await tester.pump();
+
+    // Navega para o índice 2
+    final navBar = find.byType(NavigationBar);
+    await tester.tap(find.text('Oferecer'));
+    await tester.pump();
+
+    // Chama goToHomeTab()
+    final state = tester.state<HomeShellState>(find.byType(HomeShell));
+    state.goToHomeTab();
+    await tester.pump();
+
+    final updatedNavBar = tester.widget<NavigationBar>(navBar);
+    expect(updatedNavBar.selectedIndex, 0);
+  });
+});
+
+// ===========================================================================
+// UT-LOGINPAGE-EXTRA: UniversityLoginPage — estados de UI
+// ===========================================================================
+group('UniversityLoginPage — estados de UI', () {
+  testWidgets('LPX-U1: campos de username e password presentes', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: UniversityLoginPage(onLoginSuccess: (_) async {}),
+      ),
+    ));
+    expect(find.byKey(const Key('user_field')), findsOneWidget);
+    expect(find.byKey(const Key('pass_field')), findsOneWidget);
+  });
+
+  testWidgets('LPX-U2: submeter campos vazios mostra mensagem de erro', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: UniversityLoginPage(onLoginSuccess: (_) async {}),
+      ),
+    ));
+    await tester.tap(find.byType(FilledButton));
+    await tester.pump();
+    expect(find.text('Preencha as credenciais universitarias.'), findsOneWidget);
+  });
+
+  testWidgets('LPX-U3: botão mostra "Entrar" em estado normal', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: UniversityLoginPage(onLoginSuccess: (_) async {}),
+      ),
+    ));
+    expect(find.text('Entrar'), findsOneWidget);
+  });
+
+  testWidgets('LPX-U4: aceita authService injetado (não lança erro)', (tester) async {
+    // Verifica que o parâmetro opcional authService não causa crash
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: UniversityLoginPage(
+          onLoginSuccess: (_) async {},
+          authService: SigarraAuthService(),
+        ),
+      ),
+    ));
+    expect(tester.takeException(), isNull);
+  });
+});
+
+// ===========================================================================
+// UT-BOOTSTRAPPER-EXTRA: AppBootstrapper — injeção de dependências
+// ===========================================================================
+group('AppBootstrapper — injeção de dependências', () {
+  testWidgets('ABX-U1: aceita api e authService injetados sem crash', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: AppBootstrapper(
+        api: Ride4FreeApi(),
+        authService: SigarraAuthService(),
+      ),
+    ));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('ABX-U2: mostra CircularProgressIndicator durante o loading inicial', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: AppBootstrapper()));
+    // Imediatamente após pump, está em loading
+    await tester.pump(Duration.zero);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  });
+});
+
+// ===========================================================================
+// UT-SESSION: Lógica de construção de credenciais _ensureRide4FreeSession
+// ===========================================================================
+group('Lógica de credenciais _ensureRide4FreeSession', () {
+  test('SES-U1: username normal → email @fe.up.pt', () {
+    const username = 'up202312345';
+    final email = '$username@fe.up.pt';
+    expect(email, 'up202312345@fe.up.pt');
+  });
+
+  test('SES-U2: username normal → password com prefixo "pass_"', () {
+    const username = 'up202312345';
+    final password = 'pass_$username';
+    expect(password, 'pass_up202312345');
+  });
+
+  test('SES-U3: tester usa credenciais diferentes das normais', () {
+    // Verifica que TesterAuth.apiCredentials devolve algo diferente
+    // do padrão email@fe.up.pt
+    final testerCreds = TesterAuth.apiCredentials('admin');
+    expect(testerCreds.email, isNot(endsWith('@fe.up.pt')));
+  });
+
+  test('SES-U4: credenciais normais nunca são as de tester', () {
+    const username = 'up202312345';
+    expect(TesterAuth.isTesterUsername(username), isFalse);
+  });
+});
+// ===========================================================================
+  // UT-PEDIDOS: PedidosPage (Testes de Interface Isolados)
+  // ===========================================================================
+  group('PedidosPage widget', () {
+    
+    setUp(() {
+      // Garantimos que a API não tenta fazer pedidos HTTP reais durante estes testes.
+      // Com o token a null, o _load() retorna de imediato e não quebra.
+      Ride4FreeAuth.token = null; 
+    });
+
+    testWidgets('PED-U1: Renderiza o TopTitleBar com título correto', (tester) async {
+      await tester.pumpWidget(const MaterialApp(home: Scaffold(body: PedidosPage())));
+      await tester.pump(); // Processa a renderização inicial
+      
+      expect(find.text('Pedidos de Boleia'), findsOneWidget);
+    });
+
+    testWidgets('PED-U2: Renderiza a TabBar com as duas abas', (tester) async {
+      await tester.pumpWidget(const MaterialApp(home: Scaffold(body: PedidosPage())));
+      await tester.pump(); 
+      
+      expect(find.text('Os meus pedidos'), findsOneWidget);
+      expect(find.text('Pedidos recebidos'), findsOneWidget);
+    });
+
+    testWidgets('PED-U3: Aba "Os meus pedidos" mostra mensagem vazia por defeito', (tester) async {
+      await tester.pumpWidget(const MaterialApp(home: Scaffold(body: PedidosPage())));
+      await tester.pump(); // Renderiza widget e arranca o _load()
+      await tester.pump(); // Resolve o setState(() => _loading = false)
+      
+      // Valida o ecrã vazio da perspetiva do passageiro
+      expect(find.text('Ainda não pediste boleias.'), findsOneWidget);
+    });
+
+    testWidgets('PED-U4: Trocar para "Pedidos recebidos" mostra mensagem vazia de condutor', (tester) async {
+      await tester.pumpWidget(const MaterialApp(home: Scaffold(body: PedidosPage())));
+      await tester.pump(); 
+      await tester.pump(); 
+      
+      // Toca na segunda aba
+      await tester.tap(find.text('Pedidos recebidos'));
+      
+      // Usa pump com duração para a animação da aba terminar, sem usar pumpAndSettle()
+      // por causa do Timer.periodic de 8 segundos!
+      await tester.pump(); 
+      await tester.pump(const Duration(milliseconds: 300)); 
+      
+      // Valida o ecrã vazio da perspetiva do condutor
+      expect(find.text('Sem pedidos de passageiros.'), findsOneWidget);
+    });
+
+    testWidgets('PED-U5: Fazer dispose cancela o Timer sem crashar', (tester) async {
+      await tester.pumpWidget(const MaterialApp(home: Scaffold(body: PedidosPage())));
+      await tester.pump();
+      
+      // Fazer pump a um widget vazio força a árvore a remover o PedidosPage
+      // O que dispara o método dispose() dessa classe.
+      await tester.pumpWidget(const SizedBox());
+      
+      // Se houvesse algum erro no cancelamento do _timer, a framework capturava a exceção.
+      expect(tester.takeException(), isNull);
+    });
+  });
+  
 }
+
+

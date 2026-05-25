@@ -1,3 +1,5 @@
+// ignore_for_file: duplicate_ignore, unused_element_parameter, unused_element, deprecated_member_use
+
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -1822,7 +1824,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: _transactions.length > 15 ? 15 : _transactions.length,
-                          separatorBuilder: (_, __) => const Divider(height: 1, color: kDivider),
+                          separatorBuilder: (_, _) => const Divider(height: 1, color: kDivider),
                           itemBuilder: (context, i) {
                             final t = _transactions[i];
                             final amt = (t['amount_delta'] as num?) ?? 0;
@@ -1863,7 +1865,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: _reviews.length > 10 ? 10 : _reviews.length,
-                          separatorBuilder: (_, __) => const Divider(height: 1, color: kDivider),
+                          separatorBuilder: (_, _) => const Divider(height: 1, color: kDivider),
                           itemBuilder: (context, i) {
                             final r = _reviews[i];
                             return Padding(
