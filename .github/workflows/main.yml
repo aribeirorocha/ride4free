@@ -53,15 +53,15 @@ jobs:
 
       - name: 📦 Instalar dependências do Frontend
         run: |
-          cd app_test
+          cd Ride4Free
           flutter pub get
 
       - name: 🧹 Verificar formatação e análise estática (Linting)
         run: |
-          cd app_test
+          cd Ride4Free
           flutter analyze --no-fatal-warnings
 
       - name: 🧪 Correr Testes do Frontend (Widget, Unit, Integration)
         run: |
-          cd app_test
+          cd Ride4Free
           flutter test
