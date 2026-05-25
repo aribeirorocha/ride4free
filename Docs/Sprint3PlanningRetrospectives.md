@@ -35,7 +35,7 @@ Para esta Sprint final, a nossa gestão de projeto atingiu a sua maturidade máx
 **Data:** 25 de Maio de 2026
 
 **Evidência Visual do Scrumboard (Fim da Sprint):**
-*Abaixo encontra-se o estado final do nosso quadro Kanban após a conclusão do projeto, com o épico do Chat, o servidor remoto e o polimento final na coluna "Done".*
+*Abaixo encontra-se o estado final do nosso quadro Kanban após a conclusão do projeto, com o Chat, o servidor remoto e o polimento final na coluna "Done". Sentimos a necessidade de criar uma US7 para as notificações.*
 
 <img width="2158" height="1038" alt="image" src="https://github.com/user-attachments/assets/6ff70437-0a8b-4b55-8b5e-adf8aa5c5465" />
 
@@ -44,6 +44,7 @@ Para esta Sprint final, a nossa gestão de projeto atingiu a sua maturidade máx
 * **O que correu bem (Did Well):**
   * **Exploração de Infraestrutura e Redes:** A configuração do servidor com Cloudflare foi um enorme salto no nosso conhecimento empírico. Sendo a primeira vez da equipa a expor uma API local para a internet de forma segura, a curva de aprendizagem foi acentuada. No entanto, o sucesso desta tarefa ampliou substancialmente as nossas competências em DevOps, gestão de portos e túneis seguros.
   * **Maturidade em Testes de UI:** Dominámos a gestão de assincronia no Flutter (ex: ciclo de vida de `ScaffoldMessengers`) e injeção de dependências para isolar a API nos testes. O produto final é entregue com uma base de código resiliente e fortemente coberta.
+  * * **Refatoração Agressiva e Controlo de Dívida Técnica:** A integração de *features* complexas e assíncronas como o Chat (US6) e Notificações (US7) num ambiente remoto tinha tudo para gerar "código esparguete". O nosso grande mérito foi ter a disciplina de pagar a dívida técnica acumulada, aplicando rigorosamente o *Single Responsibility Principle* (SRP). Desacoplámos lógicas de negócio da UI, transformámos *widgets* massivos em componentes isolados e entregámos uma arquitetura verdadeiramente resiliente e *Production-Ready*.
 
 * **O que fazer diferente (Do Differently):**
   * **Mitigação de Heterogeneidade de Sistemas Operativos:** A configuração inicial do servidor e do ambiente de desenvolvimento revelou atritos severos e perdas de tempo devido aos diferentes Sistemas Operativos usados pela equipa (Windows vs. macOS). As diferenças nas variáveis de ambiente e caminhos de ficheiros causaram bloqueios que não prevemos. 
