@@ -6,14 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Release v3] - 2026-05-25 (End of Sprint 3)
 
 ### 🎯 Release Value Summary
-This final release elevates Ride4Free to a production-ready state. We introduced real-time bidirectional communication, allowing drivers and passengers to coordinate seamlessly. To break free from local development limitations, we successfully deployed the FastAPI backend globally using Cloudflare Tunnels. Furthermore, the UI underwent a deep structural refactoring and beautification, ensuring robust testability, flawless error handling, and a highly polished user experience.
+This final release elevates Ride4Free to a production-ready state. We introduced real-time bidirectional communication, allowing drivers and passengers to coordinate seamlessly, complemented by a smart notification system (US7). To break free from local development limitations, we successfully deployed the FastAPI backend globally using Cloudflare Tunnels. Furthermore, the UI underwent a deep structural refactoring, app icon customization, and beautification, ensuring robust testability, flawless error handling, and a highly polished user experience.
 
 ### Added (Closed PBIs)
 * **[US6] In-App Chat (Real-Time Communication):** Implemented a bidirectional messaging system. Users can now use a 1-to-1 chat to coordinate meeting points during the booking phase (Join Requests), and a Group Chat feature for active rides involving multiple passengers.
+* **[US7] Smart Notifications (Push & In-App):** Implemented a hybrid notification system to keep users informed without missing rides. Features native Push Notifications for background alerts (with deep-linking directly to the specific chat/ride) and an elegant non-intrusive Top-Snackbar with a red badge counter for active foreground sessions.
 * **Remote Server Infrastructure (DevOps):** Migrated the backend from `localhost` to a globally accessible remote server via a **Cloudflare Tunnel Reverse Proxy**. This enables real device testing over mobile networks (4G/5G) and eliminates cross-OS network discrepancies.
 * **Empty Message Prevention:** Built-in UI validation that dynamically disables the chat send button if the input field is empty or contains only whitespaces.
 
 ### Changed
+* **Custom Android App Icon:** Replaced the generic Flutter boilerplate logo with a custom-designed Ride4Free adaptive launcher icon using `flutter_launcher_icons`. Cleaned legacy `mipmap` caches directly in the native Android directory to ensure perfect density rendering across all devices.
 * **UI/UX Refactoring & Modularization:** Extracted deeply nested private widgets (e.g., `InfoExtraWidget`, Chat BottomSheets) into standalone, testable public components. This significantly improves visual consistency ("beautification") and enforces the Single Responsibility Principle.
 * **Test Suite Mocking Strategy:** Upgraded the testing infrastructure to heavily rely on Dependency Injection with `MockClient`. This completely isolates UI behavior validation from network latency and remote server fluctuations, ensuring a reliable CI/CD pipeline.
 
