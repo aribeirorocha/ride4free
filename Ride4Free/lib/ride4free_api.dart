@@ -35,9 +35,6 @@ class Ride4FreeConfig {
     if (Ride4FreeAppConfig.useRemoteApi) {
       return normalizeBaseUrl(Ride4FreeAppConfig.apiBaseUrl);
     }
-    if (Ride4FreeAppConfig.useRemoteApi) {
-      return Ride4FreeAppConfig.apiBaseUrl;
-    }
     if (kIsWeb) {
       return 'http://localhost:8000';
     }
