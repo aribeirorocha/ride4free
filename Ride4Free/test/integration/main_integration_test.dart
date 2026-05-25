@@ -23,7 +23,7 @@ void main() {
 
       await tester.tap(find.byIcon(Icons.search));
       await tester.pumpAndSettle();
-      expect(find.text('Boleias Encontradas'), findsOneWidget);
+      expect(find.text('RAIO DE TOLERANCIA'), findsOneWidget);
 
       await tester.tap(find.byIcon(Icons.directions_car));
       await tester.pumpAndSettle();
@@ -81,7 +81,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byIcon(Icons.person));
       await tester.pumpAndSettle();
-      final logoutBtn = find.widgetWithText(OutlinedButton, 'Terminar sessão universitária');
+      final logoutBtn = find.widgetWithText(OutlinedButton, 'Terminar Sessão');
       expect(logoutBtn, findsOneWidget);
       await tester.tap(logoutBtn);
       await tester.pumpAndSettle();
