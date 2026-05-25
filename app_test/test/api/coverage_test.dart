@@ -4,6 +4,7 @@
 // Cobre: Exceções de API, Validações de UI, Snackbars de Autenticação e BottomSheets.
 // =============================================================================
 
+import 'package:app_test/app_config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:app_test/main.dart';
@@ -123,4 +124,18 @@ void main() {
       expect(find.byIcon(Icons.star_outline_rounded), findsWidgets);
     });
   });
+  group('Ride4FreeAppConfig', () {
+    test('apiBaseUrl não está vazio', () {
+      expect(Ride4FreeAppConfig.apiBaseUrl, isNotEmpty);
+    });
+ 
+    test('useRemoteApi é true quando apiBaseUrl não está vazio', () {
+      expect(Ride4FreeAppConfig.useRemoteApi, isTrue);
+    });
+ 
+    test('apiBaseUrl é uma URL válida com https', () {
+      expect(Ride4FreeAppConfig.apiBaseUrl, startsWith('https://'));
+    });
+  });
+
 }

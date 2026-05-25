@@ -82,7 +82,7 @@ class _PedidosPageState extends State<PedidosPage> with SingleTickerProviderStat
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => _JoinRequestChatSheet(requestId: requestId, api: _api),
+      builder: (ctx) => JoinReqestChatSheet(requestId: requestId, api: _api),
     );
     await _load(silent: true);
   }
@@ -390,17 +390,17 @@ class _PedidosPageState extends State<PedidosPage> with SingleTickerProviderStat
   }
 }
 
-class _JoinRequestChatSheet extends StatefulWidget {
-  const _JoinRequestChatSheet({required this.requestId, required this.api});
+class JoinReqestChatSheet extends StatefulWidget {
+  const JoinReqestChatSheet({required this.requestId, required this.api});
 
   final int requestId;
   final Ride4FreeApi api;
 
   @override
-  State<_JoinRequestChatSheet> createState() => _JoinRequestChatSheetState();
+  State<JoinReqestChatSheet> createState() => JoinReqestChatSheetState();
 }
 
-class _JoinRequestChatSheetState extends State<_JoinRequestChatSheet> {
+class JoinReqestChatSheetState extends State<JoinReqestChatSheet> {
   final _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   List<Map<String, dynamic>> _messages = [];
@@ -636,6 +636,54 @@ class _JoinRequestChatSheetState extends State<_JoinRequestChatSheet> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+class InfoExtraWidget extends StatelessWidget {
+  final String? origin;
+  final String? dep;
+
+  const InfoExtraWidget({super.key, required this.origin, required this.dep});
+
+  @override
+  Widget build(BuildContext context) {
+    // Aqui colocas o código da "Zona de Informação Extra" que me enviaste antes
+    if ((origin == null || origin!.isEmpty) && (dep == null || dep!.isEmpty)) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F8F8),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        children: [
+          if (origin != null && origin!.isNotEmpty)
+            Row(
+              children: [
+                const Icon(Icons.my_location, size: 16, color: Color(0xFF7D7D7D)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(origin!, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black87, fontSize: 13)),
+                ),
+              ],
+            ),
+          if (origin != null && origin!.isNotEmpty && dep != null && dep!.isNotEmpty)
+            const SizedBox(height: 8),
+          if (dep != null && dep!.isNotEmpty)
+            Row(
+              children: [
+                const Icon(Icons.access_time, size: 16, color: Color(0xFF7D7D7D)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Partida: $dep', style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black87, fontSize: 13)),
+                ),
+              ],
+            ),
+        ],
       ),
     );
   }
