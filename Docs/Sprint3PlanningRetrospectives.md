@@ -3,7 +3,7 @@
 ## 1. Revisão da Sprint (Sprint Review)
 
 **Demonstração do Incremento Final do Produto:**
-Nesta terceira e última iteração do projeto, a equipa não só fechou o escopo planeado com a entrega da **US6 (User-Chat)** — permitindo comunicação bidirecional em tempo real entre condutores e passageiros —, como elevou a maturidade da arquitetura de software para um nível de prontidão de produção (*Production-Ready*).
+Nesta terceira e última iteração do projeto, a equipa não só fechou o escopo planeado com a entrega da **US6 (User-Chat)** — permitindo comunicação bidirecional em tempo real entre condutores e passageiros —, como elevou a maturidade da arquitetura de software para um nível de prontidão de produção (*Production-Ready*).Fizemos 39 créditos.
 
 O grande marco arquitetural desta Sprint foi a **migração do ambiente de desenvolvimento estritamente local (*localhost*) para uma infraestrutura remota utilizando túneis da Cloudflare (*Cloudflare Tunnels*)**. Esta evolução eliminou o bloqueio crítico de termos de partilhar a mesma rede local ou máquina física para testar a integração Frontend-Backend. O servidor passou a estar acessível globalmente, permitindo testes distribuídos, simulações em dispositivos físicos reais através de redes móveis (4G/5G) e validação assíncrona por qualquer membro da equipa. Em paralelo, executámos uma refatoração profunda de UI/UX, isolando lógicas de visualização (ex: *Zona de Informação Extra*) em *Widgets* imutáveis para garantir consistência visual e fiabilidade no tratamento de erros.
 
