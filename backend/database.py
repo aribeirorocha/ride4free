@@ -1222,6 +1222,25 @@ def submit_rating(
         else:
             raise ValueError("Not a participant in this ride")
 
+        existing = conn.execute(
+            """
+            SELECT stars, criteria_json FROM user_ratings
+            WHERE active_ride_id = ? AND rater_user_id = ?
+            """,
+            (active_ride_id, rater_user_id),
+        ).fetchone()
+        if existing:
+            stored_criteria = None
+            if existing["criteria_json"]:
+                stored_criteria = json.loads(existing["criteria_json"])
+            return {
+                "active_ride_id": active_ride_id,
+                "rated_user_id": rated_id,
+                "stars": int(existing["stars"]),
+                "criteria": stored_criteria,
+                "already_rated": True,
+            }
+
         conn.execute(
             """
             INSERT INTO user_ratings
@@ -1235,6 +1254,7 @@ def submit_rating(
         "rated_user_id": rated_id,
         "stars": stars,
         "criteria": criteria,
+        "already_rated": False,
     }
 
 
