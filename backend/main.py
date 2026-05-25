@@ -2,7 +2,7 @@
 Ride4Free local API — pairs with SQLite in database.py.
 Run locally: uvicorn main:app --reload --host 127.0.0.1 --port 8000
 
-Public URL for phones: ./start.sh (updates app_test/lib/app_config.dart)
+Public URL for phones: ./start.sh (updates Ride4Free/lib/app_config.dart)
 """
 
 from __future__ import annotations

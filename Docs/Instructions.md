@@ -50,7 +50,7 @@ Deixar janela aberta
 Abrir uma nova janela de terminal.
 
 ```bash
-cd app_test
+cd Ride4Free
 
 flutter pub get
 
