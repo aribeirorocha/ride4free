@@ -164,10 +164,10 @@ class UniversityLoginPage extends StatefulWidget {
   final SigarraAuthService? authService;
 
   @override
-  State<UniversityLoginPage> createState() => UniversityLoginPageState();
+  State<UniversityLoginPage> createState() => _UniversityLoginPageState();
 }
 
-class UniversityLoginPageState extends State<UniversityLoginPage> {
+class _UniversityLoginPageState extends State<UniversityLoginPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   late final _auth = widget.authService ?? SigarraAuthService();
@@ -186,7 +186,7 @@ class UniversityLoginPageState extends State<UniversityLoginPage> {
     final password = _passwordController.text;
 
     if (username.isEmpty || password.isEmpty) {
-      setState(() => _error = 'Preencha as credenciais universitárias.');
+      setState(() => _error = 'Preencha as credenciais universitarias.');
       return;
     }
 
@@ -199,7 +199,7 @@ class UniversityLoginPageState extends State<UniversityLoginPage> {
       final identity = await _auth.login(username: username, password: password);
       if (!mounted) return;
       if (identity == null) {
-        setState(() => _error = 'Credenciais inválidas. Tente novamente.');
+        setState(() => _error = 'Credenciais invalidas. Tente novamente.');
         return;
       }
       await widget.onLoginSuccess(identity);
@@ -208,7 +208,7 @@ class UniversityLoginPageState extends State<UniversityLoginPage> {
       final hint = TesterAuth.isTesterUsername(username)
           ? ' Conta teste: confirme que o backend está a correr.'
           : '';
-      setState(() => _error = 'Não foi possível concluir o login.$hint ($e)');
+      setState(() => _error = 'Nao foi possivel concluir o login.$hint ($e)');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -217,154 +217,67 @@ class UniversityLoginPageState extends State<UniversityLoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       body: SafeArea(
         child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Padding(
+              padding: const EdgeInsets.all(18),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // --- Ícone e Cabeçalho ---
-                  Container(
-                    height: 80,
-                    width: 80,
-                    margin: const EdgeInsets.only(bottom: 24),
-                    decoration: BoxDecoration(
-                      color: kRed.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.school, size: 40, color: kRed),
-                  ),
-                  
                   const Text(
-                    'Autenticação Universitária',
+                    'Autenticacao Universitaria',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 26, 
-                      fontWeight: FontWeight.w900, 
-                      color: Colors.black87,
-                      letterSpacing: -0.5,
-                    ),
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   const Text(
-                    'No primeiro acesso, entre com as suas credenciais da Universidade do Porto (Sigarra).',
+                    'No primeiro acesso, entre com as suas credenciais da universidade.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: kMuted, fontSize: 14, height: 1.4),
+                    style: TextStyle(color: kMuted),
                   ),
-                  
-                  // Aviso de conta de teste (suave)
-                  Container(
-                    margin: const EdgeInsets.only(top: 16, bottom: 32),
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0F0F0),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      'Conta de teste: admin ou tester | Password: test01',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Color(0xFF888888), fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Conta de teste: utilizador admin ou tester, password test01',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: kMuted, fontSize: 12),
                   ),
-
-                  // --- Campos de Input ---
+                  const SizedBox(height: 18),
                   TextField(
                     key: const Key('user_field'),
                     controller: _usernameController,
-                    decoration: InputDecoration(
-                      labelText: 'Número mecanográfico',
-                      prefixIcon: const Icon(Icons.person_outline, color: kRed),
-                      filled: true,
-                      fillColor: const Color(0xFFF8F8F8),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      floatingLabelStyle: const TextStyle(color: kRed, fontWeight: FontWeight.w700),
+                    decoration: const InputDecoration(
+                      labelText: 'Numero mecanografico / utilizador',
+                      border: OutlineInputBorder(),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  
+                  const SizedBox(height: 10),
                   TextField(
                     key: const Key('pass_field'),
                     controller: _passwordController,
                     obscureText: true,
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: 'Password',
-                      prefixIcon: const Icon(Icons.lock_outline, color: kRed),
-                      filled: true,
-                      fillColor: const Color(0xFFF8F8F8),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      floatingLabelStyle: const TextStyle(color: kRed, fontWeight: FontWeight.w700),
+                      border: OutlineInputBorder(),
                     ),
                   ),
-                  
-                  // --- Mensagem de Erro ---
                   if (_error != null) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: kRed.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: kRed.withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.error_outline, color: kRed, size: 20),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _error!,
-                              style: const TextStyle(color: kRed, fontWeight: FontWeight.w700, fontSize: 13),
-                            ),
-                          ),
-                        ],
-                      ),
+                    const SizedBox(height: 10),
+                    Text(
+                      _error!,
+                      style: const TextStyle(color: kRed, fontWeight: FontWeight.w700),
                     ),
                   ],
-                  
-                  const SizedBox(height: 32),
-                  
-                  // --- Botão Principal ---
-                  Container(
-                    decoration: BoxDecoration(
-                      boxShadow: [
-                        BoxShadow(
-                          color: kRed.withOpacity(0.25),
-                          blurRadius: 15,
-                          offset: const Offset(0, 6),
-                        )
-                      ]
+                  const SizedBox(height: 14),
+                  FilledButton(
+                    onPressed: _busy ? null : _login,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: kRed,
+                      minimumSize: const Size.fromHeight(50),
                     ),
-                    child: FilledButton(
-                      onPressed: _busy ? null : _login,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: kRed,
-                        minimumSize: const Size.fromHeight(56),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)
-                        ),
-                      ),
-                      child: _busy 
-                        ? const SizedBox(
-                            height: 24, 
-                            width: 24, 
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)
-                          )
-                        : const Text(
-                            'Entrar', 
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0.5)
-                          ),
-                    ),
+                    child: Text(_busy ? 'A autenticar...' : 'Entrar'),
                   ),
                 ],
               ),
@@ -375,6 +288,7 @@ class UniversityLoginPageState extends State<UniversityLoginPage> {
     );
   }
 }
+
 class HomeShell extends StatefulWidget {
   const HomeShell({
     super.key,
@@ -439,7 +353,7 @@ class CommunityBoardPage extends StatefulWidget {
 }
 
 class CommunityBoardPageState extends State<CommunityBoardPage> {
-  String timeAgo(String? dateStr) {
+  String _timeAgo(String? dateStr) {
     if (dateStr == null) return '';
     try {
       final date = DateTime.parse(dateStr).toLocal();
@@ -622,7 +536,7 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
           final origin = d['description'] as String? ?? 'Local a definir';
           final dest = d['destination_display'] as String? ?? 'Destino a definir';
           final time = d['departure_time'] ?? 'Horário a definir';
-          final timeStr = timeAgo(d['created_at'] as String?);
+          final timeStr = _timeAgo(d['created_at'] as String?);
           
           final rating = d['rating_display'] as String? ?? '—';
           return ProfileCard(
@@ -663,7 +577,7 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
           final count = p['passenger_count']?.toString() ?? '1';
           final status = p['status'] as String? ?? 'open';
           final isBooked = status == 'fulfilled';
-          final timeStr = timeAgo(p['created_at'] as String?);
+          final timeStr = _timeAgo(p['created_at'] as String?);
 
           return ProfileCard(
             title: p['passenger_name'] as String? ?? 'Passageiro',
@@ -1155,8 +1069,7 @@ class ProfilePage extends StatefulWidget {
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
-}
-class _SearchRidePageState extends State<SearchRidePage> {
+}class _SearchRidePageState extends State<SearchRidePage> {
   final _originController = TextEditingController();
   final _destController = TextEditingController();
   final _timeController = TextEditingController();
@@ -1473,7 +1386,7 @@ class _SearchRidePageState extends State<SearchRidePage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _label('Raio de Tolerancia'),
+                  _label('Raio de Pesquisa'),
                   Text('${_radiusMeters.toInt()}m', style: const TextStyle(color: kRed, fontWeight: FontWeight.w800)),
                 ],
               ),

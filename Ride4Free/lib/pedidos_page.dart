@@ -1,4 +1,4 @@
-// ignore_for_file: use_key_in_widget_constructors, deprecated_member_use
+// ignore_for_file: deprecated_member_use
 
 import 'dart:async';
 
@@ -391,7 +391,7 @@ class _PedidosPageState extends State<PedidosPage> with SingleTickerProviderStat
 }
 
 class JoinReqestChatSheet extends StatefulWidget {
-  const JoinReqestChatSheet({super.key, required this.requestId, required this.api});
+  const JoinReqestChatSheet({required this.requestId, required this.api});
 
   final int requestId;
   final Ride4FreeApi api;

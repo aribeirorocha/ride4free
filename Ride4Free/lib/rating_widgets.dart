@@ -128,26 +128,16 @@ class _StructuredRatingDialogState extends State<_StructuredRatingDialog> {
       // 4. RESTAURADA A CHAMADA À API CORRETA (rateRideParticipant)
       await widget.api.rateRideParticipant(
         widget.rideId,
-        criteria: Map<String, int>.from(_criteria),
+        stars: overall,
       );
-
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Avaliação enviada! Obrigado.')),
         );
         Navigator.pop(context, true);
       }
-    } on Ride4FreeApiException catch (e) {
-      if (mounted) {
-        if (e.statusCode == 409) {
-          Navigator.pop(context, true);
-          return;
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.body.isNotEmpty ? e.body : 'Erro ao enviar avaliação.')),
-        );
-      }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Erro ao enviar avaliação.')),
