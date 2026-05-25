@@ -1155,7 +1155,8 @@ class ProfilePage extends StatefulWidget {
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
-}class _SearchRidePageState extends State<SearchRidePage> {
+}
+class _SearchRidePageState extends State<SearchRidePage> {
   final _originController = TextEditingController();
   final _destController = TextEditingController();
   final _timeController = TextEditingController();

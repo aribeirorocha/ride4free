@@ -1732,9 +1732,21 @@ group('UniversityLoginPage — estados de UI', () {
         body: UniversityLoginPage(onLoginSuccess: (_) async {}),
       ),
     ));
-    await tester.tap(find.byType(FilledButton));
-    await tester.pump();
-    expect(find.text('Preencha as credenciais universitarias.'), findsOneWidget);
+
+    // 1. Encontrar o botão
+    final buttonFinder = find.byType(FilledButton);
+    
+    // 2. Garantir que o botão está visível no ecrã (faz scroll se necessário)
+    await tester.ensureVisible(buttonFinder);
+    
+    // 3. Clicar no botão
+    await tester.tap(buttonFinder);
+    
+    // 4. Esperar que a UI atualize (mostre a caixa de erro)
+    await tester.pumpAndSettle();
+    
+    // 5. Verificar a mensagem de erro exata (AGORA COM ACENTO)
+    expect(find.text('Preencha as credenciais universitárias.'), findsOneWidget);
   });
 
   testWidgets('LPX-U3: botão mostra "Entrar" em estado normal', (tester) async {
