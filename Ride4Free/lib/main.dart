@@ -186,7 +186,7 @@ class _UniversityLoginPageState extends State<UniversityLoginPage> {
     final password = _passwordController.text;
 
     if (username.isEmpty || password.isEmpty) {
-      setState(() => _error = 'Preencha as credenciais universitarias.');
+      setState(() => _error = 'Preencha as credenciais universitárias.');
       return;
     }
 
@@ -199,7 +199,7 @@ class _UniversityLoginPageState extends State<UniversityLoginPage> {
       final identity = await _auth.login(username: username, password: password);
       if (!mounted) return;
       if (identity == null) {
-        setState(() => _error = 'Credenciais invalidas. Tente novamente.');
+        setState(() => _error = 'Credenciais inválidas. Tente novamente.');
         return;
       }
       await widget.onLoginSuccess(identity);
@@ -208,7 +208,7 @@ class _UniversityLoginPageState extends State<UniversityLoginPage> {
       final hint = TesterAuth.isTesterUsername(username)
           ? ' Conta teste: confirme que o backend está a correr.'
           : '';
-      setState(() => _error = 'Nao foi possivel concluir o login.$hint ($e)');
+      setState(() => _error = 'Não foi possível concluir o login.$hint ($e)');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -217,67 +217,154 @@ class _UniversityLoginPageState extends State<UniversityLoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Padding(
-              padding: const EdgeInsets.all(18),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
-                    'Autenticacao Universitaria',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+                  // --- Ícone e Cabeçalho ---
+                  Container(
+                    height: 80,
+                    width: 80,
+                    margin: const EdgeInsets.only(bottom: 24),
+                    decoration: BoxDecoration(
+                      color: kRed.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.school, size: 40, color: kRed),
                   ),
-                  const SizedBox(height: 8),
+                  
                   const Text(
-                    'No primeiro acesso, entre com as suas credenciais da universidade.',
+                    'Autenticação Universitária',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: kMuted),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Conta de teste: utilizador admin ou tester, password test01',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: kMuted, fontSize: 12),
-                  ),
-                  const SizedBox(height: 18),
-                  TextField(
-                    key: const Key('user_field'),
-                    controller: _usernameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Numero mecanografico / utilizador',
-                      border: OutlineInputBorder(),
+                    style: TextStyle(
+                      fontSize: 26, 
+                      fontWeight: FontWeight.w900, 
+                      color: Colors.black87,
+                      letterSpacing: -0.5,
                     ),
                   ),
                   const SizedBox(height: 10),
+                  const Text(
+                    'No primeiro acesso, entre com as suas credenciais da Universidade do Porto (Sigarra).',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: kMuted, fontSize: 14, height: 1.4),
+                  ),
+                  
+                  // Aviso de conta de teste (suave)
+                  Container(
+                    margin: const EdgeInsets.only(top: 16, bottom: 32),
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0F0F0),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'Conta de teste: admin ou tester | Password: test01',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Color(0xFF888888), fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+
+                  // --- Campos de Input ---
+                  TextField(
+                    key: const Key('user_field'),
+                    controller: _usernameController,
+                    decoration: InputDecoration(
+                      labelText: 'Número mecanográfico',
+                      prefixIcon: const Icon(Icons.person_outline, color: kRed),
+                      filled: true,
+                      fillColor: const Color(0xFFF8F8F8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      floatingLabelStyle: const TextStyle(color: kRed, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
                   TextField(
                     key: const Key('pass_field'),
                     controller: _passwordController,
                     obscureText: true,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Password',
-                      border: OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.lock_outline, color: kRed),
+                      filled: true,
+                      fillColor: const Color(0xFFF8F8F8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      floatingLabelStyle: const TextStyle(color: kRed, fontWeight: FontWeight.w700),
                     ),
                   ),
+                  
+                  // --- Mensagem de Erro ---
                   if (_error != null) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      _error!,
-                      style: const TextStyle(color: kRed, fontWeight: FontWeight.w700),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: kRed.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: kRed.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: kRed, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _error!,
+                              style: const TextStyle(color: kRed, fontWeight: FontWeight.w700, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
-                  const SizedBox(height: 14),
-                  FilledButton(
-                    onPressed: _busy ? null : _login,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: kRed,
-                      minimumSize: const Size.fromHeight(50),
+                  
+                  const SizedBox(height: 32),
+                  
+                  // --- Botão Principal ---
+                  Container(
+                    decoration: BoxDecoration(
+                      boxShadow: [
+                        BoxShadow(
+                          color: kRed.withOpacity(0.25),
+                          blurRadius: 15,
+                          offset: const Offset(0, 6),
+                        )
+                      ]
                     ),
-                    child: Text(_busy ? 'A autenticar...' : 'Entrar'),
+                    child: FilledButton(
+                      onPressed: _busy ? null : _login,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: kRed,
+                        minimumSize: const Size.fromHeight(56),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)
+                        ),
+                      ),
+                      child: _busy 
+                        ? const SizedBox(
+                            height: 24, 
+                            width: 24, 
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)
+                          )
+                        : const Text(
+                            'Entrar', 
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0.5)
+                          ),
+                    ),
                   ),
                 ],
               ),
@@ -288,7 +375,6 @@ class _UniversityLoginPageState extends State<UniversityLoginPage> {
     );
   }
 }
-
 class HomeShell extends StatefulWidget {
   const HomeShell({
     super.key,

@@ -14,6 +14,7 @@ import 'package:Ride4Free/ride4free_api.dart';
 
 // --- Helpers para testes de cobertura adicionais ---
 http.Response _ok(Object body) => http.Response(jsonEncode(body), 200);
+// ignore: unused_element
 http.Response _err(int code, [String msg = 'erro']) => http.Response('{"detail":"$msg"}', code);
 Map<String, dynamic> _userJson({int id = 1, String email = 'a@b.com', String name = 'Ana'}) =>
     {'id': id, 'email': email, 'name': name};
@@ -371,7 +372,9 @@ void main() {
           password: 'password123',
           displayName: 'Teste Coverage',
         );
-      } catch (e) {}
+      } catch (e) {
+        fail('syncRide4FreeApiSession lançou uma exceção: $e');
+      }
     });
   });
 
