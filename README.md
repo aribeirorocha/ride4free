@@ -150,7 +150,8 @@ Reservation - store information about a reservation, including its state (accept
 Avaliation - stores the pontuation (score) related to users.
 LeaderBoard - ranks each user by the amount of pontuation.
 
-<img width="704" height="702" alt="image" src="https://github.com/user-attachments/assets/ca1222c3-9a21-4c64-ae14-2709ac074d9a" />
+<img width="1123" height="1003" alt="Ride4Free DomainModel" src="https://github.com/user-attachments/assets/a581bc42-cf53-45b3-b3b3-25a8ce499393" />
+
 
 
 
@@ -161,14 +162,15 @@ LeaderBoard - ranks each user by the amount of pontuation.
 ### Logical architecture
 User interacts through the *User Interface* for visual elements and interactions, with the *Business Logic* layer handling core functionalities, and theexternal services, specifically OpenStreetMap, which is used for map-related features. Data storage and retrieval are handled by the DataBase, through the Ride4Free database schema.
 
-<img width="1003" height="683" alt="image" src="https://github.com/user-attachments/assets/24708942-9c61-4d71-96d1-dd4e0f26b263" />
+<img width="1003" height="683" alt="Ride4Free Logical View (arquitecture)" src="https://github.com/user-attachments/assets/5bedacfb-d552-4024-bb22-b8b8e47e8edb" />
 
 
 ### Physical architecture
 
 Each user interacts with the application via their mobile device. The application accesses external machines to retrieve necessary data, such as the OpenStreetMap and the DataBase.
 
-<img width="683" height="443" alt="image" src="https://github.com/user-attachments/assets/3d6a97bf-2373-4171-a795-3d28957a6d7c" />
+<img width="1723" height="1123" alt="Ride4Free Physical View (arquitecture)" src="https://github.com/user-attachments/assets/98664d04-f3a9-46a0-8cd9-26eac2d1f8b7" />
+
 
 ---
 
