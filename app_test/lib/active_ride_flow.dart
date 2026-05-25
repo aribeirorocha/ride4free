@@ -21,6 +21,29 @@ void navigateToHomeAfterRide(BuildContext context) {
   context.findAncestorStateOfType<HomeShellState>()?.goToHomeTab();
 }
 
+/// Prevents two rating dialogs (coordinator + active ride page) at once.
+bool _rideRatingDialogOpen = false;
+
+Future<bool> promptRideRating({
+  required BuildContext context,
+  required int rideId,
+  required String targetName,
+  required Ride4FreeApi api,
+}) async {
+  if (_rideRatingDialogOpen) return false;
+  _rideRatingDialogOpen = true;
+  try {
+    return await showStructuredRatingDialog(
+      context,
+      rideId: rideId,
+      targetName: targetName,
+      api: api,
+    );
+  } finally {
+    _rideRatingDialogOpen = false;
+  }
+}
+
 /// Polls active ride state and opens the ride window when needed.
 class ActiveRideCoordinator extends StatefulWidget {
   const ActiveRideCoordinator({super.key, required this.child});
@@ -87,8 +110,8 @@ class _ActiveRideCoordinatorState extends State<ActiveRideCoordinator> {
 
   Future<void> _showRatingDialog({required int rideId, required String targetName}) async {
     if (!mounted) return;
-    final submitted = await showStructuredRatingDialog(
-      context,
+    final submitted = await promptRideRating(
+      context: context,
       rideId: rideId,
       targetName: targetName,
       api: _api,
@@ -305,8 +328,8 @@ class _ActiveRidePageState extends State<ActiveRidePage> {
   }
 
   Future<bool> _promptRating({required int rideId, required String name}) async {
-    return showStructuredRatingDialog(
-      context,
+    return promptRideRating(
+      context: context,
       rideId: rideId,
       targetName: name,
       api: _api,
