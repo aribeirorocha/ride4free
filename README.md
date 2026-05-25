@@ -124,6 +124,7 @@ Our requirements are documented as **User Stories** in our [GitHub Project T4-Sc
 | #32 | [US4: Rate Passenger Conduct](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/34) | **Could-have** | 13 | Accepted |
 | #81 | [US5: Uni Login](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/81) | **Could-have** | 8 | Accepted |
 | #111 | [US6: User Chat](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/111) | **Must-have** | 13 | Done |
+| #113 | [US6: Notifications](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/113) | **Must-have** | 13 | Done |
 
 ---
 
