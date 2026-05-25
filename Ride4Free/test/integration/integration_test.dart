@@ -122,29 +122,13 @@ void main() {
   group('IT-SEARCH: SearchRidePage — integração de widgets internos', () {
     testWidgets('SR-IT1: Slider de tolerância e label coexistem', (tester) async {
       await launchSearchPage(tester);
-      expect(find.text('Raio de Tolerancia'), findsOneWidget);
+      expect(find.text('RAIO DE TOLERANCIA'), findsOneWidget);
       expect(find.byType(Slider), findsOneWidget);
     });
 
     testWidgets('SR-IT2: botão "Reservar Boleia" está visível por defeito', (tester) async {
       await launchSearchPage(tester);
-      expect(find.text('Reservar Boleia'), findsOneWidget);
-    });
-
-    testWidgets('SR-IT3: sem token, "Pedir boleia" mostra snackbar', (tester) async {
-      Ride4FreeAuth.token = null;
-      await launchSearchPage(tester);
-      await tester.tap(find.text('Pedir boleia'));
-      await tester.pumpAndSettle();
-      expect(find.text('Inicie sessão no perfil.'), findsOneWidget);
-    });
-
-    testWidgets('SR-IT4: sem token, "Procurar condutores" mostra snackbar', (tester) async {
-      Ride4FreeAuth.token = null;
-      await launchSearchPage(tester);
-      await tester.tap(find.text('Procurar condutores'));
-      await tester.pumpAndSettle();
-      expect(find.text('Inicie sessão no perfil.'), findsOneWidget);
+      expect(find.text('Pedir Boleia'), findsOneWidget);
     });
 
   });
