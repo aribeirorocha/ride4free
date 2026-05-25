@@ -120,9 +120,10 @@ Our requirements are documented as **User Stories** in our [GitHub Project T4-Sc
 | :--- | :--- | :--- | :--- | :--- |
 | #30 | [US1: Publish Solidarity Ride](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/30) | **Must-have** | 21 | Accepted|
 | #31 | [US2: Book Ride Seat](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/32) | **Must-have** | 13 | Accepted |
-| #33 | [US3: Search with Walking Tolerance](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/33) | **Should-have** | 8 | In-Progress |
-| #32 | [US4: Rate Passenger Conduct](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/34) | **Could-have** | 13 | In-Progress |
-| #81 | [US5: Uni Login](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/81) | **Could-have** | 8 | In-Progress |
+| #33 | [US3: Search with Walking Tolerance](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/33) | **Should-have** | 8 | Accepted |
+| #32 | [US4: Rate Passenger Conduct](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/34) | **Could-have** | 13 | Accepted |
+| #81 | [US5: Uni Login](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/81) | **Could-have** | 8 | Accepted |
+| #111 | [US6: User Chat](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/111) | **Must-have** | 13 | Done |
 
 ---
 
@@ -238,6 +239,7 @@ The detailed notes from our Sprint 1 Review, Planning, and Retrospective (includ
 The detailed notes from our Sprint 2 Review, Planning, and Retrospective (including the Agile Patterns applied, the delivery of the Advanced Filtering and University Authentication features, team structure, and future improvements) can be found in our dedicated [Sprint2PlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/Docs/Sprint2PlanningRetrospectives.md).
 
 ### Sprint 3
+The detailed notes from our Sprint 3 Review, Planning, and Retrospective (including the Agile Patterns applied, the delivery of the In-App Chat feature, UI/UX refinement, deployment of the remote server via Cloudflare tunnels, and final project reflections) can be found in our dedicated [Sprint3PlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/Docs/Sprint3PlanningRetrospectives.md).
 
 ### Sprint 4
 
