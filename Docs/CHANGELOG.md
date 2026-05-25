@@ -15,6 +15,7 @@ This final release elevates Ride4Free to a production-ready state. We introduced
 * **Empty Message Prevention:** Built-in UI validation that dynamically disables the chat send button if the input field is empty or contains only whitespaces.
 
 ### Changed
+* **Custom Android App Icon:** Replaced the generic Flutter boilerplate logo with a custom-designed Ride4Free adaptive launcher icon using `flutter_launcher_icons`. Cleaned legacy `mipmap` caches directly in the native Android directory to ensure perfect density rendering across all devices.
 * **UI/UX Refactoring & Modularization:** Extracted deeply nested private widgets (e.g., `InfoExtraWidget`, Chat BottomSheets) into standalone, testable public components. This significantly improves visual consistency ("beautification") and enforces the Single Responsibility Principle.
 * **Test Suite Mocking Strategy:** Upgraded the testing infrastructure to heavily rely on Dependency Injection with `MockClient`. This completely isolates UI behavior validation from network latency and remote server fluctuations, ensuring a reliable CI/CD pipeline.
 
