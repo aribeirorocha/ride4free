@@ -391,7 +391,7 @@ class _PedidosPageState extends State<PedidosPage> with SingleTickerProviderStat
 }
 
 class JoinReqestChatSheet extends StatefulWidget {
-  const JoinReqestChatSheet({required this.requestId, required this.api});
+  const JoinReqestChatSheet({super.key, required this.requestId, required this.api});
 
   final int requestId;
   final Ride4FreeApi api;
