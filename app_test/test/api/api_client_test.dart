@@ -1,3 +1,4 @@
+import 'package:app_test/app_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:app_test/ride4free_api.dart';
 
@@ -129,5 +130,16 @@ void main() {
       expect(api.logout, isA<Function>());
     });
   });
+
+  test('Configuração: apiBaseUrl deve estar configurado corretamente', () {
+    // Verifica se a URL não está vazia (importante para não ir para localhost por erro)
+    expect(Ride4FreeAppConfig.apiBaseUrl, isNotEmpty);
+    expect(Ride4FreeAppConfig.apiBaseUrl, contains('trycloudflare.com'));
+  });
+
+  test('Configuração: useRemoteApi deve ser verdadeiro se a URL estiver presente', () {
+    expect(Ride4FreeAppConfig.useRemoteApi, isTrue);
+  });
 }
+
 

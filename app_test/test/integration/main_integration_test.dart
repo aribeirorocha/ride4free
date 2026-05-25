@@ -122,13 +122,14 @@ Future<void> launchHomeShell(WidgetTester tester, {UniversityIdentity? identity}
   // ===========================================================================
   // IT-PROFILE: ProfilePage
   // ===========================================================================
-  group('Integration — ProfilePage', () {
+group('Integration — ProfilePage', () {
 
     testWidgets('IT-PROF-1: Perfil mostra o username correto do utilizador autenticado', (tester) async {
       await launchHomeShell(tester, identity: makeIdentity(username: 'up987654321'));
       await tester.tap(find.byIcon(Icons.person));
       await tester.pumpAndSettle();
-      expect(find.text('UP: up987654321'), findsOneWidget);
+      // ✅ CORREÇÃO: O novo design usa "username · Universidade do Porto"
+      expect(find.text('up987654321 · Universidade do Porto'), findsOneWidget);
     });
 
     testWidgets('IT-PROF-2: Perfil mostra o displayName correto', (tester) async {
@@ -142,7 +143,8 @@ Future<void> launchHomeShell(WidgetTester tester, {UniversityIdentity? identity}
       await launchHomeShell(tester);
       await tester.tap(find.byIcon(Icons.person));
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(OutlinedButton, 'Terminar sessão universitária'), findsOneWidget);
+      // ✅ CORREÇÃO: O botão no design Premium mudou para 'Terminar Sessão'
+      expect(find.widgetWithText(OutlinedButton, 'Terminar Sessão'), findsOneWidget);
     });
 
     testWidgets('IT-PROF-4: Clicar logout chama onUniversityLogout', (tester) async {
@@ -156,7 +158,8 @@ Future<void> launchHomeShell(WidgetTester tester, {UniversityIdentity? identity}
       await tester.pumpAndSettle();
       await tester.tap(find.byIcon(Icons.person));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Terminar sessão universitária'));
+      // ✅ CORREÇÃO: Usar o nome atualizado do botão para fazer o tap
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Terminar Sessão'));
       await tester.pumpAndSettle();
       expect(logoutCalled, isTrue);
     });
@@ -165,8 +168,9 @@ Future<void> launchHomeShell(WidgetTester tester, {UniversityIdentity? identity}
       await launchHomeShell(tester);
       await tester.tap(find.byIcon(Icons.person));
       await tester.pumpAndSettle();
-      expect(find.text('UP: up202300001'), findsOneWidget);
-      expect(find.widgetWithText(OutlinedButton, 'Terminar sessão universitária'), findsOneWidget);
+      // ✅ CORREÇÃO: Atualizado para os novos formatos de texto
+      expect(find.text('up202300001 · Universidade do Porto'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, 'Terminar Sessão'), findsOneWidget);
     });
 
     testWidgets('IT-PROF-6: Perfil mostra ícone de pessoa no avatar', (tester) async {
@@ -176,11 +180,31 @@ Future<void> launchHomeShell(WidgetTester tester, {UniversityIdentity? identity}
       expect(find.byType(CircleAvatar), findsOneWidget);
     });
 
-    testWidgets('IT-PROF-7: Perfil mostra URL da API', (tester) async {
+    testWidgets('IT-PROF-7: Perfil mostra o título principal', (tester) async {
       await launchHomeShell(tester);
       await tester.tap(find.byIcon(Icons.person));
       await tester.pumpAndSettle();
-      expect(find.textContaining('API:'), findsOneWidget);
+      // ✅ CORREÇÃO: Removemos a URL da API do ecrã Premium.
+      // Em vez disso, garantimos que o ecrã tem o TopTitleBar correto.
+      expect(find.text('Perfil'), findsOneWidget);
+    });
+    testWidgets('IT-PROF-8: O Perfil Premium mostra as estatísticas rápidas', (tester) async {
+      await launchHomeShell(tester);
+      await tester.tap(find.byIcon(Icons.person));
+      await tester.pumpAndSettle();
+      
+      expect(find.text('Avaliação'), findsOneWidget);
+      expect(find.text('Créditos'), findsOneWidget);
+    });
+
+    testWidgets('IT-PROF-9: O campo do veículo (Premium UI) está presente no perfil', (tester) async {
+      await launchHomeShell(tester);
+      await tester.tap(find.byIcon(Icons.person));
+      await tester.pumpAndSettle();
+      
+      // Valida se a nossa nova label com formato Premium (maiúsculas) está no ecrã
+      expect(find.text('O TEU VEÍCULO (PARA CONDUTORES)'), findsOneWidget);
+      expect(find.byIcon(Icons.save), findsOneWidget); // O nosso novo botão de gravar quadrado
     });
   });
 
@@ -381,7 +405,7 @@ Future<void> launchHomeShell(WidgetTester tester, {UniversityIdentity? identity}
     });
 
 
-    testWidgets('IT-BOOT-9: NavigationBar tem 4 destinos no HomeShell', (tester) async {
+    testWidgets('IT-BOOT-9: NavigationBar tem 5 destinos no HomeShell', (tester) async {
       SharedPreferences.setMockInitialValues({
         'university_logged_in': true,
         'university_username': 'up999',
@@ -390,7 +414,9 @@ Future<void> launchHomeShell(WidgetTester tester, {UniversityIdentity? identity}
       await tester.pumpWidget(const MyApp());
       await tester.pumpAndSettle();
       expect(find.byType(NavigationBar), findsOneWidget);
-      expect(find.byType(NavigationDestination), findsNWidgets(4));
+      
+
+      expect(find.byType(NavigationDestination), findsNWidgets(5)); 
     });
 
     testWidgets('IT-BOOT-10: MyApp usa MaterialApp com tema correto', (tester) async {
@@ -399,4 +425,41 @@ Future<void> launchHomeShell(WidgetTester tester, {UniversityIdentity? identity}
       expect(app.debugShowCheckedModeBanner, isFalse);
     });
   });
+  // ===========================================================================
+  // IT-PEDIDOS: PedidosPage
+  // ===========================================================================
+  group('Integration — PedidosPage', () {
+
+    testWidgets('IT-PED-1: Página de Pedidos carrega com título e abas corretas', (tester) async {
+      await launchHomeShell(tester);
+      await tester.tap(find.byIcon(Icons.inbox)); // Ícone da aba Pedidos
+      await tester.pumpAndSettle();
+
+      expect(find.text('Pedidos de Boleia'), findsOneWidget);
+      expect(find.text('Os meus pedidos'), findsOneWidget);
+      expect(find.text('Pedidos recebidos'), findsOneWidget);
+    });
+
+    testWidgets('IT-PED-2: Aba "Os meus pedidos" mostra estado vazio corretamente', (tester) async {
+      await launchHomeShell(tester);
+      await tester.tap(find.byIcon(Icons.inbox));
+      await tester.pumpAndSettle();
+
+      // Sem dados mockados, a lista deve estar vazia e mostrar este texto
+      expect(find.text('Ainda não pediste boleias.'), findsOneWidget);
+    });
+
+    testWidgets('IT-PED-3: Trocar para a aba "Pedidos recebidos" atualiza a vista', (tester) async {
+      await launchHomeShell(tester);
+      await tester.tap(find.byIcon(Icons.inbox));
+      await tester.pumpAndSettle();
+
+      // Clica na segunda tab
+      await tester.tap(find.text('Pedidos recebidos'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sem pedidos de passageiros.'), findsOneWidget);
+    });
+  });
+  
 }

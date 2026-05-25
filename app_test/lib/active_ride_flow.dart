@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use, unused_element, unused_field
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -178,7 +180,7 @@ class _DriverRideRequestsPageState extends State<DriverRideRequestsPage> {
                       : ListView.separated(
                           padding: const EdgeInsets.all(18),
                           itemCount: _requests.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 10),
+                          separatorBuilder: (_, _) => const SizedBox(height: 10),
                           itemBuilder: (context, i) {
                             final r = _requests[i];
                             final name = r['passenger_name'] as String? ?? 'Passageiro';
