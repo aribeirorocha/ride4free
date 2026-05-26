@@ -53,3 +53,7 @@ app.*.map.json
 **/*.so
 **/*.dill
 **/*.cache.dill.track.dill
+app_test/build/
+app_test/.dart_tool/
+app_test/.flutter-plugins
+app_test/.flutter-plugins-dependencies
