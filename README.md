@@ -120,9 +120,11 @@ Our requirements are documented as **User Stories** in our [GitHub Project T4-Sc
 | :--- | :--- | :--- | :--- | :--- |
 | #30 | [US1: Publish Solidarity Ride](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/30) | **Must-have** | 21 | Accepted|
 | #31 | [US2: Book Ride Seat](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/32) | **Must-have** | 13 | Accepted |
-| #33 | [US3: Search with Walking Tolerance](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/33) | **Should-have** | 8 | In-Progress |
-| #32 | [US4: Rate Passenger Conduct](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/34) | **Could-have** | 13 | In-Progress |
-| #81 | [US5: Uni Login](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/81) | **Could-have** | 8 | In-Progress |
+| #33 | [US3: Search with Walking Tolerance](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/33) | **Should-have** | 8 | Accepted |
+| #32 | [US4: Rate Passenger Conduct](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/34) | **Could-have** | 13 | Accepted |
+| #81 | [US5: Uni Login](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/81) | **Could-have** | 8 | Accepted |
+| #111 | [US6: User Chat](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/111) | **Must-have** | 13 | Done |
+| #113 | [US6: Notifications](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/113) | **Must-have** | 13 | Done |
 
 ---
 
@@ -148,7 +150,8 @@ Reservation - store information about a reservation, including its state (accept
 Avaliation - stores the pontuation (score) related to users.
 LeaderBoard - ranks each user by the amount of pontuation.
 
-<img width="704" height="702" alt="image" src="https://github.com/user-attachments/assets/ca1222c3-9a21-4c64-ae14-2709ac074d9a" />
+<img width="1123" height="1003" alt="Ride4Free DomainModel" src="https://github.com/user-attachments/assets/a581bc42-cf53-45b3-b3b3-25a8ce499393" />
+
 
 
 
@@ -159,14 +162,15 @@ LeaderBoard - ranks each user by the amount of pontuation.
 ### Logical architecture
 User interacts through the *User Interface* for visual elements and interactions, with the *Business Logic* layer handling core functionalities, and theexternal services, specifically OpenStreetMap, which is used for map-related features. Data storage and retrieval are handled by the DataBase, through the Ride4Free database schema.
 
-<img width="1003" height="683" alt="image" src="https://github.com/user-attachments/assets/24708942-9c61-4d71-96d1-dd4e0f26b263" />
+<img width="1003" height="683" alt="Ride4Free Logical View (arquitecture)" src="https://github.com/user-attachments/assets/5bedacfb-d552-4024-bb22-b8b8e47e8edb" />
 
 
 ### Physical architecture
 
 Each user interacts with the application via their mobile device. The application accesses external machines to retrieve necessary data, such as the OpenStreetMap and the DataBase.
 
-<img width="683" height="443" alt="image" src="https://github.com/user-attachments/assets/3d6a97bf-2373-4171-a795-3d28957a6d7c" />
+<img width="1723" height="1123" alt="Ride4Free Physical View (arquitecture)" src="https://github.com/user-attachments/assets/98664d04-f3a9-46a0-8cd9-26eac2d1f8b7" />
+
 
 ---
 
@@ -238,6 +242,7 @@ The detailed notes from our Sprint 1 Review, Planning, and Retrospective (includ
 The detailed notes from our Sprint 2 Review, Planning, and Retrospective (including the Agile Patterns applied, the delivery of the Advanced Filtering and University Authentication features, team structure, and future improvements) can be found in our dedicated [Sprint2PlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/Docs/Sprint2PlanningRetrospectives.md).
 
 ### Sprint 3
+The detailed notes from our Sprint 3 Review, Planning, and Retrospective (including the Agile Patterns applied, the delivery of the In-App Chat feature, UI/UX refinement, deployment of the remote server via Cloudflare tunnels, and final project reflections) can be found in our dedicated [Sprint3PlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/Docs/Sprint3PlanningRetrospectives.md).
 
 ### Sprint 4
 
