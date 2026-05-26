@@ -40,7 +40,7 @@ pip install -r requirements.txt
 
 ./start.sh
 ```
-No ficheiro app_config.dart a variável apiBaseUrl deve ter o mesmo URL que o que está no terminal. 
+Nota: No ficheiro app_config.dart a variável apiBaseUrl deve ter o mesmo URL que o que está no terminal. 
 
 Deixar janela aberta
 ---
