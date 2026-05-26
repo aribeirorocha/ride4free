@@ -3,10 +3,13 @@
 ## 1. Revisão da Sprint (Sprint Review)
 
 **Demonstração do Incremento Final do Produto:**
-Nesta terceira e última iteração do projeto, a equipa não só fechou o escopo planeado com a entrega da **US6 (User-Chat)** — permitindo comunicação bidirecional em tempo real entre condutores e passageiros —, como elevou a maturidade da arquitetura de software para um nível de prontidão de produção (*Production-Ready*). Fizemos 39 créditos.
+Nesta terceira e última iteração do projeto, a equipa não só fechou o escopo planeado com o fecho de duas histórias de utilizador críticas, como elevou a maturidade da arquitetura de software para um nível de prontidão de produção (*Production-Ready*). Fizemos 39 créditos.
 
-O grande marco arquitetural desta Sprint foi a **migração do ambiente de desenvolvimento estritamente local (*localhost*) para uma infraestrutura remota utilizando túneis da Cloudflare (*Cloudflare Tunnels*)**. Esta evolução eliminou o bloqueio crítico de termos de partilhar a mesma rede local ou máquina física para testar a integração Frontend-Backend. O servidor passou a estar acessível globalmente, permitindo testes distribuídos, simulações em dispositivos físicos reais através de redes móveis (4G/5G) e validação assíncrona por qualquer membro da equipa. Em paralelo, executámos uma refatoração profunda de UI/UX, isolando lógicas de visualização (ex: *Zona de Informação Extra*) em *Widgets* imutáveis para garantir consistência visual e fiabilidade no tratamento de erros.
+As grandes entregas funcionais deste incremento centraram-se na **US6 (User-Chat)** — que passou a permitir a comunicação bidirecional em tempo real entre condutores e passageiros — e na **US7 (Notifications)**, que introduziu um sistema inteligente de alertas visuais (badges na navegação) e notificações locais no dispositivo para garantir que nenhuma mensagem ou alteração de estado de boleia passa despercebida.
 
+O grande marco arquitetural desta Sprint foi a **migração do ambiente de desenvolvimento estritamente local (*localhost*) para uma infraestrutura remota utilizando túneis da Cloudflare (*Cloudflare Tunnels*)**. Esta evolução foi o catalisador ideal para a US7, permitindo testar o fluxo de notificações assíncronas e distribuídas sem o bloqueio crítico de partilhar a mesma rede local ou máquina física. O servidor passou a estar acessível globalmente, viabilizando simulações em dispositivos físicos reais através de redes móveis (4G/5G) e validações cruzadas por qualquer membro da equipa. 
+
+Em paralelo, executámos uma refatoração profunda de UI/UX, isolando lógicas complexas de visualização (ex: as pílulas de estado e a *Zona de Informação Extra*) em *Widgets* imutáveis, e desacoplámos o motor de notificações num serviço centralizado (*RideNotificationHub*), garantindo a robustez, consistência visual e fiabilidade no tratamento de erros do ecossistema.
 ---
 
 ## 2. Planeamento e Organização da Sprint (Sprint Planning)
