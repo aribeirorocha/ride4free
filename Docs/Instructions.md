@@ -37,8 +37,7 @@ python3 -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
 
 pip install -r requirements.txt
-
-uvicorn main:app --reload
+./start.sh
 ```
 
 
@@ -47,7 +46,7 @@ Deixar janela aberta
 
 ## 2. App Flutter
 
-Abrir uma nova janela de terminal.
+Após lançar o servidor, abrir uma nova janela de terminal.
 
 ```bash
 cd Ride4Free
@@ -64,7 +63,7 @@ flutter run          # ou -d android / -d ios
 ## 3. Primeira Utilização
 
 1. Abre a app
-2. Entra com os teus dados da faculdade
+2. Entra com os teus dados da faculdade (202xxxxxx e a palavra passe)
 3. Já podes oferecer ou procurar boleias
 
 > O backend tem de estar a correr antes de abrir a app.
