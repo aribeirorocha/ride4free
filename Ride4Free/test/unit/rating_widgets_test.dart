@@ -287,37 +287,55 @@ void main() {
   
 
     testWidgets('DG-U8: Enviar com sucesso mostra snackbar de confirmação', (tester) async {
-      when(() => api.rateRideParticipant(any(), stars: any(named: 'stars')))
-          .thenAnswer((_) async {});
+  // Corrigimos o mock para esperar o parâmetro nomeado 'criteria'
+  when(() => api.rateRideParticipant(any(), criteria: any(named: 'criteria')))
+      .thenAnswer((_) async {});
 
-      await openDialog(tester);
-      await tester.tap(find.text('Enviar'));
-      await tester.pumpAndSettle();
+  await openDialog(tester);
+  
+  await tester.tap(find.text('Enviar'));
+  await tester.pumpAndSettle();
 
-      expect(find.text('Avaliação enviada! Obrigado.'), findsOneWidget);
-    });
+  expect(find.text('Avaliação enviada! Obrigado.'), findsOneWidget);
+});
 
     testWidgets('DG-U9: Enviar com sucesso fecha o dialog', (tester) async {
-      when(() => api.rateRideParticipant(any(), stars: any(named: 'stars')))
-          .thenAnswer((_) async {});
+  // Corrigimos o mock para intercetar o parâmetro 'criteria' em vez de 'stars'
+  when(() => api.rateRideParticipant(any(), criteria: any(named: 'criteria')))
+      .thenAnswer((_) async {});
 
-      await openDialog(tester);
-      await tester.tap(find.text('Enviar'));
-      await tester.pumpAndSettle();
+  await openDialog(tester);
+  
+  await tester.tap(find.text('Enviar'));
+  await tester.pumpAndSettle();
 
-      expect(find.text('Avalia a viagem'), findsNothing);
-    });
+  // Se o envio for bem-sucedido, o dialog fecha e este texto desaparece do ecrã
+  expect(find.text('Avalia a viagem'), findsNothing);
+});
 
     testWidgets('DG-U11: Enviar chama rateRideParticipant com o rideId correcto', (tester) async {
-      when(() => api.rateRideParticipant(any(), stars: any(named: 'stars')))
-          .thenAnswer((_) async {});
+  // 1. Atualizar o mock para aceitar o parâmetro criteria
+  when(() => api.rateRideParticipant(any(), criteria: any(named: 'criteria')))
+      .thenAnswer((_) async {});
 
-      await openDialog(tester, rideId: 99);
-      await tester.tap(find.text('Enviar'));
-      await tester.pumpAndSettle();
+  // Abre o dialog forçando o rideId a 99
+  await openDialog(tester, rideId: 99);
+  
+  // Clica em enviar sem alterar as estrelas (o que significa que todos os critérios ficam a 5)
+  await tester.tap(find.text('Enviar'));
+  await tester.pumpAndSettle();
 
-      verify(() => api.rateRideParticipant(99, stars: 5)).called(1);
-    });
+  // 2. Verificar que a chamada foi feita ao rideId correto (99) com o mapa default de critérios
+  verify(() => api.rateRideParticipant(
+        99,
+        criteria: {
+          'pontualidade': 5,
+          'simpatia': 5,
+          'limpeza_veiculo': 5,
+          'comunicacao': 5,
+        },
+      )).called(1);
+});
 
     testWidgets('DG-U12: API falha → mostra snackbar de erro', (tester) async {
       when(() => api.rateRideParticipant(any(), stars: any(named: 'stars')))

@@ -12,6 +12,7 @@
 //   - AppBootstrapper (_onUniversityLogout, loading → login flow)
 // =============================================================================
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -19,6 +20,7 @@ import 'package:Ride4Free/main.dart';
 import 'package:Ride4Free/ride4free_api.dart';
 import 'package:Ride4Free/pedidos_page.dart';
 import 'package:Ride4Free/sigarra/sigarra_auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // ---------------------------------------------------------------------------
 // Helper: identidade de teste reutilizável
@@ -56,13 +58,27 @@ void main() {
       expect(find.text('Oferecer Boleia'), findsOneWidget);
     });
 
-    testWidgets('OFR-U3: botão "Publicar Viagem" está presente',
-            (tester) async {
-          await tester.pumpWidget(
-              const MaterialApp(home: Scaffold(body: OfferRidePage())));
-          await tester.pump();
-          expect(find.text('Publicar Viagem', skipOffstage: false), findsOneWidget);
-        });
+    testWidgets('OFR-U3: botão "Publicar Viagem" está presente', (tester) async {
+  // 1. Aumentamos artificialmente a altura do ecrã virtual do teste
+  // Isto obriga o ListView a renderizar todos os seus filhos (incluindo o botão)
+  tester.view.physicalSize = const Size(1080, 4000);
+  tester.view.devicePixelRatio = 1.0;
+  
+  // Garantimos que o tamanho volta ao normal após o teste para não afetar outros testes
+  addTearDown(() => tester.view.reset());
+
+  await tester.pumpWidget(
+    const MaterialApp(
+      home: Scaffold(body: OfferRidePage()),
+    ),
+  );
+
+  // 2. Usamos pumpAndSettle para dar tempo aos frames e Futures (como o _fetchLocation) terminarem
+  await tester.pumpAndSettle();
+
+  // 3. Agora o botão já foi instanciado e está visível
+  expect(find.text('Publicar Viagem'), findsOneWidget);
+});
 
     testWidgets('OFR-U4: campo de hora tem valor inicial "08:15"',
             (tester) async {
@@ -81,11 +97,25 @@ void main() {
         });
 
     testWidgets('OFR-U6: RewardPanel está presente na página', (tester) async {
-      await tester.pumpWidget(
-          const MaterialApp(home: Scaffold(body: OfferRidePage())));
-      await tester.pump();
-      expect(find.byType(RewardPanel, skipOffstage: false), findsOneWidget);
-    });
+  // 1. Aumentamos o ecrã virtual para garantir que o ListView renderiza tudo
+  tester.view.physicalSize = const Size(1080, 4000);
+  tester.view.devicePixelRatio = 1.0;
+  
+  // Repor o tamanho no fim do teste
+  addTearDown(() => tester.view.reset());
+
+  await tester.pumpWidget(
+    const MaterialApp(
+      home: Scaffold(body: OfferRidePage()),
+    ),
+  );
+
+  // 2. Usar pumpAndSettle para esperar que todos os frames e animações (como o carregamento do mapa) terminem
+  await tester.pumpAndSettle();
+
+  // 3. Agora o finder normal já vai encontrar o widget perfeitamente
+  expect(find.byType(RewardPanel), findsOneWidget);
+});
 
     testWidgets('OFR-U7: SeatPicker está presente na página', (tester) async {
       await tester.pumpWidget(
@@ -94,52 +124,83 @@ void main() {
       expect(find.byType(SeatPicker), findsOneWidget);
     });
 
-    testWidgets(
-        'OFR-U8: _publish() com hora inválida mostra SnackBar de erro',
-            (tester) async {
-          Ride4FreeAuth.token = 'fake_token';
-          await tester.pumpWidget(
-              const MaterialApp(home: Scaffold(body: OfferRidePage())));
-          await tester.pump();
+    testWidgets('OFR-U8: _publish() com hora inválida mostra SnackBar de erro', (tester) async {
+  // 1. Aumentamos o ecrã para evitar problemas de scroll no ListView
+  tester.view.physicalSize = const Size(1080, 4000);
+  tester.view.devicePixelRatio = 1.0;
+  
+  // 2. Garantimos que o token é reposto independentemente de o teste passar ou falhar
+  addTearDown(() {
+    tester.view.reset();
+    Ride4FreeAuth.token = null;
+  });
 
-          // Limpa a hora e escreve valor inválido
-          final timeField = find.byType(TextField).first;
-          await tester.enterText(timeField, 'hora_invalida');
+  Ride4FreeAuth.token = 'fake_token';
 
-          // O botão pode estar fora do ecrã — faz scroll até ele
-          await tester.ensureVisible(find.text('Publicar Viagem', skipOffstage: false));
-          await tester.pump();
-          await tester.tap(find.text('Publicar Viagem'));
-          await tester.pump(); // trigger setState
-          await tester.pump(); // flush postFrameCallback
+  await tester.pumpWidget(
+    const MaterialApp(
+      home: Scaffold(body: OfferRidePage()),
+    ),
+  );
+  
+  // Esperar que o ecrã carregue (incluindo o _fetchLocation)
+  await tester.pumpAndSettle();
 
-          expect(find.byType(SnackBar), findsOneWidget);
-          Ride4FreeAuth.token = null;
-        });
+  // 3. Escreve a hora inválida (garantimos que é o primeiro TextField)
+  final timeField = find.byType(TextField).first;
+  await tester.enterText(timeField, 'hora_invalida');
+  await tester.pumpAndSettle();
 
-    testWidgets(
-        'OFR-U9: _publish() com hora válida mas sem origem/destino mostra erro',
-            (tester) async {
-          Ride4FreeAuth.token = 'fake_token';
-          await tester.pumpWidget(
-              const MaterialApp(home: Scaffold(body: OfferRidePage())));
-          await tester.pump();
+  // 4. Como o ecrã é gigante, o botão já está visível, podemos clicar diretamente
+  await tester.tap(find.text('Publicar Viagem'));
+  
+  // 5. pumpAndSettle avança o tempo no teste até que todas as animações terminem
+  // (neste caso, a animação da SnackBar a aparecer no ecrã)
+  await tester.pumpAndSettle();
 
-          // Hora válida mas _originLatLng e _destinationLatLng são null
-          final timeField = find.byType(TextField).first;
-          await tester.enterText(timeField, '09:00');
+  // 6. Validar que a SnackBar está presente e com a mensagem correta
+  expect(find.byType(SnackBar), findsOneWidget);
+  expect(find.textContaining('hora válida'), findsOneWidget); // Verifica também se o texto é o esperado!
+});
 
-          // O botão pode estar fora do ecrã — faz scroll até ele
-          await tester.ensureVisible(find.text('Publicar Viagem', skipOffstage: false));
-          await tester.pump();
-          await tester.tap(find.text('Publicar Viagem'));
-          await tester.pump(); // trigger setState
-          await tester.pump(); // flush postFrameCallback
+    testWidgets('OFR-U9: _publish() com hora válida mas sem origem/destino mostra erro', (tester) async {
+  // 1. Aumentamos o ecrã virtual para garantir que o ListView renderiza tudo
+  tester.view.physicalSize = const Size(1080, 4000);
+  tester.view.devicePixelRatio = 1.0;
+  
+  // 2. Garantimos a limpeza, mesmo que o teste falhe a meio
+  addTearDown(() {
+    tester.view.reset();
+    Ride4FreeAuth.token = null;
+  });
 
-          expect(find.byType(SnackBar), findsOneWidget);
-          Ride4FreeAuth.token = null;
-        });
+  Ride4FreeAuth.token = 'fake_token';
 
+  await tester.pumpWidget(
+    const MaterialApp(
+      home: Scaffold(body: OfferRidePage()),
+    ),
+  );
+  
+  // Esperar que o ecrã carregue inicialmente
+  await tester.pumpAndSettle();
+
+  // 3. Inserir uma hora válida (o campo de destino e origem ficam vazios/null por defeito no teste)
+  final timeField = find.byType(TextField).first;
+  await tester.enterText(timeField, '09:00');
+  await tester.pumpAndSettle();
+
+  // 4. Clicar no botão (que agora está visível graças ao ecrã gigante)
+  await tester.tap(find.text('Publicar Viagem'));
+  
+  // 5. Deixar a animação da SnackBar subir
+  await tester.pumpAndSettle();
+
+  // 6. Validar que a SnackBar apareceu com o erro correto de mapa
+  // 6. Validar que a SnackBar apareceu com o texto de erro completo
+expect(find.byType(SnackBar), findsOneWidget);
+expect(find.text('Selecione o ponto de partida e de chegada no mapa.'), findsOneWidget); // Verifica parte do texto "Selecione o ponto de partida e de chegada no mapa."
+});
     testWidgets('OFR-U10: incrementar lugares via SeatPicker atualiza o estado',
             (tester) async {
           await tester.pumpWidget(
@@ -900,27 +961,43 @@ void main() {
   // UT-BOOTSTRAPPER-EXTRA2: AppBootstrapper — fluxo completo
   // =========================================================================
   group('AppBootstrapper — fluxo de autenticação', () {
-    testWidgets(
-        'ABX2-U1: após sessão inválida mostra UniversityLoginPage',
-            (tester) async {
-          await tester.pumpWidget(const MaterialApp(home: AppBootstrapper()));
-          // _loading começa true; depois de _restoreSession() completar fica false
-          // Usa pump com Duration para avançar o tempo sem aguardar settle infinito
-          await tester.pump(const Duration(milliseconds: 100));
-          await tester.pump(const Duration(milliseconds: 100));
-          await tester.pump(const Duration(milliseconds: 100));
+    testWidgets('ABX2-U1: após sessão inválida mostra UniversityLoginPage', (tester) async {
+  // 1. Simula o armazenamento local vazio para não rebentar no _restoreSession()
+  SharedPreferences.setMockInitialValues({});
 
-          // Sem sessão guardada → mostra página de login
-          expect(find.byType(UniversityLoginPage), findsOneWidget);
-        });
+  await tester.pumpWidget(const MaterialApp(home: AppBootstrapper()));
+  
+  // 2. O microtask do SharedPreferences mockado resolve quase instantaneamente.
+  // Precisamos de apenas alguns pumps normais para o Flutter processar o 
+  // setState() e desenhar o novo ecrã, saindo do estado _loading = true.
+  await tester.pump();
+  await tester.pump();
 
-    testWidgets('ABX2-U2: loading state exibe CircularProgressIndicator',
-            (tester) async {
-          await tester.pumpWidget(const MaterialApp(home: AppBootstrapper()));
-          await tester.pump(Duration.zero); // primeiro frame
-          expect(find.byType(CircularProgressIndicator), findsOneWidget);
-        });
+  // 3. Sem sessão guardada → mostra a página de login com sucesso!
+  expect(find.byType(UniversityLoginPage), findsOneWidget);
+});
 
+    testWidgets('ABX2-U2: loading state exibe CircularProgressIndicator', (tester) async {
+  // Isolar as notificações nativas
+  debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+  
+  try {
+    // Garantir que a leitura inicial do Bootstrapper não falha
+    SharedPreferences.setMockInitialValues({});
+
+    // pumpWidget constrói e desenha o EXATO PRIMEIRO FRAME. 
+    // O Future ainda está "em voo" neste exato milissegundo.
+    await tester.pumpWidget(const MaterialApp(home: AppBootstrapper()));
+    
+    // Validamos IMEDIATAMENTE! Se colocares um tester.pump() aqui no meio, 
+    // o mock resolve-se e perdes o estado de loading.
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    
+  } finally {
+    // Limpar o ambiente
+    debugDefaultTargetPlatformOverride = null;
+  }
+});
     testWidgets(
         'ABX2-U3: AppBootstrapper com api e authService injetados não crasha',
             (tester) async {

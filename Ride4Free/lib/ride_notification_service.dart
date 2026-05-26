@@ -267,6 +267,7 @@ class RideNotificationHub extends ChangeNotifier {
     _seenRequestIds.clear();
     _firstPoll = true;
     _setUnread(0);
+    _initialized = false;
   }
 }
 
