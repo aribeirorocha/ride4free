@@ -15,6 +15,7 @@ import 'location_service.dart';
 import 'active_ride_flow.dart';
 import 'pedidos_page.dart';
 import 'rating_widgets.dart';
+import 'ride_notification_service.dart';
 
 void main() {
   runApp(const MyApp());
@@ -88,6 +89,8 @@ class _AppBootstrapperState extends State<AppBootstrapper> {
     final identity = await _sessionStore.identity();
     if (isLoggedIn && identity != null) {
       await _ensureRide4FreeSession(identity);
+      await RideNotificationHub.instance.initialize();
+      RideNotificationHub.instance.startPolling();
     }
     if (!mounted) return;
     setState(() {
@@ -100,6 +103,8 @@ class _AppBootstrapperState extends State<AppBootstrapper> {
   Future<void> _onLoginSuccess(UniversityIdentity identity) async {
     await _sessionStore.markLoggedIn(identity);
     await _ensureRide4FreeSession(identity);
+    await RideNotificationHub.instance.initialize();
+    RideNotificationHub.instance.startPolling();
     if (!mounted) return;
     setState(() {
       _authenticated = true;
@@ -110,6 +115,7 @@ class _AppBootstrapperState extends State<AppBootstrapper> {
   Future<void> _onUniversityLogout() async {
     await _sessionStore.clear();
     Ride4FreeAuth.token = null;
+    RideNotificationHub.instance.reset();
     if (!mounted) return;
     setState(() {
       _authenticated = false;
@@ -391,13 +397,38 @@ class HomeShell extends StatefulWidget {
 
 class HomeShellState extends State<HomeShell> {
   int _index = 0;
+  final _notificationHub = RideNotificationHub.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _notificationHub.addListener(_onNotificationsChanged);
+  }
+
+  @override
+  void dispose() {
+    _notificationHub.removeListener(_onNotificationsChanged);
+    super.dispose();
+  }
+
+  void _onNotificationsChanged() {
+    if (mounted) setState(() {});
+  }
 
   void goToHomeTab() {
     if (_index != 0) setState(() => _index = 0);
   }
 
+  void _onTabSelected(int value) {
+    setState(() => _index = value);
+    if (value == 3) {
+      _notificationHub.markPedidosTabSeen();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final showPedidosDot = _notificationHub.unreadCount > 0;
     return Scaffold(
       body: SafeArea(
         child: IndexedStack(
@@ -406,7 +437,7 @@ class HomeShellState extends State<HomeShell> {
             const CommunityBoardPage(),
             const SearchRidePage(),
             const OfferRidePage(),
-            const PedidosPage(),
+            PedidosPage(isActive: _index == 3),
             ProfilePage(
               isActive: _index == 4,
               onUniversityLogout: widget.onUniversityLogout,
@@ -418,13 +449,16 @@ class HomeShellState extends State<HomeShell> {
       bottomNavigationBar: NavigationBar(
         height: 66,
         selectedIndex: _index,
-        onDestinationSelected: (value) => setState(() => _index = value),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.groups), label: 'Comunidade'),
-          NavigationDestination(icon: Icon(Icons.search), label: 'Procurar'),
-          NavigationDestination(icon: Icon(Icons.directions_car), label: 'Oferecer'),
-          NavigationDestination(icon: Icon(Icons.inbox), label: 'Pedidos'),
-          NavigationDestination(icon: Icon(Icons.person), label: 'Perfil'),
+        onDestinationSelected: _onTabSelected,
+        destinations: [
+          const NavigationDestination(icon: Icon(Icons.groups), label: 'Comunidade'),
+          const NavigationDestination(icon: Icon(Icons.search), label: 'Procurar'),
+          const NavigationDestination(icon: Icon(Icons.directions_car), label: 'Oferecer'),
+          NavigationDestination(
+            icon: NotificationDotIcon(icon: Icons.inbox, showDot: showPedidosDot),
+            label: 'Pedidos',
+          ),
+          const NavigationDestination(icon: Icon(Icons.person), label: 'Perfil'),
         ],
       ),
     );
@@ -439,7 +473,7 @@ class CommunityBoardPage extends StatefulWidget {
 }
 
 class CommunityBoardPageState extends State<CommunityBoardPage> {
-  String timeAgo(String? dateStr) {
+  String _timeAgo(String? dateStr) {
     if (dateStr == null) return '';
     try {
       final date = DateTime.parse(dateStr).toLocal();
@@ -622,7 +656,7 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
           final origin = d['description'] as String? ?? 'Local a definir';
           final dest = d['destination_display'] as String? ?? 'Destino a definir';
           final time = d['departure_time'] ?? 'Horário a definir';
-          final timeStr = timeAgo(d['created_at'] as String?);
+          final timeStr = _timeAgo(d['created_at'] as String?);
           
           final rating = d['rating_display'] as String? ?? '—';
           return ProfileCard(
@@ -663,7 +697,7 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
           final count = p['passenger_count']?.toString() ?? '1';
           final status = p['status'] as String? ?? 'open';
           final isBooked = status == 'fulfilled';
-          final timeStr = timeAgo(p['created_at'] as String?);
+          final timeStr = _timeAgo(p['created_at'] as String?);
 
           return ProfileCard(
             title: p['passenger_name'] as String? ?? 'Passageiro',
@@ -1155,8 +1189,7 @@ class ProfilePage extends StatefulWidget {
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
-}
-class _SearchRidePageState extends State<SearchRidePage> {
+}class _SearchRidePageState extends State<SearchRidePage> {
   final _originController = TextEditingController();
   final _destController = TextEditingController();
   final _timeController = TextEditingController();

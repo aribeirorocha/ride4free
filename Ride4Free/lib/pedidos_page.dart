@@ -5,12 +5,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'active_ride_flow.dart' show showRideMessage;
-import 'main.dart' show kMuted, kRed, kSuccess,kDivider, TopTitleBar;
+import 'main.dart' show kMuted, kRed, kSuccess, kDivider, TopTitleBar;
 import 'ride4free_api.dart';
+import 'ride_notification_service.dart';
 
 /// Ecrã dedicado: Pedidos de boleia (passageiro / condutor).
 class PedidosPage extends StatefulWidget {
-  const PedidosPage({super.key});
+  const PedidosPage({super.key, this.isActive = false});
+
+  final bool isActive;
 
   @override
   State<PedidosPage> createState() => _PedidosPageState();
@@ -18,6 +21,7 @@ class PedidosPage extends StatefulWidget {
 
 class _PedidosPageState extends State<PedidosPage> with SingleTickerProviderStateMixin {
   final _api = Ride4FreeApi();
+  final _hub = RideNotificationHub.instance;
   late final TabController _tabs;
   List<Map<String, dynamic>> _passenger = [];
   List<Map<String, dynamic>> _driver = [];
@@ -30,11 +34,25 @@ class _PedidosPageState extends State<PedidosPage> with SingleTickerProviderStat
     _tabs = TabController(length: 2, vsync: this);
     _load();
     _timer = Timer.periodic(const Duration(seconds: 8), (_) => _load(silent: true));
+    _hub.addListener(_onHubChanged);
+  }
+
+  void _onHubChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void didUpdateWidget(covariant PedidosPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      _hub.markPedidosTabSeen();
+    }
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _hub.removeListener(_onHubChanged);
     _tabs.dispose();
     super.dispose();
   }
@@ -50,9 +68,10 @@ class _PedidosPageState extends State<PedidosPage> with SingleTickerProviderStat
       final d = await _api.listDriverIncomingJoinRequests();
       if (mounted) {
         setState(() {
-        _passenger = p;
-        _driver = d;
-      });
+          _passenger = p;
+          _driver = d;
+        });
+        await _hub.refresh();
       }
     } catch (e) {
       if (mounted && !silent) showRideMessage(context, 'Erro ao carregar pedidos: $e');
@@ -78,12 +97,13 @@ class _PedidosPageState extends State<PedidosPage> with SingleTickerProviderStat
     }
   }
 
-  Future<void> _openChat(int requestId) async {
+  Future<void> _openChat(int requestId, {String? lastMessageAt}) async {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       builder: (ctx) => JoinReqestChatSheet(requestId: requestId, api: _api),
     );
+    await _hub.markRequestSeen(requestId, lastMessageAt: lastMessageAt);
     await _load(silent: true);
   }
 
@@ -168,6 +188,9 @@ class _PedidosPageState extends State<PedidosPage> with SingleTickerProviderStat
               ? (r['passenger_name'] as String? ?? 'Passageiro')
               : (r['driver_name'] as String? ?? 'Condutor');
           final needsConfirm = r['needs_passenger_confirmation'] == true;
+          final lastMsg = (r['last_message_body'] as String?)?.trim();
+          final lastMsgAt = r['last_message_at'] as String?;
+          final unread = _hub.isRequestUnread(r, isDriverView: isDriver);
 
           // Lógica de Cores Premium para a Pílula de Estado
           Color statusBgColor = Colors.grey.withOpacity(0.15);
@@ -204,11 +227,30 @@ class _PedidosPageState extends State<PedidosPage> with SingleTickerProviderStat
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      height: 48,
-                      width: 48,
-                      decoration: BoxDecoration(color: kRed.withOpacity(0.1), shape: BoxShape.circle),
-                      child: const Icon(Icons.person, color: kRed, size: 24),
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          height: 48,
+                          width: 48,
+                          decoration: BoxDecoration(color: kRed.withOpacity(0.1), shape: BoxShape.circle),
+                          child: const Icon(Icons.person, color: kRed, size: 24),
+                        ),
+                        if (unread)
+                          Positioned(
+                            right: -1,
+                            top: -1,
+                            child: Container(
+                              width: 11,
+                              height: 11,
+                              decoration: const BoxDecoration(
+              .vscode/settings.json                  color: kRed,
+                                shape: BoxShape.circle,
+                                border: Border.fromBorderSide(BorderSide(color: Colors.white, width: 2)),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -303,13 +345,49 @@ class _PedidosPageState extends State<PedidosPage> with SingleTickerProviderStat
                     ),
                   ),
 
+                if (lastMsg != null && lastMsg.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: unread ? kRed.withOpacity(0.06) : const Color(0xFFF8F8F8),
+                      borderRadius: BorderRadius.circular(10),
+                      border: unread ? Border.all(color: kRed.withOpacity(0.2)) : null,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          size: 16,
+                          color: unread ? kRed : kMuted,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            lastMsg,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: unread ? Colors.black87 : kMuted,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 const SizedBox(height: 18),
 
                 // --- FOOTER: Botões de Ação ---
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: () => _openChat(id),
+                    onPressed: () => _openChat(id, lastMessageAt: lastMsgAt),
                     icon: const Icon(Icons.chat_bubble_outline, size: 18),
                     label: const Text('Conversar', style: TextStyle(fontWeight: FontWeight.w800)),
                     style: OutlinedButton.styleFrom(
@@ -434,12 +512,19 @@ class JoinReqestChatSheetState extends State<JoinReqestChatSheet> {
     try {
       final msgs = await widget.api.listJoinRequestMessages(widget.requestId);
       if (mounted) {
-        final wasAtBottom = _scrollController.hasClients && 
+        final wasAtBottom = _scrollController.hasClients &&
             _scrollController.position.pixels == _scrollController.position.maxScrollExtent;
-        
+
         setState(() => _messages = msgs);
 
-        // Auto-scroll para baixo se houver novas mensagens
+        if (msgs.isNotEmpty) {
+          final last = msgs.last;
+          await RideNotificationHub.instance.markRequestSeen(
+            widget.requestId,
+            lastMessageAt: last['created_at'] as String?,
+          );
+        }
+
         if (wasAtBottom) {
           WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
         }

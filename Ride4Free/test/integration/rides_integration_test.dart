@@ -6,7 +6,7 @@ void main() {
   group('Integration - Fluxos de Viagem (Offer/Search)', () {
 
     testWidgets('Deve validar formato de hora antes de permitir publicação', (tester) async {
-      // Truque do ecrã gigante
+      // Truque do ecrã gigante.vscode/settings.json
       tester.view.physicalSize = const Size(1080, 4000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);

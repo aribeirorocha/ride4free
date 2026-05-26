@@ -9,6 +9,32 @@ import 'package:Ride4Free/ride4free_api.dart';
 void main() {
   group('Integration - Navegação e Estrutura Principal', () {
 
+    testWidgets('Deve navegar entre todas as abas da HomeShell sem erros', (tester) async {
+      final identity = UniversityIdentity(username: 'up123', displayName: 'Teste');
+
+      await tester.pumpWidget(MaterialApp(
+        home: HomeShell(
+          onUniversityLogout: () async {},
+          identity: identity,
+        ),
+      ));
+
+      expect(find.text('Comunidade Ride4Free'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.search));
+      await tester.pumpAndSettle();
+      expect(find.text('RAIO DE TOLERANCIA'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.directions_car));
+      await tester.pumpAndSettle();
+      expect(find.text('Oferecer Boleia'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.person));
+      await tester.pumpAndSettle();
+      expect(find.text('UP: up123'), findsOneWidget);
+    });
+  });
+
   group('Integration - Main & Bootstrapping', () {
 
     setUp(() {
@@ -248,6 +274,16 @@ group('Integration — ProfilePage', () {
       expect(find.text('Avaliação'), findsOneWidget);
       expect(find.text('Créditos'), findsOneWidget);
     });
+
+    testWidgets('IT-PROF-9: O campo do veículo (Premium UI) está presente no perfil', (tester) async {
+      await launchHomeShell(tester);
+      await tester.tap(find.byIcon(Icons.person));
+      await tester.pumpAndSettle();
+      
+      // Valida se a nossa nova label com formato Premium (maiúsculas) está no ecrã
+      expect(find.text('O TEU VEÍCULO (PARA CONDUTORES)'), findsOneWidget);
+      expect(find.byIcon(Icons.save), findsOneWidget); // O nosso novo botão de gravar quadrado
+    });
   });
 
   // ===========================================================================
@@ -294,6 +330,17 @@ group('Integration — ProfilePage', () {
       await launchHomeShell(tester);
       expect(find.text('Condutores'), findsOneWidget);
       expect(find.text('Passageiros'), findsOneWidget);
+    });
+
+    testWidgets('IT-COM-6: Trocar de secção e voltar mantém estado correto', (tester) async {
+      await launchHomeShell(tester);
+      await tester.tap(find.text('Passageiros'));
+      await tester.pumpAndSettle();
+      expect(find.text('Sem passageiros disponiveis.'), findsOneWidget);
+      await tester.tap(find.text('Condutores'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SegmentedButton<int>), findsOneWidget);
+      expect(find.text('Sem passageiros disponiveis.'), findsNothing);
     });
 
     testWidgets('IT-COM-7: Sem token, selecionar Condutores mostra snackbar de sessão', (tester) async {
@@ -529,5 +576,5 @@ testWidgets('IT-SRC-5: Sem token, "Reservar Boleia" mostra snackbar de sessão',
       expect(find.text('Sem pedidos de passageiros.'), findsOneWidget);
     });
   });
-  });
+ 
 }
