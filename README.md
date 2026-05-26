@@ -142,13 +142,16 @@ Each User Story in our backlog includes:
 
 Our app allows *Users* to create personal accounts, enabling them to create *Trajects* or *Reservations*. It includes different types of users, such as *Drivers* and *Passengers*, and supports interactions between them.
 
-User - store information about user with his statistics (id, name, email, password, points).
-Driver - represents a user that can create trajects.
-Passenger - represents a user that can make reservations.
-Traject - store information about a traject, including origin, destination, timeDeparture, availableSeats and km.
-Reservation - store information about a reservation, including its state (accepted, rejected, ...), and is associated with a traject.
-Avaliation - stores the pontuation (score) related to users.
-LeaderBoard - ranks each user by the amount of pontuation.
+User - store information about user with his statistics (id, name, email, password).
+Driver - represents a user that can create driver offers.
+Passenger - represents a user that can make join requests.
+DriverOffer - store information about a ride offer, including origin, destination, timeDeparture, availableSeats, and coordinates.
+JoinRequest - store information about a join request, including its state (pending, awaiting_passenger, confirmed, declined).
+ActiveRide - represents a confirmed ride in progress, tracking whether the driver and passenger have boarded.
+Message - stores chat messages exchanged between driver and passenger, either before the ride (join_request_messages) or during it (ride_messages).
+Avaliation - stores the pontuation (score) related to users, broken down by criteria (punctuality, friendliness, cleanliness, communication).
+Credits - stores the balance of points a user has accumulated through completed rides.
+Transaction - stores a record of each credit change, including the amount and when was made.
 
 <img width="1123" height="1003" alt="Ride4Free DomainModel" src="https://github.com/user-attachments/assets/a581bc42-cf53-45b3-b3b3-25a8ce499393" />
 
@@ -160,14 +163,14 @@ LeaderBoard - ranks each user by the amount of pontuation.
 
 
 ### Logical architecture
-User interacts through the *User Interface* for visual elements and interactions, with the *Business Logic* layer handling core functionalities, and theexternal services, specifically OpenStreetMap, which is used for map-related features. Data storage and retrieval are handled by the DataBase, through the Ride4Free database schema.
+User interacts through the *User Interface* for visual elements and interactions, with the *Business Logic* layer handling core functionalities, and the external services, specifically OpenStreetMap, which is used for map-related features, and Sigarra, which is used for student authentification. Data storage and retrieval are handled by the DataBase, through the Ride4Free database schema built on FastAPI.
 
 <img width="1003" height="683" alt="Ride4Free Logical View (arquitecture)" src="https://github.com/user-attachments/assets/5bedacfb-d552-4024-bb22-b8b8e47e8edb" />
 
 
 ### Physical architecture
 
-Each user interacts with the application via their mobile device. The application accesses external machines to retrieve necessary data, such as the OpenStreetMap and the DataBase.
+Each user interacts with the application via their mobile device, which includes a GPS location module and local storage for session persistence. The application communicates with the backend server through a Cloudflare tunnel, which exposes the local API to physical devices over HTTPS. The backend accesses external machines to retrieve necessary data, such as OpenStreetMap for the map and Sigarra for university authentication.
 
 <img width="1723" height="1123" alt="Ride4Free Physical View (arquitecture)" src="https://github.com/user-attachments/assets/98664d04-f3a9-46a0-8cd9-26eac2d1f8b7" />
 
