@@ -7,7 +7,7 @@
 class Ride4FreeAppConfig {
   Ride4FreeAppConfig._();
 
-  static const String apiBaseUrl = 'https://marc-dentists-competitive-coleman.trycloudflare.com';
+  static const String apiBaseUrl = 'https://match-forecasts-breath-strengthen.trycloudflare.com';
 
   static bool get useRemoteApi => apiBaseUrl.isNotEmpty;
 }

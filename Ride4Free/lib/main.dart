@@ -446,20 +446,28 @@ class HomeShellState extends State<HomeShell> {
           ],
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        height: 66,
-        selectedIndex: _index,
-        onDestinationSelected: _onTabSelected,
-        destinations: [
-          const NavigationDestination(icon: Icon(Icons.groups), label: 'Comunidade'),
-          const NavigationDestination(icon: Icon(Icons.search), label: 'Procurar'),
-          const NavigationDestination(icon: Icon(Icons.directions_car), label: 'Oferecer'),
-          NavigationDestination(
-            icon: NotificationDotIcon(icon: Icons.inbox, showDot: showPedidosDot),
-            label: 'Pedidos',
+      bottomNavigationBar: NavigationBarTheme(
+        data: NavigationBarThemeData(
+          // Define aqui o tamanho da letra. O padrão é cerca de 14, tenta 11 ou 10.
+          labelTextStyle: WidgetStateProperty.all(
+            const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
           ),
-          const NavigationDestination(icon: Icon(Icons.person), label: 'Perfil'),
-        ],
+        ),
+        child: NavigationBar(
+          height: 66,
+          selectedIndex: _index,
+          onDestinationSelected: _onTabSelected,
+          destinations: [
+            const NavigationDestination(icon: Icon(Icons.groups), label: 'Comunidade'),
+            const NavigationDestination(icon: Icon(Icons.search), label: 'Procurar'),
+            const NavigationDestination(icon: Icon(Icons.directions_car), label: 'Oferecer'),
+            NavigationDestination(
+              icon: NotificationDotIcon(icon: Icons.inbox, showDot: showPedidosDot),
+              label: 'Pedidos',
+            ),
+            const NavigationDestination(icon: Icon(Icons.person), label: 'Perfil'),
+          ],
+        ),
       ),
     );
   }
