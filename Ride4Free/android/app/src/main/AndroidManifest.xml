@@ -8,7 +8,7 @@
     <application
         android:label="Ride4Free"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon">
+        an.vscode/settings.jsondroid:icon="@mipmap/launcher_icon">
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -10,26 +10,28 @@ Para garantir o máximo rigor, adotámos uma estratégia de validação em duas 
 ## 2. Técnicas de Facilitação e Avaliação
 Para extrair dados acionáveis e fugir do "feedback genérico", aplicámos duas técnicas recomendadas pelas boas práticas da *Scrum.org*:
 * **Nas Demos (Buy a Feature):** Apresentámos aos 3 utilizadores um "orçamento" de 100 moedas fictícias e pedimos que o investissem nas futuras funcionalidades que mais queriam ver construídas.
-* **Nos Inquéritos (Kano Analysis):** Utilizamos o Google Forms (com capturas de ecrã da *app* atual) para inquirir a comunidade mais alargada, pedindo-lhes para classificar as funcionalidades vencedoras da Demo em três categorias: *Basic Needs*, *Performance Needs* ou *Delighters*.
+* **Nos Inquéritos (Kano Analysis):** Utilizamos o Google Forms para inquirir a comunidade mais alargada, pedindo-lhes para classificar as funcionalidades vencedoras da Demo em três categorias: *Basic Needs*, *Performance Needs* ou *Delighters*.
 
 ## 3. Feedback Recolhido e Cruzamento de Dados
-O cruzamento dos dados das Demos com os resultados globais do Google Forms revelou um alinhamento perfeito, contrariando algumas das nossas suposições técnicas iniciais:
+O cruzamento dos dados das 34 respostas revelou um alinhamento claro entre a intenção de uso e a criticidade das funcionalidades:
 
-1. **Notificações Push (Fora da App):** * *Nas Demos:* Recebeu a esmagadora maioria do investimento (150/300 moedas).
-   * *No Google Forms:* Mais de 85% (10 em 12) dos inquiridos classificaram-na como uma **Basic Need**. A justificação transversal foi que o In-App Chat (US6) é excelente, mas sem notificações nativas do SO, o risco de desencontros mantém-se caso fechem a *app*.
-2. **Sistema de Trust & Reviews (Estrelas):** * *Nas Demos:* Recebeu um forte investimento (100/300 moedas) associado à segurança.
-   * *No Google Forms:* Cerca de 75% classificaram-no como uma **Performance Need**, indicando que a confiança e a distinção de bons condutores é vital para a adoção em massa da plataforma.
-3. **Integração de Pagamento In-App (ex: MBWay):** * *Nas Demos:* Recebeu apenas 50/300 moedas.
-   * *No Google Forms:* Apenas 2 utilizadores a consideraram essencial. A grande maioria classificou-a como um **Delighter** ou algo indiferente, preferindo resolver a divisão de custos de forma informal, desde que a comunicação e a boleia estejam garantidas.
-
+| Funcionalidade | Classificação Principal | Feedback / Justificação |
+| :--- | :--- | :--- |
+| **Notificações Push** | *Basic Need* | 45,5% essencial; 48,5% desejável. Essencial para evitar desencontros. |
+| **Trust & Reviews** | *Performance Need* | 63,6% consideram essencial para a segurança na partilha. |
+| **Pagamentos (MBWay)** | *Delighter/Indiferente* | 75,8% indiferentes; a maioria prefere resolver de forma informal. |
 ## 4. Refinamento do Product Backlog (PBL) para o Futuro Roadmap
 Com base nesta dupla validação empírica, o nosso *Product Backlog* sofreu um refinamento formal e fundamentado em dados, alinhando a estratégia do produto com o conceito Ágil de *Value-Driven Development*:
+## 4. Refinamento do Product Backlog (PBL)
+A análise consolidou a nossa estratégia para as próximas iterações:
 
-* **Adição de Novos PBIs (New Entries):**
-  * **[Adicionado] US7: Push Notifications.** Como utilizador, quero receber notificações nativas no telemóvel quando recebo uma nova mensagem no chat, para ser alertado instantaneamente sem ter de manter a app aberta.
+### Adição de Novos PBIs
+* **US7: Push Notifications.** Como utilizador, quero receber notificações nativas no telemóvel quando recebo uma nova mensagem no chat, para ser alertado instantaneamente sem ter de manter a app aberta.
 
-* **Reordenação de Prioridades (Reordering):**
-  * A **US7 (Push Notifications)** foi promovida imediatamente para o Topo do Backlog, tornando-se a prioridade técnica absoluta para uma eventual Sprint 4, validada por ambas as métricas como uma *Basic Need* para a sobrevivência do ecossistema de comunicação.
-  * O épico de **Integração de Pagamentos**, que estava provisoriamente planeado para o topo das próximas iterações, foi **despriorizado e removido do Backlog**, pois os dados provaram claramente que o esforço técnico de integrar *gateways* de pagamento não traria o Retorno de Investimento (ROI) imediato que a comunidade procura nesta fase do produto.
+### Reordenação de Prioridades
+* **Prioridade Máxima:** **US7 (Push Notifications)** promovida ao topo. Validada como *Basic Need*.
+* **Prioridade Média:** **Sistema de Reviews.** Validado como fator crítico de confiança.
+* **Despriorização Estratégica:** **Integração de Pagamentos.** Movida para o *Icebox*. Os dados provaram que o esforço técnico de integrar *gateways* não traria o Retorno de Investimento (ROI) imediato necessário nesta fase.
 
-**Conclusão:** O fecho da Sprint 3 não marca o fim do produto, mas sim a sua validação no mercado. O nosso PBL reflete agora as necessidades reais da comunidade académica, garantindo que o desenvolvimento futuro se mantém estritamente focado na maximização de valor contínuo (*Value-Driven Development*).
+## 5. Conclusão
+O fecho da Sprint 3 não marca o fim do produto, mas a sua validação no mercado. Com uma nota de utilidade muito elevada (61,8% dos inquiridos deram pontuação máxima), confirmámos que o nosso foco deve manter-se na **fiabilidade da comunicação** e na **confiança interpessoal**, em vez de infraestruturas financeiras complexas. O nosso PBL reflete agora as necessidades reais da comunidade académica.

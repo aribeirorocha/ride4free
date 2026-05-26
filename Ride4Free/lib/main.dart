@@ -170,10 +170,10 @@ class UniversityLoginPage extends StatefulWidget {
   final SigarraAuthService? authService;
 
   @override
-  State<UniversityLoginPage> createState() => _UniversityLoginPageState();
+  State<UniversityLoginPage> createState() => UniversityLoginPageState();
 }
 
-class _UniversityLoginPageState extends State<UniversityLoginPage> {
+class UniversityLoginPageState extends State<UniversityLoginPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   late final _auth = widget.authService ?? SigarraAuthService();

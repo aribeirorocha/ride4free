@@ -244,7 +244,7 @@ class _PedidosPageState extends State<PedidosPage> with SingleTickerProviderStat
                               width: 11,
                               height: 11,
                               decoration: const BoxDecoration(
-                                color: kRed,
+              .vscode/settings.json                  color: kRed,
                                 shape: BoxShape.circle,
                                 border: Border.fromBorderSide(BorderSide(color: Colors.white, width: 2)),
                               ),

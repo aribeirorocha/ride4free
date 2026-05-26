@@ -16,49 +16,52 @@ void main() {
     );
 
     testWidgets('UT-1: Navegação entre abas no HomeShell', (tester) async {
-      tester.view.physicalSize = const Size(800, 1400);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
-
-      // 1. Monta o widget
+      
       await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: HomeShell(
-            identity: testIdentity,
-            onUniversityLogout: () async { return; },
-          ),
+        home: HomeShell(
+          identity: testIdentity, // Garante que a variável existe
+          onUniversityLogout: () async { return; },
         ),
       ));
 
-      // 2. O SEGREDO: pump(Duration) permite que o initState complete 
-      // e que o addPostFrameCallback (do _showMessage) seja executado com segurança.
-      await tester.pump(const Duration(milliseconds: 100));
+      // Esperar que a página carregue as localizações e renderize
+      await tester.pumpAndSettle();
 
-      // 3. Verificação Inicial (Comunidade)
-      expect(find.text('Comunidade Ride4Free'), findsOneWidget);
+      // 2. Verificação Inicial (Aba 0)
+      expect(find.byType(CommunityBoardPage), findsOneWidget);
 
-      // 4. Navegação para Procura (Ícone de lupa)
-      await tester.tap(find.byIcon(Icons.search));
-      await tester.pump(const Duration(milliseconds: 100));
+      // 3. Navegação para Procura (Aba 1)
+      // Como as coordenadas agora estão perfeitas, o tap normal funciona à primeira!
+      final searchTab = find.widgetWithText(NavigationDestination, 'Procurar');
+      await tester.tap(searchTab);
+      await tester.pumpAndSettle();
 
-      expect(find.text('Boleias Encontradas'), findsOneWidget);
+      // Confirma que abriu a aba da Lupa
+      expect(find.byType(SearchRidePage), findsOneWidget);
 
-      // 5. Navegação para Oferta (Ícone de carro)
-      await tester.tap(find.byIcon(Icons.directions_car));
-      await tester.pump(const Duration(milliseconds: 100));
+      // 4. Navegação para Oferta (Aba 2)
+      final offerTab = find.widgetWithText(NavigationDestination, 'Oferecer');
+      await tester.tap(offerTab);
+      await tester.pumpAndSettle();
 
-      expect(find.text('Oferecer Boleia'), findsOneWidget);
+      // Confirma que abriu a aba do Carro
+      expect(find.byType(OfferRidePage), findsOneWidget);
     });
-
-
-    testWidgets('UT-3: O ecrã SearchRidePage carrega no estado inicial correto', (tester) async {
-      SharedPreferences.setMockInitialValues({});
+          testWidgets('UT-3: O ecrã SearchRidePage carrega no estado inicial correto', (tester) async {
+      // Truque do ecrã grande para o Slider e os botões estarem visíveis sem scroll
+      tester.view.physicalSize = const Size(1080, 4000);
+      addTearDown(() => tester.view.resetPhysicalSize());
       
       await tester.pumpWidget(const MaterialApp(home: Scaffold(body: SearchRidePage())));
-      await tester.pump();
+      
+      // CORREÇÃO: pumpAndSettle para esperar que o _fetchLocation() termine
+      await tester.pumpAndSettle();
 
       expect(find.text('Procurar condutores'), findsOneWidget);
-      expect(find.text('Raio de Tolerancia'), findsOneWidget);
+      
+      // CORREÇÃO: O teu _label() converte tudo para maiúsculas!
+      expect(find.text('RAIO DE TOLERANCIA'), findsOneWidget);
+      
       expect(find.byType(Slider), findsOneWidget);
     });
   });
