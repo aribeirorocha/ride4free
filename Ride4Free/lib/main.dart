@@ -164,10 +164,10 @@ class UniversityLoginPage extends StatefulWidget {
   final SigarraAuthService? authService;
 
   @override
-  State<UniversityLoginPage> createState() => _UniversityLoginPageState();
+  State<UniversityLoginPage> createState() => UniversityLoginPageState();
 }
 
-class _UniversityLoginPageState extends State<UniversityLoginPage> {
+class UniversityLoginPageState extends State<UniversityLoginPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   late final _auth = widget.authService ?? SigarraAuthService();
@@ -439,7 +439,7 @@ class CommunityBoardPage extends StatefulWidget {
 }
 
 class CommunityBoardPageState extends State<CommunityBoardPage> {
-  String _timeAgo(String? dateStr) {
+  String timeAgo(String? dateStr) {
     if (dateStr == null) return '';
     try {
       final date = DateTime.parse(dateStr).toLocal();
@@ -622,7 +622,7 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
           final origin = d['description'] as String? ?? 'Local a definir';
           final dest = d['destination_display'] as String? ?? 'Destino a definir';
           final time = d['departure_time'] ?? 'Horário a definir';
-          final timeStr = _timeAgo(d['created_at'] as String?);
+          final timeStr = timeAgo(d['created_at'] as String?);
           
           final rating = d['rating_display'] as String? ?? '—';
           return ProfileCard(
@@ -663,7 +663,7 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
           final count = p['passenger_count']?.toString() ?? '1';
           final status = p['status'] as String? ?? 'open';
           final isBooked = status == 'fulfilled';
-          final timeStr = _timeAgo(p['created_at'] as String?);
+          final timeStr = timeAgo(p['created_at'] as String?);
 
           return ProfileCard(
             title: p['passenger_name'] as String? ?? 'Passageiro',
