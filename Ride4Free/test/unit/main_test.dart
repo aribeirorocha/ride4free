@@ -2400,7 +2400,7 @@ group('Lógica de credenciais _ensureRide4FreeSession', () {
  
     testWidgets('IL-EX2: texto longo renderiza sem crash', (tester) async {
       await tester.pumpWidget(const MaterialApp(
-        home: Scaffold(body: InputLike(text: 'Texto muito longo que pode quebrar layout' + 'Texto muito longo que pode quebrar layout' + 'Texto muito longo que pode quebrar layout')),
+        home: Scaffold(body: InputLike(text: 'Texto muito longo que pode quebrar layout' 'Texto muito longo que pode quebrar layout' 'Texto muito longo que pode quebrar layout')),
       ));
       expect(tester.takeException(), isNull);
     });

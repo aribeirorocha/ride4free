@@ -150,7 +150,7 @@ void main() {
 
     group('State handling', () {
       test('should be enabled when onReserve is provided', () {
-        final onReserve = () {};
+        void onReserve() {}
         final isEnabled = onReserve != null;
         expect(isEnabled, true);
       });

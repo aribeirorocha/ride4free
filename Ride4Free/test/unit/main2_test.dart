@@ -18,7 +18,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:Ride4Free/main.dart';
 import 'package:Ride4Free/ride4free_api.dart';
-import 'package:Ride4Free/pedidos_page.dart';
 import 'package:Ride4Free/sigarra/sigarra_auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

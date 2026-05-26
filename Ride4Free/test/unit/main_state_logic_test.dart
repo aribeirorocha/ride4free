@@ -44,7 +44,7 @@ void main() {
 
     group('Identity validation', () {
       test('identity should be null initially', () {
-        dynamic identity = null;
+        dynamic identity;
         expect(identity, null);
       });
 
