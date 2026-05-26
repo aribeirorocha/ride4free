@@ -2103,30 +2103,58 @@ class SeatPicker extends StatelessWidget {
   final VoidCallback onDec;
   final VoidCallback onInc;
 
-  // ignore: use_key_in_widget_constructors
-  const SeatPicker({required this.seats, required this.onDec, required this.onInc});
+  const SeatPicker({super.key, required this.seats, required this.onDec, required this.onInc});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(top: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      // 1. Forçamos a altura exata de 56 para igualar ao TextField
+      height: 56, 
+      // 2. Removemos a margin top que estava a causar o desalinhamento
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
+        // 3. O TextField usa borderRadius 12 e fundo F8F8F8, igualamos aqui para ficarem gémeos
+        color: const Color(0xFFF8F8F8),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: seats > 0 ? const Color(0xFFE2E2E2) : kRed, width: 2),
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(onPressed: onDec, icon: const Icon(Icons.remove, color: kRed)),
-          Expanded(child: Text('$seats', textAlign: TextAlign.center, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: seats > 0 ? kDarkText : kRed))),
-          IconButton(onPressed: onInc, icon: const Icon(Icons.add, color: kRed)),
+          IconButton(
+            onPressed: onDec, 
+            icon: const Icon(Icons.remove, color: kRed),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(), // Reduz o espaço fantasma do botão
+          ),
+          Expanded(
+            // 4. O FittedBox impede que o texto salte de linha quando chega ao "10"
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '$seats', 
+                textAlign: TextAlign.center, 
+                maxLines: 1,
+                softWrap: false,
+                style: TextStyle(
+                  fontSize: 18, 
+                  fontWeight: FontWeight.w800, 
+                  color: seats > 0 ? kDarkText : kRed
+                ),
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: onInc, 
+            icon: const Icon(Icons.add, color: kRed),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
         ],
       ),
     );
   }
-}
-
-class RewardPanel extends StatelessWidget {
+}class RewardPanel extends StatelessWidget {
   final bool valid;
   final String rewardText;
   // ignore: use_key_in_widget_constructors
