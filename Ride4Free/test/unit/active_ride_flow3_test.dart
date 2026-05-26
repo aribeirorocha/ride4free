@@ -1,5 +1,19 @@
 // active_ride_flow3_test.dart
-// Novos testes para aumentar coverage do active_ride_flow.dart
+// Testes CORRIGIDOS — sem duplicações com f1/f2, sem acesso a membros privados.
+//
+// Duplicações removidas vs ficheiros anteriores:
+//   STATUS-U4  → igual a AR-U5  (f1) — removido
+//   CHAT-U11   → igual a CHAT-U5 (f1) — removido
+//   CHAT-U12   → igual a CHAT-U1 (f1) — removido
+//   SEND-U1    → igual a CHAT-U3 (f1) — removido
+//   SEND-U3    → igual a CHAT-U11 (mesmo f3, e CHAT-U5 do f1) — corrigido e fundido em SEND-U2
+//   ICON-U5    → subconjunto de ICON-U1+U2+U3 (f2) — removido
+//   ARC-U2     → igual a ARC-U1 (f1) — removido
+//
+// Erros corrigidos:
+//   SEND-U1: `any as int` / `any as String` → sintaxe inválida → removida
+//   SEND-U3: acesso a `state._chatController` / `state._sendMessage()` → privados → reescrito via UI
+//   SEND-U2: mockApi declarado duas vezes (local + setUp) → unificado
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +21,10 @@ import 'package:mockito/mockito.dart';
 
 import 'package:Ride4Free/active_ride_flow.dart';
 import 'package:Ride4Free/ride4free_api.dart';
+
+// ---------------------------------------------------------------------------
+// Mock
+// ---------------------------------------------------------------------------
 
 class MockRide4FreeApi extends Mock implements Ride4FreeApi {
   @override
@@ -65,6 +83,10 @@ class MockRide4FreeApi extends Mock implements Ride4FreeApi {
       ) as Future<Ride4FreeUser>;
 }
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 Map<String, dynamic> _passengerRide({
   int id = 1,
   String status = 'matched',
@@ -85,6 +107,10 @@ Map<String, dynamic> _passengerRide({
       'available_seats': 3,
     };
 
+// ---------------------------------------------------------------------------
+// Testes
+// ---------------------------------------------------------------------------
+
 void main() {
   late MockRide4FreeApi mockApi;
 
@@ -97,146 +123,62 @@ void main() {
     Ride4FreeAuth.token = null;
   });
 
-  // =============================================================
-  // STATUS CARD
-  // =============================================================
+  // ==========================================================================
+  // SEND — comportamentos únicos não cobertos em f1/f2
+  // ==========================================================================
 
+  // SEND-U2: corrigido — usa apenas o mockApi do setUp (sem declaração local)
+  // e verifica que o campo é limpo após envio bem-sucedido
   testWidgets(
-    'STATUS-U4: Passageiro ainda não confirmou vê mensagem inicial',
+    'SEND-U2: Enviar mensagem limpa campo e chama sendRideMessage',
     (tester) async {
+      when(mockApi.sendRideMessage(1, 'Olá')).thenAnswer((_) async {});
+      when(mockApi.listRideMessages(1)).thenAnswer((_) async => []);
+      when(mockApi.getActiveRideState()).thenAnswer(
+        (_) async => (ride: _passengerRide(), pendingRating: null),
+      );
+
       await tester.pumpWidget(
         MaterialApp(
-          home: ActiveRidePage(
-            initialRide: _passengerRide(
-              driverIn: 0,
-              passengerIn: 0,
-            ),
-            api: mockApi,
-          ),
+          home: ActiveRidePage(initialRide: _passengerRide(), api: mockApi),
         ),
       );
-
-      await tester.pump(Duration.zero);
-
-      expect(
-        find.textContaining('Confirmem que estão no carro'),
-        findsOneWidget,
-      );
-    },
-  );
-
-  // =============================================================
-  // CHAT
-  // =============================================================
-
-  /*testWidgets(
-    'CHAT-U10: Mensagem vazia não chama sendRideMessage',
-    (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: ActiveRidePage(
-            initialRide: _passengerRide(),
-            api: mockApi,
-          ),
-        ),
-      );
-
-      await tester.pump(Duration.zero);
-
-      await tester.tap(find.byIcon(Icons.chat_bubble_outline));
-      await tester.pumpAndSettle();
-
-      await tester.enterText(find.byType(TextField).last, '   ');
-
-      await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pump();
 
-      verifyNever(mockApi.sendRideMessage(any, any));
-    },
-  );*/
-
-  testWidgets(
-    'CHAT-U11: Erro ao enviar mensagem mostra SnackBar',
-    (tester) async {
-      when(mockApi.sendRideMessage(1, 'teste'))
-          .thenThrow(Exception('network error'));
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: ActiveRidePage(
-            initialRide: _passengerRide(),
-            api: mockApi,
-          ),
-        ),
-      );
-
-      await tester.pump(Duration.zero);
-
       await tester.tap(find.byIcon(Icons.chat_bubble_outline));
       await tester.pumpAndSettle();
 
-      await tester.enterText(find.byType(TextField).last, 'teste');
-
+      await tester.enterText(find.byType(TextField).last, 'Olá');
       await tester.tap(find.byIcon(Icons.send_rounded));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('Erro ao enviar mensagem'), findsOneWidget);
+      // Mensagem foi enviada
+      verify(mockApi.sendRideMessage(1, 'Olá')).called(1);
+      // Campo ficou limpo
+      expect(find.text('Olá'), findsNothing);
     },
   );
 
-  testWidgets(
-    'CHAT-U12: Chat vazio mostra mensagem inicial',
-    (tester) async {
-      when(mockApi.listRideMessages(1))
-          .thenAnswer((_) async => []);
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: ActiveRidePage(
-            initialRide: _passengerRide(),
-            api: mockApi,
-          ),
-        ),
-      );
-
-      await tester.pump(Duration.zero);
-
-      await tester.tap(find.byIcon(Icons.chat_bubble_outline));
-      await tester.pumpAndSettle();
-
-      expect(find.textContaining('Diz olá'), findsOneWidget);
-    },
-  );
-
-  // =============================================================
+  // ==========================================================================
   // CONFIRM IN CAR
-  // =============================================================
+  // ==========================================================================
 
+  // CONFIRM-U3: único — verifica SnackBar de sucesso (f1 só verifica verify())
   testWidgets(
-    'CONFIRM-U3: Confirmar entrada mostra mensagem de sucesso',
+    'CONFIRM-U3: Confirmar entrada mostra SnackBar de sucesso',
     (tester) async {
       when(mockApi.confirmInCar(1))
           .thenAnswer((_) async => _passengerRide(driverIn: 1));
-
       when(mockApi.getActiveRideState()).thenAnswer(
-        (_) async => (
-          ride: _passengerRide(driverIn: 1),
-          pendingRating: null,
-        ),
+        (_) async => (ride: _passengerRide(driverIn: 1), pendingRating: null),
       );
-
-      when(mockApi.listRideMessages(1))
-          .thenAnswer((_) async => []);
+      when(mockApi.listRideMessages(1)).thenAnswer((_) async => []);
 
       await tester.pumpWidget(
         MaterialApp(
-          home: ActiveRidePage(
-            initialRide: _passengerRide(),
-            api: mockApi,
-          ),
+          home: ActiveRidePage(initialRide: _passengerRide(), api: mockApi),
         ),
       );
-
       await tester.pump(Duration.zero);
 
       await tester.tap(find.text('Iniciar viagem'));
@@ -246,23 +188,18 @@ void main() {
     },
   );
 
-  // =============================================================
+  // ==========================================================================
   // COMPLETE RIDE
-  // =============================================================
+  // ==========================================================================
 
+  // COMPLETE-U2: único — verifica SnackBar de sucesso (f1 só verifica verify())
   testWidgets(
-    'COMPLETE-U2: Terminar viagem mostra sucesso',
+    'COMPLETE-U2: Terminar viagem mostra SnackBar de sucesso',
     (tester) async {
-      when(mockApi.completeRide(1))
-          .thenAnswer((_) async => {});
-
+      when(mockApi.completeRide(1)).thenAnswer((_) async => {});
       when(mockApi.getActiveRideState()).thenAnswer(
         (_) async => (
-          ride: _passengerRide(
-            status: 'in_progress',
-            driverIn: 1,
-            passengerIn: 1,
-          ),
+          ride: _passengerRide(status: 'in_progress', driverIn: 1, passengerIn: 1),
           pendingRating: null,
         ),
       );
@@ -279,7 +216,6 @@ void main() {
           ),
         ),
       );
-
       await tester.pump(Duration.zero);
 
       await tester.tap(find.text('Terminar viagem'));
@@ -289,51 +225,73 @@ void main() {
     },
   );
 
-  // =============================================================
-  // REFRESH
-  // =============================================================
+  // ==========================================================================
+  // ACTIVE RIDE COORDINATOR
+  // ==========================================================================
 
+  // ARC-U4: único — cobre o ramo pendingRating != null no _poll
   testWidgets(
-    'REFRESH-U4: Sem token não chama API',
+    'ARC-U4: pendingRating não nulo cobre ramo de avaliação pendente',
+    (tester) async {
+      when(mockApi.getActiveRideState()).thenAnswer(
+        (_) async => (
+          ride: null,
+          pendingRating: {'id': 99, 'rate_target_name': 'João'},
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ActiveRideCoordinator(
+            child: const Scaffold(body: Text('HOME')),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      // O coordinator não crasha e continua a mostrar o filho
+      expect(find.byType(ActiveRideCoordinator), findsOneWidget);
+    },
+  );
+
+  // ARC-U6: único — _poll apanha Exception e não crasha
+  testWidgets(
+    'ARC-U6: _poll ignora exceções da API e não crasha',
+    (tester) async {
+      when(mockApi.getActiveRideState()).thenThrow(Exception('network'));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ActiveRideCoordinator(
+            child: const Scaffold(body: Text('HOME')),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('HOME'), findsOneWidget);
+    },
+  );
+
+  // ==========================================================================
+  // REFRESH
+  // ==========================================================================
+
+  // REFRESH-U4: único — sem token o _refresh retorna imediatamente sem chamar API
+  testWidgets(
+    'REFRESH-U4: Sem token não chama getActiveRideState',
     (tester) async {
       Ride4FreeAuth.token = null;
 
       await tester.pumpWidget(
         MaterialApp(
-          home: ActiveRidePage(
-            initialRide: _passengerRide(),
-            api: mockApi,
-          ),
+          home: ActiveRidePage(initialRide: _passengerRide(), api: mockApi),
         ),
       );
-
       await tester.pump(Duration.zero);
 
       verifyNever(mockApi.getActiveRideState());
-    },
-  );
-
-  // =============================================================
-  // INFO CARD / ICONS
-  // =============================================================
-
-  testWidgets(
-    'ICON-U5: Página do passageiro mostra ícones esperados',
-    (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: ActiveRidePage(
-            initialRide: _passengerRide(),
-            api: mockApi,
-          ),
-        ),
-      );
-
-      await tester.pump(Duration.zero);
-
-      expect(find.byIcon(Icons.person_pin), findsOneWidget);
-      expect(find.byIcon(Icons.directions_car), findsOneWidget);
-      expect(find.byIcon(Icons.chair_alt), findsOneWidget);
     },
   );
 }
