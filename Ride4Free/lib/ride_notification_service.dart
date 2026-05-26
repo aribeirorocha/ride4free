@@ -90,7 +90,7 @@ class RideNotificationHub extends ChangeNotifier {
     required List<Map<String, dynamic>> passenger,
     required List<Map<String, dynamic>> driver,
   }) async {
-    final newAlerts = <_RideAlert>[];
+    final newAlerts = <RideAlert>[];
     var unread = 0;
     final skipAlerts = _firstPoll;
     if (_firstPoll) _firstPoll = false;
@@ -129,11 +129,11 @@ class RideNotificationHub extends ChangeNotifier {
       final prev = _fingerprints[id];
       if (!skipAlerts && prev != null && prev != fingerprint) {
         if (isNewRequest) {
-          newAlerts.add(_RideAlert.fromRequest(r, isDriver: isDriverView, isMessage: false));
+          newAlerts.add(RideAlert.fromRequest(r, isDriver: isDriverView, isMessage: false));
         } else if (hasUnreadMessage && lastMsgBody != null && lastMsgBody.isNotEmpty) {
-          newAlerts.add(_RideAlert.fromRequest(r, isDriver: isDriverView, isMessage: true, body: lastMsgBody));
+          newAlerts.add(RideAlert.fromRequest(r, isDriver: isDriverView, isMessage: true, body: lastMsgBody));
         } else if (needsPassengerAction) {
-          newAlerts.add(_RideAlert.fromRequest(r, isDriver: isDriverView, isMessage: false));
+          newAlerts.add(RideAlert.fromRequest(r, isDriver: isDriverView, isMessage: false));
         }
       }
 
@@ -211,7 +211,7 @@ class RideNotificationHub extends ChangeNotifier {
     return false;
   }
 
-  Future<void> _showPhoneNotification(_RideAlert alert) async {
+  Future<void> _showPhoneNotification(RideAlert alert) async {
     if (kIsWeb) return;
     const androidDetails = AndroidNotificationDetails(
       'ride_requests',
@@ -271,8 +271,8 @@ class RideNotificationHub extends ChangeNotifier {
   }
 }
 
-class _RideAlert {
-  _RideAlert({
+class RideAlert {
+  RideAlert({
     required this.notificationId,
     required this.title,
     required this.body,
@@ -282,7 +282,7 @@ class _RideAlert {
   final String title;
   final String body;
 
-  factory _RideAlert.fromRequest(
+  factory RideAlert.fromRequest(
     Map<String, dynamic> r, {
     required bool isDriver,
     required bool isMessage,
@@ -296,7 +296,7 @@ class _RideAlert {
       final name = isDriver
           ? (r['passenger_name'] as String? ?? 'Passageiro')
           : (r['driver_name'] as String? ?? 'Condutor');
-      return _RideAlert(
+      return RideAlert(
         notificationId: id + 100000,
         title: 'Nova mensagem — $name',
         body: body ?? '',
@@ -305,7 +305,7 @@ class _RideAlert {
     if (isDriver) {
       final passenger = r['passenger_name'] as String? ?? 'Passageiro';
       final preview = (r['last_message_body'] as String?)?.trim();
-      return _RideAlert(
+      return RideAlert(
         notificationId: id,
         title: 'Novo pedido de boleia',
         body: preview != null && preview.isNotEmpty
@@ -313,7 +313,7 @@ class _RideAlert {
             : '$passenger pediu boleia para $dest',
       );
     }
-    return _RideAlert(
+    return RideAlert(
       notificationId: id,
       title: 'Atualização do pedido',
       body: 'Confirma a tua boleia para $dest',
