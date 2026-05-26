@@ -533,6 +533,7 @@ def list_open_drivers(destination: str | None = None,
     if passenger_lat and passenger_lng:
         return _apply_radius_filter(
             active,
+
             passenger_lat, passenger_lng, radius_m,
             lat_key='destination_lat', lng_key='destination_lng' # Filtra pela chegada!
         )
@@ -670,7 +671,7 @@ def list_community_drivers(destination: str | None = None,
             args,
         ).fetchall()
     return _apply_radius_filter(
-        [dict(r) for r in rows],
+        [dict(r) for r in rows if is_not_expired(r["created_at"])],
         passenger_lat, passenger_lng, radius_m,
         lat_key='origin_lat', lng_key='origin_lng'
     )
@@ -697,7 +698,7 @@ def list_community_passengers(destination: str | None = None) -> list[dict]:
             """,
             args,
         ).fetchall()
-    return [dict(r) for r in rows]
+    return [dict(r) for r in rows if is_not_expired(r["created_at"])]
 
 
 def get_database_schema() -> dict:
