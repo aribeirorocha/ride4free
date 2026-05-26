@@ -149,7 +149,7 @@ DriverOffer - store information about a ride offer, including origin, destinatio
 JoinRequest - store information about a join request, including its state (pending, awaiting_passenger, confirmed, declined).
 ActiveRide - represents a confirmed ride in progress, tracking whether the driver and passenger have boarded.
 Message - stores chat messages exchanged between driver and passenger, either before the ride (join_request_messages) or during it (ride_messages).
-Avaliation - stores the pontuation (score) related to users, broken down by criteria (punctuality, friendliness, cleanliness, communication).
+UserRatings - stores the pontuation (score) related to users, broken down by criteria (punctuality, friendliness, cleanliness, communication).
 Credits - stores the balance of points a user has accumulated through completed rides.
 Transaction - stores a record of each credit change, including the amount and when was made.
 
