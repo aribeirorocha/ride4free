@@ -130,17 +130,19 @@ class _ActiveRideCoordinatorState extends State<ActiveRideCoordinator> {
 
 /// Driver: pending join requests for a published offer.
 class DriverRideRequestsPage extends StatefulWidget {
-  const DriverRideRequestsPage({super.key, required this.offerId, this.destination});
+  DriverRideRequestsPage({super.key, required this.offerId, this.destination, Ride4FreeApi? api})
+      : _api = api ?? Ride4FreeApi();
 
   final int offerId;
   final String? destination;
+  final Ride4FreeApi _api;
 
   @override
   State<DriverRideRequestsPage> createState() => _DriverRideRequestsPageState();
 }
 
 class _DriverRideRequestsPageState extends State<DriverRideRequestsPage> {
-  final _api = Ride4FreeApi();
+  Ride4FreeApi get _api => widget._api;
   List<Map<String, dynamic>> _requests = [];
   bool _loading = true;
 
@@ -252,18 +254,20 @@ class _DriverRideRequestsPageState extends State<DriverRideRequestsPage> {
 
 /// Active ride window: pickup confirmation, chat, complete, rating.
 class ActiveRidePage extends StatefulWidget {
-  const ActiveRidePage({super.key, required this.initialRide});
+  ActiveRidePage({super.key, required this.initialRide, Ride4FreeApi? api})
+      : _api = api ?? Ride4FreeApi();
 
   static const routeName = 'ActiveRidePage';
 
   final Map<String, dynamic> initialRide;
+  final Ride4FreeApi _api;
 
   @override
   State<ActiveRidePage> createState() => _ActiveRidePageState();
 }
 
 class _ActiveRidePageState extends State<ActiveRidePage> {
-  final _api = Ride4FreeApi();
+  Ride4FreeApi get _api => widget._api;
   final _chatController = TextEditingController();
   late Map<String, dynamic> _ride;
   List<Map<String, dynamic>> _messages = [];
