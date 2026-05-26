@@ -5,7 +5,8 @@ Com a conclusão da Sprint 3 e a aplicação a atingir o estado de *Release* fun
 
 Para garantir o máximo rigor, adotámos uma estratégia de validação em duas fases (Qualitativa e Quantitativa):
 1. **Sessões Qualitativas (Demos):** Realizámos **3 Demonstrações Interativas** onde estudantes universitários testaram a aplicação nos seus telemóveis, gerando *insights* profundos sobre a usabilidade.
-2. **Validação Quantitativa (Surveys):** Para termos a certeza das afirmações recolhidas nas Demos e apurarmos estas necessidades de forma mais rápida e global, lançámos um **Inquérito via Google Forms** à comunidade académica, obtendo **12 respostas** válidas.
+2. **Validação Quantitativa (Surveys):** Para termos a certeza das afirmações recolhidas nas Demos e apurarmos estas necessidades de forma mais rápida e global, lançámos um **Inquérito via Google Forms** à comunidade académica, obtendo **34 respostas** válidas.
+https://docs.google.com/forms/d/e/1FAIpQLSenXuD_IIUCzkgu1y6IIGeN42EqzPMQreP201z3Q3almD0BRQ/viewform?usp=header
 
 ## 2. Técnicas de Facilitação e Avaliação
 Para extrair dados acionáveis e fugir do "feedback genérico", aplicámos duas técnicas recomendadas pelas boas práticas da *Scrum.org*:
