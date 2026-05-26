@@ -3,7 +3,7 @@
 ## 1. Revisão da Sprint (Sprint Review)
 
 **Demonstração do Incremento Final do Produto:**
-Nesta terceira e última iteração do projeto, a equipa não só fechou o escopo planeado com o fecho de duas histórias de utilizador críticas, como elevou a maturidade da arquitetura de software para um nível de prontidão de produção (*Production-Ready*). Fizemos 39 créditos.
+Nesta terceira e última iteração do projeto, a equipa não só fechou o escopo planeado com o fecho de duas histórias de utilizador críticas, como elevou a maturidade da arquitetura de software para um nível de prontidão de produção (*Production-Ready*). Fizemos 52 créditos.
 
 As grandes entregas funcionais deste incremento centraram-se na **US6 (User-Chat)** — que passou a permitir a comunicação bidirecional em tempo real entre condutores e passageiros — e na **US7 (Notifications)**, que introduziu um sistema inteligente de alertas visuais (badges na navegação) e notificações locais no dispositivo para garantir que nenhuma mensagem ou alteração de estado de boleia passa despercebida.
 
