@@ -73,6 +73,27 @@ class MockRide4FreeApi extends Mock implements Ride4FreeApi {
       ) as Future<void>;
 
   @override
+  Future<void> rateRideParticipant(
+    int rideId, {
+    int? stars,
+    Map<String, int>? criteria,
+    String? comment,
+  }) =>
+      super.noSuchMethod(
+        Invocation.method(
+          #rateRideParticipant,
+          [rideId],
+          {
+            #stars: stars,
+            #criteria: criteria,
+            #comment: comment,
+          },
+        ),
+        returnValue: Future.value(),
+        returnValueForMissingStub: Future.value(),
+      ) as Future<void>;
+
+  @override
   Future<Ride4FreeUser> me() =>
       super.noSuchMethod(
         Invocation.method(#me, []),
@@ -277,6 +298,70 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tabIndex, 0);
+    });
+  });
+
+  group('ActiveRideFlow - Coordinator and Rating', () {
+    late MockRide4FreeApi mockApi;
+
+    setUp(() {
+      mockApi = MockRide4FreeApi();
+      Ride4FreeAuth.token = null;
+    });
+
+    testWidgets('promptRideRating displays rating dialog and submits',
+        (WidgetTester tester) async {
+      when(mockApi.rateRideParticipant(
+        1,
+        criteria: anyNamed('criteria'),
+      )).thenAnswer((_) async {});
+
+      final widget = MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () async {
+                final submitted = await promptRideRating(
+                  context: context,
+                  rideId: 1,
+                  targetName: 'Maria',
+                  api: mockApi,
+                );
+                expect(submitted, true);
+              },
+              child: const Text('Rate Ride'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(widget);
+      await tester.tap(find.text('Rate Ride'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Enviar'), findsOneWidget);
+      await tester.tap(find.text('Enviar'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Dialog), findsNothing);
+      expect(find.text('Avaliação enviada! Obrigado.'), findsOneWidget);
+      verify(mockApi.rateRideParticipant(
+        1,
+        criteria: anyNamed('criteria'),
+      )).called(1);
+    });
+
+    testWidgets('ActiveRideCoordinator preserves its child widget',
+        (WidgetTester tester) async {
+      final widget = MaterialApp(
+        home: ActiveRideCoordinator(
+          child: const Text('Active coordinator child'),
+        ),
+      );
+
+      await tester.pumpWidget(widget);
+
+      expect(find.text('Active coordinator child'), findsOneWidget);
     });
   });
 
