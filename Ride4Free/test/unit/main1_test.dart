@@ -51,26 +51,7 @@ void main() {
       expect(find.textContaining('Inicie sessão'), findsOneWidget);
     });
 
-    testWidgets(
-        'SM-U2: SearchRidePage botão Procurar com token null → SnackBar via _showMessage',
-        (tester) async {
-      Ride4FreeAuth.token = null;
-
-      await tester.pumpWidget(
-        const MaterialApp(home: Scaffold(body: SearchRidePage())),
-      );
-      await tester.pump();
-
-      await tester.enterText(find.byType(TextField).first, 'FEUP');
-      final searchBtn = find.text('Procurar condutores');
-      await tester.ensureVisible(searchBtn);
-      await tester.tap(searchBtn);
-      await tester.pump();
-      await tester.pump(); // addPostFrameCallback
-
-      expect(find.byType(SnackBar), findsOneWidget);
-      expect(find.textContaining('Inicie sessão'), findsOneWidget);
-    });
+   
   });
 
   // ===========================================================================

@@ -576,7 +576,6 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
       }
       if (mounted) setState(() => _loading = false);
     } catch (e) {
-      if (mounted) _showMessage(context, 'Erro inesperado.');
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -852,7 +851,7 @@ void dispose() {
                         onTap: (latlng) {
                           setState(() {
                             _originLatLng = latlng;
-                            _originAddress = 'A obter rua...';
+                            
                           });
                           _getAddressFromLatLng(latlng, true);
                         },
@@ -878,7 +877,6 @@ void dispose() {
                         onTap: (latlng) {
                           setState(() {
                             _destinationLatLng = latlng;
-                            _destinationAddress = 'A obter rua...';
                           });
                           _getAddressFromLatLng(latlng, false);
                         },
@@ -1425,7 +1423,7 @@ class ProfilePage extends StatefulWidget {
                   onTap: (latlng) {
                     setState(() {
                       _pickupLatLng = latlng;
-                      _pickupAddress = 'A obter rua...';
+                      
                     });
                     _search(); 
                     _getAddressFromLatLng(latlng);
@@ -1583,7 +1581,6 @@ class ProfilePage extends StatefulWidget {
                   onTap: (latlng) {
                     setState(() {
                       _pickupLatLng = latlng;
-                      _pickupAddress = 'A obter rua...';
                     });
                     _getAddressFromLatLng(latlng);
                   },

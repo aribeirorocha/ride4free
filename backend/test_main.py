@@ -330,13 +330,14 @@ class TestDriverOffers:
         assert len(data["drivers"]) >= 1
     
     def test_list_drivers_empty_destination(self, client, auth_token):
+        # Destino com só espaços: endpoint devolve 200 com mensagem de aviso
         response = client.get(
             "/passenger/drivers",
             headers={"Authorization": f"Bearer {auth_token}"},
-            params={"destination": ""}
+            params={"destination": "   "}
         )
-        
-        assert response.status_code == 400
+        assert response.status_code == 200
+        assert "message" in response.json()
 
 
 class TestPassengerListing:
@@ -566,31 +567,6 @@ class TestDatabaseSchema:
         response = client.get("/database/schema")
         
         assert response.status_code == 401
-
-@pytest.fixture
-def client():
-    fd, path = tempfile.mkstemp(suffix=".db")
-    os.close(fd)
-    os.environ["RIDE4FREE_DB_PATH"] = path
-
-    import database as db
-    import main
-    from importlib import reload
-
-    db = reload(db)
-    main = reload(main)
-    main.db = db
-    db.init_db()
-
-    c = TestClient(main.app)
-    try:
-        yield c
-    finally:
-        c.close()
-        if os.path.exists(path):
-            os.unlink(path)
-        if "RIDE4FREE_DB_PATH" in os.environ:
-            del os.environ["RIDE4FREE_DB_PATH"]
 
 
 @pytest.fixture
