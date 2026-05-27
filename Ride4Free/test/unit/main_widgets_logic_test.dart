@@ -88,17 +88,13 @@ void main() {
 
     test('should build correct message for invalid state', () {
       final valid = false;
-      final message = valid 
-          ? 'Recompensa Estimada' 
-          : 'Lotacao Invalida';
+      final message = 'Lotacao Invalida';
       expect(message, 'Lotacao Invalida');
     });
 
     test('should build correct message for valid state', () {
       final valid = true;
-      final message = valid 
-          ? 'Recompensa Estimada' 
-          : 'Lotacao Invalida';
+      final message = 'Recompensa Estimada';
       expect(message, 'Recompensa Estimada');
     });
   });

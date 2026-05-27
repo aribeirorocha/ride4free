@@ -1,10 +1,14 @@
+// ignore_for_file: unused_local_variable
+
 import 'package:flutter_test/flutter_test.dart';
 
 /// Test suite for state management and business logic from main.dart pages
 void main() {
+  
   group('Authentication Logic', () {
     group('Session validation', () {
       test('authenticated flag should be true when token exists', () {
+        
         final token = 'valid_token_xyz';
         final isAuthenticated = token.isNotEmpty;
         expect(isAuthenticated, true);

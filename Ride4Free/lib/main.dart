@@ -40,7 +40,6 @@ const kMuted = Color(0xFF7D7D7D);
 const kSuccess = Color(0xFF62B86B);
 const kDarkText = Color(0xFF1E1E1E);
 const kLight = Color(0xFFD5D5D5);
-const kLighter = Color(0x00000000);
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -502,7 +501,6 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
   bool _loading = false;
   List<Map<String, dynamic>> _drivers = [];
   List<Map<String, dynamic>> _passengers = [];
-  Map<String, dynamic>? _schema;
   @override
   void initState() {
     super.initState();
@@ -523,10 +521,6 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
     super.dispose();
   }
   Future<void> _bookDriver(int offerId) async {
-    if (Ride4FreeAuth.token == null) {
-      _showMessage(context, 'Inicie sessão no perfil.');
-      return;
-    }
     setState(() => _loading = true);
     try {
       final result = await _api.requestJoinRide(offerId: offerId);
@@ -561,10 +555,6 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
 
   // ignore: unused_element
   Future<void> _bookPassenger(int requestId) async {
-    if (Ride4FreeAuth.token == null) {
-      _showMessage(context, 'Inicie sessão no perfil.');
-      return;
-    }
     setState(() => _loading = true);
     try {
       await _api.bookPassengerRequest(requestId);
@@ -590,7 +580,6 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
       if (mounted) setState(() => _loading = false);
     }
   }
-
   Future<void> _loadSection() async {
     if (Ride4FreeAuth.token == null) {
       _showMessage(context, 'Inicie sessão no perfil.');
@@ -606,7 +595,6 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
         if (mounted) setState(() => _passengers = rows);
       } else {
         final rows = await _api.getDatabaseSchema();
-        if (mounted) setState(() => _schema = rows);
       }
     } catch (e) {
       if (mounted) _showMessage(context, 'Erro: $e');
@@ -614,7 +602,6 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
       if (mounted) setState(() => _loading = false);
     }
   }
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -628,7 +615,6 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
                 segments: const [
                   ButtonSegment(value: 0, icon: Icon(Icons.drive_eta), label: Text('Condutores')),
                   ButtonSegment(value: 1, icon: Icon(Icons.people), label: Text('Passageiros')),
-                  //ButtonSegment(value: 2, icon: Icon(Icons.storage), label: Text('BD')),
                 ],
                 selected: {_section},
                 onSelectionChanged: (selection) {
@@ -645,12 +631,12 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
       ],
     );
   }
-
+  
   Widget _buildSectionBody() {
     if (_section == 0) {
       if (_drivers.isEmpty) {
         return const Center(
-          child: Text('À procura de condutores...', style: TextStyle(color: kLighter)),
+          child: Text('À procura de condutores...', style: TextStyle(color: kMuted)),
         );
       }
       return ListView.separated(
@@ -724,41 +710,7 @@ class CommunityBoardPageState extends State<CommunityBoardPage> {
         },
       );
     }
-
-    final tables = (_schema?['tables'] as Map<String, dynamic>?) ?? {};
-    if (tables.isEmpty) {
-      return const Center(
-        child: Text('Schema indisponivel. Carregue em "Atualizar secao".', style: TextStyle(color: kMuted)),
-      );
-    }
-    final tableNames = tables.keys.toList()..sort();
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
-      itemCount: tableNames.length,
-      itemBuilder: (context, i) {
-        final tableName = tableNames[i];
-        final cols = (tables[tableName] as List<dynamic>).cast<Map<String, dynamic>>();
-        return Card(
-          margin: const EdgeInsets.only(bottom: 10),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(tableName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                const SizedBox(height: 8),
-                ...cols.map(
-                      (c) => Text(
-                    '- ${c['name']} (${c['type']})${(c['primary_key'] as bool? ?? false) ? ' [PK]' : ''}',
-                    style: const TextStyle(color: kMuted, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+    return const SizedBox();
   }
 }
 
@@ -771,17 +723,14 @@ class OfferRidePage extends StatefulWidget {
 
 class _OfferRidePageState extends State<OfferRidePage> {
   final TextEditingController _timeController = TextEditingController(text: '08:15');
-  String? _timeError; 
   bool _isValidTime(String input) {
   final RegExp timeRegExp = RegExp(r'^([01]?[0-9]|2[0-3]):[0-5][0-9]$');
   return timeRegExp.hasMatch(input);
 }
   int _seats = 3;
-  final _destController = TextEditingController(text: '');
   final _vehicleController = TextEditingController(); 
   final _api = Ride4FreeApi();
   bool _busy = false;
-  int? _lastPublishedOfferId;
   LatLng? _originLatLng;
   LatLng? _destinationLatLng;
   String? _originAddress;
@@ -825,37 +774,13 @@ class _OfferRidePageState extends State<OfferRidePage> {
     } catch (_) {}
   }
 
-  @override
-  void dispose() {
-    _destController.dispose();
-    super.dispose();
-  }
+ @override
+void dispose() {
+  _timeController.dispose();
+  _vehicleController.dispose();
+  super.dispose();
+}
 
-  Future<void> _openRideRequests() async {
-    if (_lastPublishedOfferId == null) {
-      _showMessage(context, 'Publique uma viagem primeiro.');
-      return;
-    }
-    final accepted = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => DriverRideRequestsPage(
-          offerId: _lastPublishedOfferId!,
-          destination: _destinationAddress,
-        ),
-      ),
-    );
-    if (accepted == true && mounted) {
-      final state = await _api.getActiveRideState();
-      if (state.ride != null && mounted) {
-        await Navigator.of(context).push(
-          MaterialPageRoute(
-            settings: const RouteSettings(name: ActiveRidePage.routeName),
-            builder: (_) => ActiveRidePage(initialRide: state.ride!),
-          ),
-        );
-      }
-    }
-  }
 
   Future<void> _publish() async {
     if (!_isValidTime(_timeController.text)) {
@@ -884,7 +809,6 @@ class _OfferRidePageState extends State<OfferRidePage> {
       );
 
       if (mounted) {
-        setState(() => _lastPublishedOfferId = offerId);
         _showMessage(context, 'Viagem publicada! Veja os pedidos de boleia.');
       }
     } catch (e) {
@@ -894,38 +818,7 @@ class _OfferRidePageState extends State<OfferRidePage> {
     }
   }
 
-  Future<void> _seePassengers() async {
-    if (Ride4FreeAuth.token == null) {
-      _showMessage(context, 'Inicie sessão no perfil.');
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      final m = await _api.listPassengersForDestination(_destController.text);
-      if (!mounted) return;
-      final rc = m['request_count'] as int? ?? m['rows']?.length ?? 0;
-      final total = m['total_passenger_slots'] as int? ?? m['total_passengers'] as int? ?? 0;
-      final requests = (m['requests'] as List?) ?? (m['rows'] as List?) ?? [];
-      final lines = <String>['Pedidos: $rc', 'Total passageiros: $total', ''];
-      for (final r in requests) {
-        final map = r as Map<String, dynamic>;
-        lines.add('- ${map['passenger_name']}: ${map['passenger_count']} pax');
-      }
-      await showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Passageiros para o mesmo destino'),
-          content: SingleChildScrollView(child: Text(lines.join('\n'))),
-          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
-        ),
-      );
-    } catch (e) {
-      if (mounted) _showMessage(context, 'Erro: $e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
+  
   @override
   Widget build(BuildContext context) {
     final canPublish = _seats > 0 && !_busy;
@@ -953,7 +846,7 @@ class _OfferRidePageState extends State<OfferRidePage> {
                     _addressStatus(_originLatLng != null, _originAddress),
                     const SizedBox(height: 10),
                     _mapBox(
-                      child: _ConferenceMap(
+                      child: ConferenceMap(
                         userLocation: _originLatLng,
                         radiusMeters: 10,
                         onTap: (latlng) {
@@ -979,7 +872,7 @@ class _OfferRidePageState extends State<OfferRidePage> {
                     _addressStatus(_destinationLatLng != null, _destinationAddress),
                     const SizedBox(height: 10),
                     _mapBox(
-                      child: _ConferenceMap(
+                      child: ConferenceMap(
                         userLocation: _destinationLatLng,
                         radiusMeters: 10,
                         onTap: (latlng) {
@@ -1012,7 +905,7 @@ class _OfferRidePageState extends State<OfferRidePage> {
                             keyboardType: TextInputType.datetime,
                             decoration: InputDecoration(
                               hintText: 'HH:MM',
-                              errorText: _timeError,
+                              
                               prefixIcon: Icon(Icons.access_time, color: kRed, size: 20),
                               filled: true,
                               fillColor: const Color(0xFFF8F8F8),
@@ -1180,7 +1073,7 @@ class SearchRidePage extends StatefulWidget {
   const SearchRidePage({super.key});
 
   @override
-  State<SearchRidePage> createState() => _SearchRidePageState();
+  State<SearchRidePage> createState() => SearchRidePageState();
 }
 
 class ProfilePage extends StatefulWidget {
@@ -1196,8 +1089,8 @@ class ProfilePage extends StatefulWidget {
   final UniversityIdentity identity;
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
-}class _SearchRidePageState extends State<SearchRidePage> {
+  State<ProfilePage> createState() => ProfilePageState();
+}class SearchRidePageState extends State<SearchRidePage> {
   final _originController = TextEditingController();
   final _destController = TextEditingController();
   final _timeController = TextEditingController();
@@ -1283,10 +1176,7 @@ class ProfilePage extends StatefulWidget {
   }
 
   Future<void> _search() async {
-    if (Ride4FreeAuth.token == null) {
-      _showMessage(context, 'Inicie sessão no perfil.');
-      return;
-    }
+    
     setState(() => _loading = true);
     try {
       final list = await _api.listDriversForDestination(
@@ -1304,10 +1194,7 @@ class ProfilePage extends StatefulWidget {
   }
 
   Future<void> _reserveDriver(Map<String, dynamic> d) async {
-    if (Ride4FreeAuth.token == null) {
-      _showMessage(context, 'Inicie sessão no perfil.');
-      return;
-    }
+    
     final offerId = d['id'];
     if (offerId == null) {
       _showMessage(context, 'Oferta inválida.');
@@ -1341,10 +1228,7 @@ class ProfilePage extends StatefulWidget {
   }
 
   Future<void> _registerRequest() async {
-    if (Ride4FreeAuth.token == null) {
-      _showMessage(context, 'Inicie sessão no perfil.');
-      return;
-    }
+   
     if (_destController.text.trim().isEmpty) {
       _showMessage(context, 'Por favor, indique um destino.');
       return;
@@ -1535,7 +1419,7 @@ class ProfilePage extends StatefulWidget {
               _label('O teu ponto de partida'),
               _addressStatus(_pickupLatLng != null, _pickupAddress, 'A usar o GPS. Toca no mapa para alterar.'),
               _mapBox(
-                child: _ConferenceMap(
+                child: ConferenceMap(
                   userLocation: _pickupLatLng ?? _userLocation,
                   radiusMeters: _radiusMeters,
                   onTap: (latlng) {
@@ -1693,7 +1577,7 @@ class ProfilePage extends StatefulWidget {
               _label('O teu ponto de pickup'),
               _addressStatus(_pickupLatLng != null, _pickupAddress, '📍 A usar: $_locationLabel'),
               _mapBox(
-                child: _ConferenceMap(
+                child: ConferenceMap(
                   userLocation: _pickupLatLng ?? _userLocation,
                   radiusMeters: 0, 
                   onTap: (latlng) {
@@ -1736,7 +1620,7 @@ class ProfilePage extends StatefulWidget {
     );
   }
 }
-class _ProfilePageState extends State<ProfilePage> {
+class ProfilePageState extends State<ProfilePage> {
   final _api = Ride4FreeApi();
   final _vehicleController = TextEditingController();
   bool _busy = false;
@@ -1797,20 +1681,7 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> _saveVehicle() async {
-    final v = _vehicleController.text.trim();
-    if (v.isEmpty) return;
-    setState(() => _busy = true);
-    try {
-      await _api.updateVehicleInfo(v);
-      if (mounted) _showMessage(context, 'Veículo guardado.');
-      await _loadProfile();
-    } catch (e) {
-      if (mounted) _showMessage(context, '$e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
+
 
   Future<void> _logout() async {
     setState(() => _busy = true);
@@ -1943,7 +1814,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
 
-                    // --- 4. HISTÓRICO DE CRÉDITOS (Estilo Lista Uber) ---
+                    
                     if (_transactions.isNotEmpty) ...[
                       _label('Histórico de Créditos'),
                       _sectionCard(
@@ -1973,7 +1844,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                               ),
                               title: Text(t['description'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.black87)),
-                              subtitle: Text(t['created_at'] as String? ?? '', style: const TextStyle(color: kMuted, fontSize: 12, fontWeight: FontWeight.w500)),
                               trailing: Text(
                                 '${isPos ? '+' : ''}$amt',
                                 style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: isPos ? kSuccess : kRed),
@@ -2012,7 +1882,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                     ],
                                   ),
                                   const SizedBox(height: 6),
-                                  Text('${r['created_at'] ?? ''}', style: const TextStyle(color: kMuted, fontSize: 12, fontWeight: FontWeight.w600)),
                                 ],
                               ),
                             );
@@ -2080,7 +1949,6 @@ class TopTitleBar extends StatelessWidget {
 }
 class InputLike extends StatelessWidget {
   final String text;
-  // ignore: use_key_in_widget_constructors
   const InputLike({required this.text});
 
   @override
@@ -2465,13 +2333,13 @@ class ProfileCard extends StatelessWidget {
     );
   }
 }
-class _ConferenceMap extends StatefulWidget {
+class ConferenceMap extends StatefulWidget {
   final LatLng? userLocation;
   final double radiusMeters;
   final void Function(LatLng)? onTap;
   final List<LatLng> driverOrigins;
 
-  const _ConferenceMap({
+  const ConferenceMap({
     super.key,
     this.userLocation,
     this.radiusMeters = 500,
@@ -2480,9 +2348,9 @@ class _ConferenceMap extends StatefulWidget {
   });
 
   @override
-  State<_ConferenceMap> createState() => _ConferenceMapState();
+  State<ConferenceMap> createState() => ConferenceMapState();
 }
-class _ConferenceMapState extends State<_ConferenceMap> {
+class ConferenceMapState extends State<ConferenceMap> {
   // 1. Criar o controlador da câmara do mapa
   final MapController _mapController = MapController();
 

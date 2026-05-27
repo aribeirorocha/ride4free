@@ -42,7 +42,7 @@ class _ProfileRatingButtonState extends State<ProfileRatingButton> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _RatingSheet(
+      builder: (_) => RatingSheet(
         profiles: _profiles,
         avatarBg: _avatarBg,
         avatarFg: _avatarFg,
@@ -141,7 +141,7 @@ class _ProfileRatingButtonState extends State<ProfileRatingButton> {
 
 // ── Bottom Sheet ─────────────────────────────────────────────────────────────
 
-class _RatingSheet extends StatefulWidget {
+class RatingSheet extends StatefulWidget {
   final List<Profile> profiles;
   final Color Function(int) avatarBg;
   final Color Function(int) avatarFg;
@@ -149,7 +149,7 @@ class _RatingSheet extends StatefulWidget {
   final void Function(String name) onAddProfile;
   final void Function(int profileId, int stars) onSave;
 
-  const _RatingSheet({
+  const RatingSheet({
     required this.profiles,
     required this.avatarBg,
     required this.avatarFg,
@@ -159,10 +159,10 @@ class _RatingSheet extends StatefulWidget {
   });
 
   @override
-  State<_RatingSheet> createState() => _RatingSheetState();
+  State<RatingSheet> createState() => RatingSheetState();
 }
 
-class _RatingSheetState extends State<_RatingSheet> {
+class RatingSheetState extends State<RatingSheet> {
   Profile? _selected;
   int _pendingStars = 0;
   final _nameController = TextEditingController();

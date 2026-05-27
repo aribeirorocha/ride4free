@@ -53,10 +53,10 @@ class ActiveRideCoordinator extends StatefulWidget {
   final Widget child;
 
   @override
-  State<ActiveRideCoordinator> createState() => _ActiveRideCoordinatorState();
+  State<ActiveRideCoordinator> createState() => ActiveRideCoordinatorState();
 }
 
-class _ActiveRideCoordinatorState extends State<ActiveRideCoordinator> {
+class ActiveRideCoordinatorState extends State<ActiveRideCoordinator> {
   final _api = Ride4FreeApi();
   Timer? _timer;
   bool _checking = false;
@@ -88,7 +88,7 @@ class _ActiveRideCoordinatorState extends State<ActiveRideCoordinator> {
         final name = state.pendingRating!['rate_target_name'] as String? ?? 'utilizador';
         _showingRating = true;
         try {
-          await _showRatingDialog(rideId: rideId, targetName: name);
+          await showRatingDialog(rideId: rideId, targetName: name);
         } finally {
           _showingRating = false;
         }
@@ -110,7 +110,7 @@ class _ActiveRideCoordinatorState extends State<ActiveRideCoordinator> {
     }
   }
 
-  Future<void> _showRatingDialog({required int rideId, required String targetName}) async {
+  Future<void> showRatingDialog({required int rideId, required String targetName}) async {
     if (!mounted) return;
     final submitted = await promptRideRating(
       context: context,
@@ -263,10 +263,13 @@ class ActiveRidePage extends StatefulWidget {
   final Ride4FreeApi _api;
 
   @override
-  State<ActiveRidePage> createState() => _ActiveRidePageState();
+  State<ActiveRidePage> createState() => ActiveRidePageState();
 }
 
-class _ActiveRidePageState extends State<ActiveRidePage> {
+class ActiveRidePageState extends State<ActiveRidePage> {
+  // Dentro de _ActiveRidePageState
+@visibleForTesting
+TextEditingController get chatController => _chatController;
   Ride4FreeApi get _api => widget._api;
   final _chatController = TextEditingController();
   late Map<String, dynamic> _ride;
@@ -369,7 +372,7 @@ class _ActiveRidePageState extends State<ActiveRidePage> {
     }
   }
 
-  Future<void> _sendMessage() async {
+  Future<void> sendMessage() async {
     final text = _chatController.text.trim();
     if (text.isEmpty) return;
     _chatController.clear();

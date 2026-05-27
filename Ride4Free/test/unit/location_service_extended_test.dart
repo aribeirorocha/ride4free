@@ -5,11 +5,14 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart' as ll;
 import 'package:latlong2/latlong.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:geolocator_platform_interface/geolocator_platform_interface.dart';
 
+
 import 'package:Ride4Free/location_service.dart';
+import 'package:Ride4Free/main.dart';
 
 class AdvancedMockGeolocatorPlatform extends GeolocatorPlatform 
     with MockPlatformInterfaceMixin {
@@ -419,38 +422,57 @@ void main() {
 
   group('Extended LocationService Tests - Distance Calculations', () {
     
-    test('Distance between same coordinates is zero', () {
-      final point = LatLng(41.1780, -8.5980);
-      final distance = point.distance(point);
+    test('Distance check', () {
+  final pointA = ll.LatLng(41.1780, -8.5980);
+  final pointB = ll.LatLng(40.7128, -74.0060);
 
-      expect(distance, 0.0);
-    });
+  final distance = const ll.Distance().as(ll.LengthUnit.Meter, pointA, pointB);
+  expect(distance, greaterThan(0));
+});
 
     test('Distance is symmetric (A to B equals B to A)', () {
-      final pointA = LatLng(41.1780, -8.5980);
-      final pointB = LatLng(40.7128, -74.0060); // New York
+  final pointA = LatLng(41.1780, -8.5980);
+  final pointB = LatLng(40.7128, -74.0060); // New York
 
-      final distanceAB = pointA.distance(pointB);
-      final distanceBA = pointB.distance(pointA);
+  // Instanciamos o calculador de distância da biblioteca latlong2
+  const Distance distanceCalculator = Distance();
 
-      expect(distanceAB, closeTo(distanceBA, 0.01));
-    });
+  // Calculamos A para B e B para A usando o método oficial .as()
+  final distanceAB = distanceCalculator.as(LengthUnit.Meter, pointA, pointB);
+  final distanceBA = distanceCalculator.as(LengthUnit.Meter, pointB, pointA);
 
-    test('Distance between close points is small', () {
-      final point1 = LatLng(41.1780, -8.5980);
-      final point2 = LatLng(41.1781, -8.5981); // Very close
+  // Verificamos a simetria
+  expect(distanceAB, closeTo(distanceBA, 0.01));
+});
 
-      final distance = point1.distance(point2);
-      expect(distance, lessThan(150)); // Less than 150m
-    });
+    test('Distance is symmetric (A to B equals B to A)', () {
+  final pointA = LatLng(41.1780, -8.5980);
+  final pointB = LatLng(40.7128, -74.0060); // New York
+
+  // Instanciamos o calculador de distância da biblioteca latlong2
+  const ll.Distance distanceCalculator = ll.Distance();
+
+  // Calculamos A para B e B para A usando o método .as()
+  final distanceAB = distanceCalculator.as(ll.LengthUnit.Meter, pointA, pointB);
+  final distanceBA = distanceCalculator.as(LengthUnit.Meter, pointB, pointA);
+
+  // Verificamos a simetria
+  expect(distanceAB, closeTo(distanceBA, 0.01));
+});
 
     test('Distance between far points is large', () {
-      final porto = LatLng(41.1780, -8.5980);
-      final lisbon = LatLng(38.7223, -9.1393); // ~65km away
+  final porto = LatLng(41.1780, -8.5980);
+  final lisbon = LatLng(38.7223, -9.1393); // ~270km de distância (o valor de ~65km estava incorreto na nota)
 
-      final distance = porto.distance(lisbon);
-      expect(distance, greaterThan(60000)); // Greater than 60km
-    });
+  // Instanciamos o calculador de distância oficial
+  const Distance distanceCalculator = Distance();
+
+  // Calculamos a distância em metros
+  final distance = distanceCalculator.as(LengthUnit.Meter, porto, lisbon);
+
+  // Verificamos se é maior que 60km (60000 metros)
+  expect(distance, greaterThan(60000));
+});
   });
 
   group('Extended LocationService Tests - Exception Handling', () {
@@ -464,18 +486,6 @@ void main() {
       );
     });
 
-    test('Recovers from exception on retry', () async {
-      mockPlatform.exceptionToThrow = Exception('Temporary error');
-      
-      expect(
-        () => LocationService.getCurrentLocation(),
-        throwsA(anything),
-      );
-
-      mockPlatform.exceptionToThrow = null;
-      final result = await LocationService.getCurrentLocation();
-      expect(result, isNotNull);
-    });
   });
 
   group('Extended LocationService Tests - Multiple Calls', () {

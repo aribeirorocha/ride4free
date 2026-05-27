@@ -66,10 +66,20 @@ class _PedidosPageState extends State<PedidosPage> with SingleTickerProviderStat
     try {
       final p = await _api.listMyPassengerJoinRequests();
       final d = await _api.listDriverIncomingJoinRequests();
+      final pFiltrados = p.where((req) {
+        final status = req['status'] as String?;
+        return status != 'expired' && status != 'declined' && status != 'confirmed';
+      }).toList();
+
+      final dFiltrados = d.where((req) {
+        final status = req['status'] as String?;
+        return status != 'expired' && status != 'declined' && status != 'confirmed';
+      }).toList();
+
       if (mounted) {
         setState(() {
-          _passenger = p;
-          _driver = d;
+          _passenger = pFiltrados;
+          _driver =dFiltrados;
         });
         await _hub.refresh();
       }

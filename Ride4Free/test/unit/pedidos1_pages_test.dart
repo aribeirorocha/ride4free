@@ -218,31 +218,34 @@ void main() {
     }
   });
 
-  testWidgets('SL-U3: status "confirmed" → pílula "CONFIRMADO"', (tester) async {
+  testWidgets('SL-U3: status "confirmed" → pedido deve ser OMITIDO da lista', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
     try {
       await pumpWithStatus(tester, 'confirmed', false);
-      expect(find.text('CONFIRMADO'), findsOneWidget);
+      // Como agora filtramos os 'confirmed', o cartão não deve aparecer
+      expect(find.text('CONFIRMADO'), findsNothing); 
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
   });
 
-  testWidgets('SL-U4: status "declined" → pílula "RECUSADO"', (tester) async {
+  testWidgets('SL-U4: status "declined" → pedido deve ser OMITIDO da lista', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
     try {
       await pumpWithStatus(tester, 'declined', false);
-      expect(find.text('RECUSADO'), findsOneWidget);
+      // Como agora filtramos os 'declined', o cartão não deve aparecer
+      expect(find.text('RECUSADO'), findsNothing);
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
   });
 
-  testWidgets('SL-U5: status "expired" → pílula "EXPIRADO"', (tester) async {
+  testWidgets('SL-U5: status "expired" → pedido deve ser OMITIDO da lista', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
     try {
       await pumpWithStatus(tester, 'expired', false);
-      expect(find.text('EXPIRADO'), findsOneWidget);
+      // Como agora filtramos os 'expired', o cartão não deve aparecer
+      expect(find.text('EXPIRADO'), findsNothing);
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }

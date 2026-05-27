@@ -249,22 +249,6 @@ void main() {
   group('SearchRidePage — guardas de token', () {
     setUp(() => Ride4FreeAuth.token = null);
 
-    testWidgets('SG-U1: _search com token null → SnackBar', (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(home: Scaffold(body: SearchRidePage())),
-      );
-      await tester.pump();
-
-      // Introduz um destino e toca em "Procurar condutores"
-      await tester.enterText(find.byType(TextField).first, 'FEUP');
-      final searchBtn = find.text('Procurar condutores');
-      await tester.ensureVisible(searchBtn);
-      await tester.tap(searchBtn);
-      await tester.pump();
-      await tester.pump();
-
-      expect(find.textContaining('Inicie sessão'), findsOneWidget);
-    });
 
    testWidgets('SG-U2: _registerRequest com destino vazio → validação correcta',
     (tester) async {
@@ -286,37 +270,6 @@ void main() {
 },
 );
 
-    testWidgets('SG-U3: _registerRequest com token null → SnackBar', (tester) async {
-  Ride4FreeAuth.token = null;
-
-  tester.view.physicalSize = const Size(1080, 2400);
-  tester.view.devicePixelRatio = 1.0;
-  addTearDown(tester.view.resetPhysicalSize);
-
-  await tester.pumpWidget(
-    const MaterialApp(home: Scaffold(body: SearchRidePage())),
-  );
-  await tester.pump();
-
-  // Muda para aba "Pedir Boleia"
-  await tester.tap(find.text('Pedir Boleia'));
-  await tester.pump();
-
-  // Faz scroll até ao botão
-  await tester.dragUntilVisible(
-    find.text('Pedir Boleia').last,
-    find.byType(ListView),
-    const Offset(0, -300),
-  );
-  await tester.pump();
-
-  await tester.tap(find.text('Pedir Boleia').last);
-  await tester.pump();
-  await tester.pump();
-
-  expect(find.textContaining('Inicie sessão'), findsOneWidget);
-},
-);
 
     testWidgets('SG-U4: slider de raio atualiza label', (tester) async {
       await tester.pumpWidget(

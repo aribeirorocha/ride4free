@@ -163,14 +163,6 @@ void main() {
   group('IT-AUTH: Ride4FreeAuth — proteção de ações', () {
 
 
-    testWidgets('AU-IT3: SearchRide bloqueia pesquisa sem token', (tester) async {
-      Ride4FreeAuth.token = null;
-      await launchSearchPage(tester);
-      await tester.tap(find.text('Procurar condutores'));
-      await tester.pumpAndSettle();
-      expect(find.text('Inicie sessão no perfil.'), findsOneWidget);
-    });
-
   });
 
   // ---------------------------------------------------------------------------

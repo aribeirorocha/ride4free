@@ -228,7 +228,7 @@ def list_drivers_for_passenger(
         user_id: int = Depends(require_user),
 ):
     if not destination.strip():
-        raise HTTPException(status_code=400, detail="destination is required")
+       return {"message": "Por favor, indique um destino válido."}
     drivers = db.list_open_drivers_for_destination(destination, lat, lng, radius_m)
     for d in drivers:
         d.update(db._rating_fields(int(d["driver_user_id"])))

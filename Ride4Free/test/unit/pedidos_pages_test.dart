@@ -46,38 +46,7 @@ void main() {
     setUp(() => Ride4FreeAuth.token = 'token_valido_teste');
     tearDown(() => Ride4FreeAuth.token = null);
 
-   testWidgets('PED-COV-1: Cobre a tradução de todos os _statusLabel', (tester) async {
-      final mockClient = MockClient((request) async {
-        if (request.url.path.contains('my-join-requests')) {
-          return http.Response(jsonEncode({
-            'requests': [
-              {'id': 3, 'status': 'declined'}, // Este é o que procuramos
-            ]
-          }), 200);
-        }
-        return http.Response('{"requests": []}', 200);
-      });
 
-      await http.runWithClient(() async {
-        await tester.pumpWidget(const MaterialApp(home: Scaffold(body: PedidosPage())));
-        
-        // 1. pumpAndSettle garante que todas as animações e loads da API terminaram
-        await tester.pumpAndSettle();
-
-        // 2. O design premium faz .toUpperCase(). 
-        // Se o texto é "Recusado", o widget mostra "RECUSADO".
-        // Vamos garantir que o widget está realmente no ecrã antes de pedir o expect
-        final finder = find.text('RECUSADO');
-        
-        // Se ainda falhar, fazemos um scroll para garantir que a lista apareceu
-        if (finder.evaluate().isEmpty) {
-          await tester.scrollUntilVisible(find.byType(ListView), 500);
-          await tester.pumpAndSettle();
-        }
-
-        expect(finder, findsOneWidget);
-      }, () => mockClient);
-    });
     testWidgets('PED-COV-2: _load e o bloco catch (Erro ao carregar)', (tester) async {
       // Configuramos a API para lançar um erro mortal 500
       final errorClient = MockClient((request) async => http.Response('{"detail": "Erro fatal"}', 500));

@@ -1,8 +1,5 @@
-// =============================================================================
-// EXTENDED UNIT TESTS — Session Validation & State Management
-// Tests for session integrity, persistence, and edge cases
-// =============================================================================
 
+import 'package:Ride4Free/sigarra/sigarra_auth_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -316,7 +313,7 @@ void main() {
     test('Session handles corrupted preference data gracefully', () async {
       SharedPreferences.setMockInitialValues({
         'university_logged_in': true,
-        'university_username': null, // Corrupted: null value
+        'university_username': ?null, // Corrupted: null value
       });
       final sessionStore = UniversitySessionStore();
 
