@@ -230,6 +230,14 @@ The detailed notes from our Sprint 2 Review, Planning, and Retrospective (includ
 The detailed notes from our Sprint 3 Review, Planning, and Retrospective (including the Agile Patterns applied, the delivery of the In-App Chat feature, UI/UX refinement, deployment of the remote server via Cloudflare tunnels, and final project reflections) can be found in our dedicated [Sprint3PlanningRetrospectives.md](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/blob/main/Docs/Sprint3PlanningRetrospectives.md).
 
 ### Sprint 4
+ * **Pitch text:**
+
+   Boa tarde a todos quantos vezes estamos a andar na rua e reparamos que a maioria dos carros apenas tem uma pessoa lá dentro?. Existe alguma  forma de otimizar o uso lugares disponíveis ?
+Assim nasceu o Ride4Free. Uma app que liga condutores com lugares livres a passageiros que fazem o mesmo trajeto. Isto só é possível Através de um sistema de pontos. O passageiro usa pontos para viajar de forma gratuita, e o condutor acumula-os para usar futuramente. Todos ganham, e o planeta agradece. Para além disso, O que destingue a nossa aplicaçao da concorrência é a segurança: o acesso é exclusivo através da autenticação da universidade, garantindo perfis verificados e um sistema de avaliaçao de confiança. Por fim, com mapas em tempo real, pedir ou aceitar uma boleia está à distância de um clique. Menos carros na estrada. Mais comunidade a mover-se na mesma direção. Ride4Free: move people, move the planet."
+
+* **Slide:**
+  
+  <img width="400" height="350" alt="image" src="https://github.com/user-attachments/assets/f5e59521-6cea-4b9d-bc54-6a5fd1b60302" />
 
 ### Final Release
 **Release v3 (Production-Ready State)**
