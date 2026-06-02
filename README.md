@@ -232,8 +232,8 @@ The detailed notes from our Sprint 3 Review, Planning, and Retrospective (includ
 ### Sprint 4
  * **Pitch text:**
 
-   Boa tarde a todos quantos vezes estamos a andar na rua e reparamos que a maioria dos carros apenas tem uma pessoa lá dentro?. Existe alguma  forma de otimizar o uso lugares disponíveis ?
-Assim nasceu o Ride4Free. Uma app que liga condutores com lugares livres a passageiros que fazem o mesmo trajeto. Isto só é possível Através de um sistema de pontos. O passageiro usa pontos para viajar de forma gratuita, e o condutor acumula-os para usar futuramente. Todos ganham, e o planeta agradece. Para além disso, O que destingue a nossa aplicaçao da concorrência é a segurança: o acesso é exclusivo através da autenticação da universidade, garantindo perfis verificados e um sistema de avaliaçao de confiança. Por fim, com mapas em tempo real, pedir ou aceitar uma boleia está à distância de um clique. Menos carros na estrada. Mais comunidade a mover-se na mesma direção. Ride4Free: move people, move the planet."
+  "Boa tarde a todos, quantas vezes estamos a andar na rua e reparamos que a maioria dos carros apenas tem uma pessoa lá dentro?. Existe alguma  forma de otimizar o uso lugares disponíveis ?
+  Assim nasceu o Ride4Free. Uma app que liga condutores com lugares livres a passageiros que fazem o mesmo trajeto.Isto só é possível Através de um sistema de pontos. O passageiro usa pontos para viajar de forma gratuita, e o condutor acumula-os para usar futuramente. Todos ganham, e o planeta agradece. Para além disso, O que destingue a nossa aplicaçao da concorrência é a segurança: o acesso é exclusivo através da autenticação da universidade, garantindo perfis verificados e um sistema de avaliaçao de confiança. Por fim, com mapas em tempo real, pedir ou aceitar uma boleia está à distância de um clique. Menos carros na estrada. Mais comunidade a mover-se na mesma direção. Ride4Free: move people, move the planet."
 
 * **Slide:**
   
