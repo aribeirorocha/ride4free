@@ -97,19 +97,20 @@ To learn more about how to write a good product vision, please read:
 
 ### Features and Assumptions
 
-- Dynamic Maps: depending on the profile of the user (rider of passenger), the map gps chooses the best route to both go to the destination in the fastest way possible, and get as many people as possible there. 
+**Key Features (Implemented & Validated):**
+- **University Authentication (Sigarra):** Exclusive login system integrated with the university portal (Sigarra) to ensure all users are verified students/staff, guaranteeing a safe ecosystem.
+- **Dynamic Interactive Maps:** Real-time map integration (using OpenStreetMap) to optimize routes, allowing drivers and passengers to pinpoint precise pickup and drop-off locations.
+- **Advanced Ride Matching & Join Requests:** Passengers can search for rides within walking tolerance and submit "Join Requests". Drivers have full control to review, accept, or decline these requests.
+- **Point-based Economy (Credits):** A cashless ecosystem where passengers use points to travel for free, and drivers accumulate points for sharing rides.
+- **Active Ride Tracking:** A dedicated flow for active trips, allowing both parties to signal when they are "in-car" and officially "complete" the ride.
+- **In-App Messaging (Chat):** Integrated real-time chat allowing drivers and passengers to communicate safely before and during the ride without sharing personal phone numbers.
+- **Push Notifications:** Alerts for ride updates (acceptances, cancellations) and new messages.
+- **Comprehensive Rating System:** Post-ride evaluations where users rate each other (1-5 stars) across detailed criteria: Punctuality, Friendliness, Cleanliness, and Communication.
 
-- Login system: Basic login to keep track of the users.
-
-- Point system: The points allow for competitive and buy cosmetic for the profile 
-<!-- 
-Indicate an  initial/tentative list of high-level features - high-level capabilities or desired services of the system that are necessary to deliver benefits to the users.
- - Feature XPTO - a few words to briefly describe the feature
- - Feature ABCD - ...
-...
-
-Optionally, indicate an initial/tentative list of assumptions that you are doing about the app and dependencies of the app to other systems.
--->
+**Assumptions:**
+- **Internet Connectivity:** The app requires an active internet connection to communicate with the backend, fetch maps, and sync ride status.
+- **Location Services:** The device's GPS module must be active to provide accurate tracking and route matching.
+- **University Community:** The primary user base is restricted to individuals with valid university credentials, assuming a baseline level of mutual trust and institutional accountability.
 
 ## Requirements
 
@@ -124,7 +125,7 @@ Our requirements are documented as **User Stories** in our [GitHub Project T4-Sc
 | #32 | [US4: Rate Passenger Conduct](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/34) | **Could-have** | 13 | Accepted |
 | #81 | [US5: Uni Login](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/81) | **Could-have** | 8 | Accepted |
 | #111 | [US6: User Chat](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/111) | **Must-have** | 13 | Done |
-| #113 | [US6: Notifications](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/113) | **Must-have** | 13 | Done |
+| #113 | [US7: Notifications](https://github.com/LEIC-ES-2025-26-2LEIC05/T4/issues/113) | **Must-have** | 13 | Done |
 
 ---
 
@@ -204,26 +205,7 @@ Below is a snapshot of the functional prototype in action:
 <img width="200" height="450" alt="Interactive Map Prototype" src="https://github.com/user-attachments/assets/e3f69d53-4b98-4153-baf1-02279a926f8c" />
 
 ## Project management
-<!--
-Software project management is the art and science of planning and leading software projects, in which they are planned, implemented, monitored and controlled.
 
-In the context of ESOF, we recommend each team to adopt a set of project management practices and tools capable of registering tasks, assigning tasks to team members, adding estimations to tasks, monitor tasks progress, and therefore being able to track their projects.
-
-Common practices of managing agile software development with Scrum are: backlog management, release management, estimation, Sprint planning, Sprint development, acceptance tests, and Sprint retrospectives.
-
-You can find below information and references related with the project management: 
-
-* Backlog management: Product backlog and Sprint backlog in a [Github Projects board](https://github.com/orgs/FEUP-LEIC-ES-2023-24/projects/64);
-* Release management: [v0](#), v1, v2, v3, ...;
-* Sprint planning and retrospectives: 
-  * plans: screenshots of Github Projects board at begin and end of each Sprint;
-  * retrospectives: meeting notes in a document in the repository, addressing the following questions:
-    * Did well: things we did well and should continue;
-    * Do differently: things we should do differently and how;
-    * Puzzles: things we don’t know yet if they are right or wrong;
-    * list of a few improvements to implement next Sprint;
-
--->
 To ensure a smooth, transparent, and iterative development process for **Ride4Free**, our team adopted Agile methodologies, specifically focusing on the **Scrum** framework. We utilize a set of practices and tools to plan, implement, monitor, and control our software project effectively.
 
 Our project management workflow is structured around the following key areas:
@@ -250,4 +232,9 @@ The detailed notes from our Sprint 3 Review, Planning, and Retrospective (includ
 ### Sprint 4
 
 ### Final Release
+**Release v3 (Production-Ready State)**
+The final release elevates Ride4Free from a functional prototype to a robust, globally accessible application. Key milestones achieved in this release include:
+* **Global Backend Deployment:** Migrated the FastAPI backend from a local environment to a globally accessible remote server using Cloudflare Tunnels, allowing real-device testing over 4G/5G networks.
+* **UI/UX Polishing:** Extensive refactoring of the user interface for visual consistency, including the implementation of a custom adaptive Android App Icon.
+* **Resilient Infrastructure:** Complete integration of the Dependency Injection mocking strategy (`MockClient`), isolating UI behavior validation from network fluctuations for a highly reliable application state.
 
