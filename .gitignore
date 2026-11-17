@@ -57,3 +57,8 @@ app_test/build/
 app_test/.dart_tool/
 app_test/.flutter-plugins
 app_test/.flutter-plugins-dependencies
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
